@@ -22,9 +22,19 @@ npm test                    # vitest (solo src/domain)
 npm run test:coverage       # vitest con soglia 80% su src/domain, come in CI
 npm run doctor              # expo-doctor: dipendenze e configurazione
 npx expo install --fix      # allinea versioni incompatibili
+
+emulator -avd Pixel_6a                                  # emulatore Android
+npx expo start --dev-client                             # dev server per la development build
+npx eas-cli@latest build -p android --profile development  # nuova development build (solo se cambiano dipendenze native)
+npx eas-cli@latest build:run -p android --latest        # installa l'ultima build sull'emulatore
+npm run e2e:dev                                         # flussi Maestro sulla development build
 ```
 
 Typecheck, lint, test con coverage e doctor devono passare prima di dichiarare finito un lavoro: sono i controlli del job "App mobile" in CI.
+
+## Verificare l'interfaccia
+
+Ogni modifica visibile si controlla sull'emulatore, non solo nel codice: screenshot con `adb exec-out screencap -p > <file>.png` (salvato nello scratchpad, non nel repository), interazioni con `adb shell input` o con un flusso Maestro. Un flusso nuovo in `.maestro/` per ogni percorso utente che entra nell'app; testi e asserzioni in italiano, come l'interfaccia. Strategia completa in `docs/processo.md`, sezione "Test dell'interfaccia".
 
 ## Struttura
 
