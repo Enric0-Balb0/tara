@@ -58,6 +58,13 @@ repos:
 
   - repo: local
     hooks:
+      # I commit hanno un solo autore, Enrico: niente co-autori o trailer degli assistenti AI.
+      - id: no-ai-attribution
+        name: commit senza attribuzioni AI
+        entry: (?i)^(co-authored-by:.*(claude|anthropic|copilot|openai)|claude-session:)
+        language: pygrep
+        stages: [commit-msg]
+
       # Backend API
       - id: api-ruff
         name: api · ruff check
