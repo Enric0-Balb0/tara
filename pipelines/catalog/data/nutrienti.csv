@@ -1,0 +1,26 @@
+codice,nome_it,unita
+energy_kcal,Energia,kcal
+energy_kj,Energia,kJ
+protein_g,Proteine,g
+carbs_g,Carboidrati,g
+sugars_g,di cui zuccheri,g
+fat_g,Grassi,g
+sat_fat_g,di cui saturi,g
+fiber_g,Fibre,g
+salt_g,Sale,g
+sodium_mg,Sodio,mg
+potassium_mg,Potassio,mg
+calcium_mg,Calcio,mg
+magnesium_mg,Magnesio,mg
+phosphorus_mg,Fosforo,mg
+iron_mg,Ferro,mg
+zinc_mg,Zinco,mg
+vit_a_ug,Vitamina A,µg
+vit_d_ug,Vitamina D,µg
+vit_e_mg,Vitamina E,mg
+vit_c_mg,Vitamina C,mg
+vit_b12_ug,Vitamina B12,µg
+folate_ug,Folati,µg
+water_g,Acqua,g
+alcohol_g,Alcol,g
+caffeine_mg,Caffeina,mg

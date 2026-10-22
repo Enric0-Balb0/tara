@@ -1,0 +1,21 @@
+# Database locale per lo sviluppo: Postgres 17 con l'estensione pgvector.
+# Avvio: docker compose -f infra/docker-compose.yml up -d
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: tara
+      POSTGRES_PASSWORD: tara
+      POSTGRES_DB: tara
+    ports:
+      - "5432:5432"
+    volumes:
+      - tara-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tara -d tara"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  tara-db:

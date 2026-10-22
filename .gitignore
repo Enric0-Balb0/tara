@@ -1,0 +1,29 @@
+# OS ed editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Segreti
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Node
+node_modules/
+
+# Dati grezzi scaricati (CIQUAL, USDA, dump Open Food Facts)
+pipelines/catalog/data/raw/
+
+# Claude Code: impostazioni personali
+.claude/settings.local.json

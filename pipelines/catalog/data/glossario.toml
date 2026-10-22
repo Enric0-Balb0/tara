@@ -1,0 +1,105 @@
+# Glossario controllato per la traduzione dei nomi del catalogo (CIQUAL fr/en, USDA en).
+#
+# Ogni voce collega i termini delle fonti alla forma italiana da usare nel nome.
+# `state` (facoltativo) dice cosa il termine implica sullo stato dell'alimento:
+#   "crudo" | "cotto". Se manca, il termine non dice nulla sullo stato.
+# I validatori usano `state` per mandare in revisione le traduzioni incoerenti.
+
+[[term]]
+it = "crudo"
+en = ["raw"]
+fr = ["cru", "crue", "crus", "crues"]
+state = "crudo"
+
+[[term]]
+it = "cotto"
+en = ["cooked"]
+fr = ["cuit", "cuite", "cuits", "cuites"]
+state = "cotto"
+
+[[term]]
+it = "lessato"
+en = ["boiled", "cooked in water"]
+fr = ["bouilli", "bouillie", "cuit à l'eau", "cuite à l'eau"]
+state = "cotto"
+
+[[term]]
+it = "al vapore"
+en = ["steamed"]
+fr = ["cuit à la vapeur", "cuite à la vapeur"]
+state = "cotto"
+
+[[term]]
+it = "arrosto"
+en = ["roasted"]
+fr = ["rôti", "rôtie"]
+state = "cotto"
+
+[[term]]
+it = "alla griglia"
+en = ["grilled"]
+fr = ["grillé", "grillée"]
+state = "cotto"
+
+[[term]]
+it = "fritto"
+en = ["fried"]
+fr = ["frit", "frite"]
+state = "cotto"
+
+[[term]]
+it = "al forno"
+en = ["baked", "oven-baked"]
+fr = ["cuit au four", "cuite au four"]
+state = "cotto"
+
+[[term]]
+it = "in padella"
+en = ["pan-fried", "sauteed"]
+fr = ["poêlé", "poêlée"]
+state = "cotto"
+
+[[term]]
+it = "sgocciolato"
+en = ["drained"]
+fr = ["égoutté", "égouttée"]
+
+[[term]]
+it = "in scatola"
+en = ["canned"]
+fr = ["appertisé", "appertisée"]
+
+[[term]]
+it = "surgelato"
+en = ["frozen"]
+fr = ["surgelé", "surgelée"]
+
+[[term]]
+it = "essiccato"
+en = ["dried"]
+fr = ["séché", "séchée", "déshydraté", "déshydratée"]
+
+[[term]]
+it = "senza pelle"
+en = ["skinless", "without skin"]
+fr = ["sans peau"]
+
+[[term]]
+it = "con pelle"
+en = ["with skin"]
+fr = ["avec peau"]
+
+[[term]]
+it = "intero"
+en = ["whole"]
+fr = ["entier", "entière"]
+
+[[term]]
+it = "scremato"
+en = ["skimmed"]
+fr = ["écrémé", "écrémée"]
+
+[[term]]
+it = "parzialmente scremato"
+en = ["semi-skimmed"]
+fr = ["demi-écrémé", "demi-écrémée"]

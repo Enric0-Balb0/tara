@@ -1,0 +1,7 @@
+# Fine riga LF nel repository, anche lavorando da Windows
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.xlsx binary
