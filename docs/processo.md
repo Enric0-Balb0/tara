@@ -80,16 +80,49 @@ Una modifica è finita quando:
 
 **Backend (attivo).** `.github/workflows/cd.yml` parte quando la CI su `main` finisce verde e pubblica `ghcr.io/enric0-balb0/tara-api` con i tag `<sha>` e `latest`. L'immagine è la stessa che la CI ha già avviato e verificato. Il job di deploy si aggiunge in coda appena si sceglie l'hosting (questione aperta in `docs/requisiti.md`); ci vorrà un segreto di deploy nelle impostazioni del repository.
 
-**App (da attivare).** Build e aggiornamenti OTA passano da EAS. Servono un account Expo e il collegamento del progetto:
+**App (in parte attiva).** Il progetto è collegato a EAS come `@enricobalbo/tara` (`extra.eas.projectId` in `app.json`) e le build passano da EAS Build con i profili di `apps/mobile/eas.json`:
+
+| Profilo | Cosa produce | Uso |
+| --- | --- | --- |
+| `development` | APK con `expo-dev-client`: carica il JavaScript dal dev server | Sviluppo quotidiano su emulatore e telefono |
+| `preview` | APK con il bundle JavaScript incluso | Test E2E, prove sul telefono senza PC |
+| `production` | App bundle per Google Play, versione incrementata da EAS | Rilasci |
+
+La keystore Android è generata e custodita da EAS (*remote credentials*). Una copia di sicurezza si scarica con `npx eas-cli@latest credentials -p android`, da tenere fuori dal repository. Restano da configurare EAS Update ed EAS Workflows (build con *fingerprint*: se cambia solo JavaScript si pubblica un aggiornamento OTA invece di ricompilare) e da aggiungere `EXPO_TOKEN` ai segreti di GitHub. Il piano Free di EAS prevede 30 build al mese (al massimo 15 iOS) e aggiornamenti OTA fino a 1.000 utenti attivi al mese. Lint e test restano su GitHub Actions.
+
+## Test dell'interfaccia
+
+L'interfaccia si verifica a quattro livelli, dal più veloce al più realistico.
+
+| Livello | Strumento | Dove gira | Cosa copre |
+| --- | --- | --- | --- |
+| Logica di dominio | Vitest (`npm run test:coverage`) | Node, in locale e in CI | Calcoli nutrizionali, parser, regole |
+| Componenti | jest-expo + React Native Testing Library, da introdurre con il primo componente con logica (e allora anche i test di dominio passano a Jest: un solo runner) | Node, in locale e in CI | Rendering e interazioni: tastierino dei grammi, form etichetta, totali |
+| Flussi end-to-end | Maestro (`apps/mobile/.maestro/`) | Emulatore o telefono in locale; in CI su `main` con EAS Workflows (da attivare) | Percorsi completi dell'utente, numero di tap di RNF-02 |
+| Prova reale | Telefono Android | A mano | Fotocamera, Health Connect, tempi di risposta, gate delle fasi |
+
+**Emulatore.** Si usa l'emulatore di Android Studio, per esempio l'AVD `Pixel_6a` con Android 16 e Play Store; l'accelerazione WHPX di Windows lo rende veloce. La development build si installa una volta e si rifà solo quando cambiano le dipendenze native; il resto arriva dal dev server con il ricaricamento rapido.
 
 ```powershell
+emulator -avd Pixel_6a                                      # avvia l'emulatore
 cd apps/mobile
-npx expo login
-npx eas-cli@latest init            # scrive extra.eas.projectId in app.json
-npx eas-cli@latest build:configure # crea eas.json con i profili
+npx eas-cli@latest build -p android --profile development   # solo se cambiano dipendenze native
+npx eas-cli@latest build:run -p android --latest            # installa l'ultima build sull'emulatore
+npx expo start --dev-client                                 # dev server; "a" apre l'app sull'emulatore
 ```
 
-Poi si configurano EAS Update ed EAS Workflows (build con *fingerprint*: se cambia solo JavaScript si pubblica un aggiornamento OTA invece di ricompilare) e si aggiunge `EXPO_TOKEN` ai segreti di GitHub. Il piano Free di EAS prevede 30 build al mese (al massimo 15 iOS) e aggiornamenti OTA fino a 1.000 utenti attivi al mese. Lint e test restano su GitHub Actions.
+**Flussi Maestro.** Ogni flusso in `apps/mobile/.maestro/` parte da `subflows/avvio.yaml`, che avvia l'app da uno stato pulito sia con la build preview sia con la development build. Gli screenshot e i log finiscono in `apps/mobile/e2e-results/`, ignorata da git.
+
+```powershell
+npm run e2e:dev   # development build: dev server acceso, adb reverse automatico
+npm run e2e       # build preview, con il bundle incluso
+```
+
+Maestro richiede JDK 17+: lo script lo passa solo al processo di Maestro (il JDK di Android Studio, o `TARA_JAVA_HOME`), quindi un `JAVA_HOME` globale diverso resta intatto. Lo script disattiva anche la telemetria anonima di Maestro.
+
+**Verifiche visive di Claude.** Con l'emulatore acceso Claude cattura lo schermo con `adb exec-out screencap -p` e lo guarda, e interagisce con `adb shell input` o con Maestro: ogni modifica all'interfaccia si controlla sullo schermo vero, non solo nel codice. La prima verifica ha trovato subito due difetti invisibili nel codice: le icone delle tab mancano (un `?` al posto del glifo) e quel `?` finisce nell'etichetta letta dallo screen reader.
+
+**iOS.** Su Windows non c'è il simulatore iOS. Finché non c'è un utente iPhone il codice resta multipiattaforma ma si prova solo su Android; poi servono l'Apple Developer Program, le build iOS di EAS e TestFlight.
 
 ## Configurazione di GitHub
 
@@ -124,3 +157,9 @@ docker compose -f infra/docker-compose.yml up -d
 ```
 
 `uv sync` installa anche Python 3.12 se manca (la versione è in `.python-version`).
+
+Per l'app servono anche:
+
+- **Android Studio**, con un emulatore (AVD) Android 14 o successivo con Play Store, e le cartelle `platform-tools` ed `emulator` dell'SDK nel PATH.
+- **Maestro**: estrarre `maestro.zip` della [release ufficiale](https://github.com/mobile-dev-inc/maestro/releases) in `%USERPROFILE%\.maestro`, dopo averne verificato il checksum, e aggiungere `%USERPROFILE%\.maestro\bin` al PATH.
+- **Login Expo**: `npx eas-cli@latest login --device`. Su Windows `npx expo login` si interrompe aprendo il browser: il link contiene `&` che `cmd /c start` non protegge.

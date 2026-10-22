@@ -21,6 +21,12 @@ repos:
       - id: mixed-line-ending
         args: [--fix=lf]
       - id: check-yaml
+        exclude: ^apps/mobile/\.maestro/
+      # I flussi Maestro hanno due documenti: configurazione e comandi, separati da "---".
+      - id: check-yaml
+        name: check yaml (flussi Maestro)
+        args: [--allow-multiple-documents]
+        files: ^apps/mobile/\.maestro/
       - id: check-toml
       - id: check-json
       - id: check-merge-conflict

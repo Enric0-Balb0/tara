@@ -404,7 +404,7 @@ L'hosting del backend va scelto entro la fine della fase F0, perché da lui dipe
 - [ ] Modello AI per l'estrazione etichette, da scegliere con un confronto su 30–50 etichette reali.
 - [ ] Provider di hosting del backend (es. Supabase) e regione europea: determina il job di deploy della CD e il metodo di autenticazione. Opzioni in `docs/strumenti.md`.
 - [ ] Piano GitHub per proteggere `main` sul repository privato (GitHub Pro, anche tramite Student Developer Pack) oppure repository pubblico.
-- [ ] Account Expo per attivare EAS Build, EAS Update e il server MCP di Expo.
+- [x] Account Expo per attivare EAS Build, EAS Update e il server MCP di Expo: progetto `@enricobalbo/tara`, prima development build Android il 22/10/2026.
 - [ ] Acquisto della BDA dell'IEO per gli alimenti tipici italiani.
 - [ ] Tassonomia delle categorie: riuso di quella di Open Food Facts o una versione ridotta.
 - [ ] Peso da cotto per singola preparazione o solo a livello di ricetta.

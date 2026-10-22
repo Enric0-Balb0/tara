@@ -69,7 +69,8 @@ SDK 58 è uscito il 15/10/2026: React Native 0.88, Node 22.13+ o 24.3+. Cambiame
 | Dati salute | **react-native-health-connect** v4: il config plugin Expo è integrato da agosto 2026 (`expo-health-connect` è deprecato). Richiede una development build. HealthKit con il primo utente iPhone (`@kingstinct/react-native-healthkit`, da verificare quando serve). | `expo-healthkit-module` (entrambe le piattaforme, manutenzione da verificare). | F2 (RF-113) |
 | Notifiche | **expo-notifications**, locali e programmate. | — | F2 |
 | Test dei componenti | **jest-expo + React Native Testing Library** (Vitest resta per `src/domain`). | — | Con il primo componente con logica |
-| Test E2E | **Maestro** su EAS Workflows: build per emulatore e flussi in `.maestro/` (job ancora in alpha). | Maestro in locale sull'emulatore. | F1, prima del gate |
+| Test E2E | **Maestro** 2.11 (**adottato** in locale: `npm run e2e:dev` sull'emulatore); in CI su EAS Workflows, con build per emulatore e flussi in `.maestro/` (job ancora in alpha). | — | Locale ora; CI in F1, prima del gate |
+| Development build | **expo-dev-client** con EAS Build, profilo `development` (**adottato**). | Build locale con `npx expo run:android`: serve JDK 17 e 10–15 GB di disco. | Adottato |
 | Strumenti di sviluppo | `expo-device-hub` (dashboard degli emulatori nel browser, SDK 58); `@expo/agent-cli` (sperimentale, pensato per gli agenti). | — | Ora, se utili |
 
 ## 3. Backend e pipeline del catalogo

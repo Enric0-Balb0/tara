@@ -1,0 +1,27 @@
+# Avvia Tara da uno stato pulito.
+# - Build preview (bundle incluso): basta lanciare l'app.
+# - Development build: passare DEV_SERVER_URL (es. http://localhost:8081, dopo
+#   `adb reverse tcp:8081 tcp:8081`). L'app si avvia a freddo dal deep link del dev
+#   client, che carica il JavaScript dal dev server; il menu sviluppatore del primo
+#   avvio viene chiuso. Il deep link va usato all'avvio: se il launcher è già aperto
+#   lo ignora.
+appId: com.enricobalbo.tara
+---
+- runFlow:
+    when:
+      true: ${typeof DEV_SERVER_URL === 'undefined' || DEV_SERVER_URL === ''}
+    commands:
+      - launchApp:
+          clearState: true
+- runFlow:
+    when:
+      true: ${typeof DEV_SERVER_URL !== 'undefined' && DEV_SERVER_URL !== ''}
+    commands:
+      - stopApp
+      - clearState
+      - openLink: tara://expo-development-client/?url=${encodeURIComponent(DEV_SERVER_URL)}
+      - extendedWaitUntil:
+          visible: Continue
+          timeout: 60000
+      - tapOn: Continue
+      - back
