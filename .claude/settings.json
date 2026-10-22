@@ -1,13 +1,27 @@
 {
   "enabledPlugins": {
-    "expo@claude-plugins-official": true
+    "expo@claude-plugins-official": true,
+    "pyright-lsp@claude-plugins-official": true,
+    "typescript-lsp@claude-plugins-official": true
   },
   "permissions": {
     "allow": [
       "Bash(npm run typecheck)",
       "Bash(npm run lint)",
       "Bash(npm test)",
+      "Bash(npm run test:coverage)",
+      "Bash(npm run doctor)",
       "Bash(npx tsc --noEmit)",
+      "Bash(uv sync --locked)",
+      "Bash(uv run --locked ruff check *)",
+      "Bash(uv run --locked ruff format *)",
+      "Bash(uv run --locked mypy*)",
+      "Bash(uv run --locked pytest*)",
+      "Bash(uv run ruff check *)",
+      "Bash(uv run ruff format *)",
+      "Bash(uv run mypy*)",
+      "Bash(uv run pytest*)",
+      "Bash(pre-commit run*)",
       "Bash(ruff check *)",
       "Bash(ruff format *)",
       "Bash(pytest*)",
