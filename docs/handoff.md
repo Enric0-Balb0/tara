@@ -53,6 +53,15 @@ Scheletro più processo di sviluppo completo; ancora nessuna funzione di prodott
   - `ci.yml` con job per pacchetto, scansione dei segreti, build e smoke test dell'immagine dell'API e il controllo aggregato "CI passata"; `pr.yml` controlla il titolo della PR; `cd.yml` pubblica l'immagine su GHCR quando `main` è verde.
   - Dependabot, modelli di PR e issue.
 - `docs/strumenti.md`: ricerca su plugin, skill, MCP e librerie, con l'ordine di adozione.
+- Test dell'interfaccia (`docs/processo.md`): progetto EAS `@enricobalbo/tara` con `expo-dev-client` e profili `development`, `preview` e `production`; prima development build Android installata sull'emulatore `Pixel_6a`; flusso Maestro di navigazione tra le tab (`npm run e2e:dev`).
+
+### Problemi noti dell'interfaccia
+
+Trovati con la prima verifica sull'emulatore, da risolvere con il design system (F0, passo 5):
+
+- Le tab non hanno icone: compare un `?` al posto del glifo, perché lo scheletro non definisce `tabBarIcon`.
+- Quel `?` entra nell'etichetta di accessibilità ("?, Alimenti").
+- Manca `expo-splash-screen`: il dev launcher registra `ClassNotFoundException: SplashScreenManager`. Non blocca nulla, ma va aggiunto con la prossima build nativa.
 
 ### Azioni manuali in sospeso
 
@@ -60,7 +69,7 @@ Non si possono fare dal repository; dettagli in `docs/processo.md`:
 
 1. Ruleset su `main` (PR obbligatoria, controlli "CI passata" e "Titolo Conventional Commits", squash merge). Sul repository privato serve GitHub Pro (Student Developer Pack) oppure il repository pubblico.
 2. Ricollegare l'MCP di GitHub o installare `gh`, così Claude può aprire PR e leggere la CI.
-3. Installare il plugin `expo` e `pyright-lsp`; creare l'account Expo e collegare il progetto a EAS.
+3. Installare il plugin `expo` e `pyright-lsp`, poi accedere all'MCP di Expo da `/mcp`. Account Expo e collegamento a EAS: fatti.
 4. Scegliere l'hosting del backend, poi aggiungere il job di deploy a `cd.yml`.
 
 ## Prossimi passi (fase F0)
