@@ -15,7 +15,9 @@
     "lint": "expo lint --max-warnings 0",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "doctor": "npx expo-doctor"
+    "doctor": "npx expo-doctor",
+    "e2e": "node scripts/e2e.mjs",
+    "e2e:dev": "node scripts/e2e.mjs --dev"
   },
   "dependencies": {
     "expo": "~58.0.17",
