@@ -3,37 +3,37 @@ from pathlib import Path
 
 import pytest
 
-from tara_catalog.glossary import check_state, load_glossary
+from tara_catalog.glossary import Glossary, check_state, load_glossary
 
 DATA = Path(__file__).resolve().parents[1] / "data"
 
 
 @pytest.fixture(scope="module")
-def glossary():
+def glossary() -> Glossary:
     return load_glossary()
 
 
-def test_glossary_terms_are_unique_per_language(glossary) -> None:
+def test_glossary_terms_are_unique_per_language(glossary: Glossary) -> None:
     for lang in ("en", "fr"):
         seen = [src.casefold() for term in glossary.terms for src in term.sources[lang]]
         assert len(seen) == len(set(seen)), f"termine duplicato in {lang}"
 
 
-def test_glossary_states_are_valid(glossary) -> None:
+def test_glossary_states_are_valid(glossary: Glossary) -> None:
     assert {term.state for term in glossary.terms} <= {"crudo", "cotto", None}
 
 
-def test_italian_hints_from_ciqual_name(glossary) -> None:
+def test_italian_hints_from_ciqual_name(glossary: Glossary) -> None:
     hints = glossary.italian_hints("Poulet, filet, sans peau, cru", "fr")
     assert hints == ["crudo", "senza pelle"]
 
 
-def test_matches_whole_words_only(glossary) -> None:
+def test_matches_whole_words_only(glossary: Glossary) -> None:
     # "crue" è un termine, ma non deve scattare dentro "écrue" o "cruelle".
     assert glossary.matches("Farine écrue", "fr") == []
 
 
-def test_raw_original_translated_as_cooked_is_flagged(glossary) -> None:
+def test_raw_original_translated_as_cooked_is_flagged(glossary: Glossary) -> None:
     issues = check_state(
         glossary,
         {"fr": "Poulet, filet, sans peau, cru", "en": "Chicken, breast, skinless, raw"},
@@ -42,12 +42,12 @@ def test_raw_original_translated_as_cooked_is_flagged(glossary) -> None:
     assert issues
 
 
-def test_cooked_original_translated_as_raw_is_flagged(glossary) -> None:
+def test_cooked_original_translated_as_raw_is_flagged(glossary: Glossary) -> None:
     issues = check_state(glossary, {"fr": "Riz blanc, cuit", "en": "Rice, white, cooked"}, "crudo")
     assert issues
 
 
-def test_consistent_translations_pass(glossary) -> None:
+def test_consistent_translations_pass(glossary: Glossary) -> None:
     assert check_state(glossary, {"en": "Egg, white, raw"}, "crudo") == []
     assert check_state(glossary, {"fr": "Thon, appertisé, égoutté"}, "na") == []
     assert check_state(glossary, {"fr": "Riz blanc, cuit à l'eau"}, "cotto") == []

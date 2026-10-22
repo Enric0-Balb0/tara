@@ -2,12 +2,14 @@
 name = "tara-catalog"
 version = "0.1.0"
 description = "Pipeline del catalogo di Tara: import CIQUAL/USDA, traduzione e validazione"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<3.13"
 dependencies = []
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
+    "mypy>=1.20",
     "pytest>=9.1",
+    "pytest-cov>=7.0",
     "ruff>=0.17",
 ]
 
@@ -20,6 +22,20 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = ["--strict-markers"]
+
+[tool.coverage.run]
+source = ["tara_catalog"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+skip_covered = true
+
+[tool.mypy]
+strict = true
+files = ["src", "tests"]
 
 [tool.ruff]
 line-length = 100
