@@ -5,6 +5,8 @@ App personale di tracciamento della dieta per bodybuilder, interamente in italia
 Leggi prima:
 - `docs/requisiti.md`: requisiti con ID (RF-xx, RNF-xx), architettura, modello dati, roadmap a fasi F0–F5.
 - `docs/handoff.md`: decisioni prese finora, perché, e prossimi passi concreti.
+- `docs/processo.md`: flusso di sviluppo, quality gate, Definition of Done, CI/CD.
+- `docs/strumenti.md`: plugin, skill, MCP e librerie raccomandati per fase.
 
 ## Principi non negoziabili
 
@@ -22,35 +24,37 @@ Leggi prima:
 apps/mobile/        App Expo (SDK 58, React Native, TypeScript, Expo Router in src/app)
 services/api/       Backend FastAPI: sync, gateway AI, proxy Open Food Facts
 pipelines/catalog/  Import, traduzione e validazione del catalogo dei generici
-infra/              docker-compose per Postgres + pgvector in locale
-docs/               Requisiti e handoff
+infra/              docker-compose per Postgres + pgvector (e il backend in container) in locale
+docs/               Requisiti, handoff, processo e strumenti
+.github/            CI, CD, Dependabot, modelli di PR e issue
 ```
 
 ## Comandi
 
-Ambiente di sviluppo: Windows, PowerShell, Node 22, Python 3.12.
+Ambiente di sviluppo: Windows, PowerShell, Node 22 (`.nvmrc`), Python 3.12 gestito da uv (`.python-version`). Gli stessi comandi girano in CI (`.github/workflows/ci.yml`).
 
 ```powershell
 # App
 cd apps/mobile
-npm install
-npm run typecheck; npm run lint; npm test
+npm ci
+npm run typecheck; npm run lint; npm run test:coverage; npm run doctor
 npx expo start            # dev server
 
 # Backend
 cd services/api
-python -m venv .venv; .venv\Scripts\Activate.ps1
-pip install -e ".[dev]"
-ruff check .; ruff format --check .; pytest
-uvicorn tara_api.main:app --reload
+uv sync                   # .venv dal lockfile
+uv run ruff check .; uv run ruff format --check .; uv run mypy; uv run pytest --cov
+uv run uvicorn tara_api.main:app --reload
 
 # Pipeline del catalogo
 cd pipelines/catalog
-python -m venv .venv; .venv\Scripts\Activate.ps1
-pip install -e ".[dev]"
-ruff check .; pytest
+uv sync
+uv run ruff check .; uv run ruff format --check .; uv run mypy; uv run pytest --cov
 
-# Database locale
+# Hook git, una volta per macchina
+uv tool install pre-commit; pre-commit install
+
+# Database locale (con --profile api anche il backend in container)
 docker compose -f infra/docker-compose.yml up -d
 ```
 
@@ -58,10 +62,11 @@ docker compose -f infra/docker-compose.yml up -d
 
 - Codice, identificatori e commenti tecnici in inglese; testi dell'interfaccia, docstring di dominio e documentazione in italiano.
 - Valori nutrizionali sempre per 100 g o 100 ml; quantità in grammi o millilitri.
-- TypeScript `strict`; Python con ruff (lint e format) e type hints.
-- Prima di dichiarare finito un lavoro: typecheck, lint e test del pacchetto toccato devono passare.
-- Commit piccoli in stile Conventional Commits (`feat(mobile): …`, `fix(api): …`, `docs: …`), in italiano o inglese ma coerenti nel branch.
-- Branch per funzione (`feat/<id-requisito>-<breve>`), merge su `main` solo con CI verde.
+- TypeScript `strict`; Python con ruff (lint e format) e mypy `strict`.
+- Prima di dichiarare finito un lavoro: typecheck, lint e test con coverage del pacchetto toccato devono passare (soglia 80%, solo verso l'alto). Definition of Done completa in `docs/processo.md`.
+- Commit piccoli in stile Conventional Commits (`feat(mobile): …`, `fix(api): …`, `docs: …`), in italiano o inglese ma coerenti nel branch; scope ammessi: `mobile`, `api`, `catalog`, `infra`, `ci`, `deps`, `deps-dev`, `docs`. Gli hook git lo verificano.
+- Branch per funzione (`feat/<id-requisito>-<breve>`), PR con il modello del repository, merge squash su `main` solo con CI verde. Mai commit diretti su `main`.
+- Dipendenze: `npx expo install` nell'app, `uv add` / `uv add --dev` in Python; mai `pip install` nei progetti. Lockfile sempre committati.
 - Quando una decisione cambia i requisiti, aggiorna `docs/requisiti.md` nello stesso commit.
 - Prompt e schemi di output dei modelli AI vivono nel repository e sono versionati; ogni cambio di modello o prompt passa dagli eval.
 

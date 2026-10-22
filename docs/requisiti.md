@@ -1,6 +1,6 @@
 # Tara — Documento dei requisiti
 
-Bozza v0.1 · 22 ottobre 2026 · Enrico
+Bozza v0.2 · 22 ottobre 2026 · Enrico
 
 > Copia nel repository del documento vivo su Claude Docs:
 > https://claude.ai/artifact/Ks8ELqYdsPiqUY8gtM2tGg
@@ -255,6 +255,8 @@ I valori di tempo sono obiettivi proposti, da confermare dopo i primi test sul d
 | RNF-10 | Rispetto di licenze e attribuzioni delle fonti dati (vedi Fonti dati). | M | F0 |
 | RNF-11 | Notifiche programmate sul dispositivo, consegnate anche senza rete e senza dipendere dal backend. | M | F2 |
 | RNF-12 | Foto progressi cifrate a riposo, visibili solo all'utente e mai inviate a un modello AI. | M | F2 |
+| RNF-13 | Processo da team anche con un solo sviluppatore: ogni modifica passa da PR con CI verde (lint, format, type check `strict`, test con coverage ≥ 80%, scansione dei segreti), Conventional Commits verificati, dipendenze bloccate da lockfile e aggiornate da Dependabot; dettagli in `docs/processo.md`. | M | F0 |
+| RNF-14 | Delivery continua: ogni merge su `main` con CI verde produce artefatti versionati e riproducibili (immagine del backend dalla F0; build e aggiornamenti OTA dell'app con EAS dalla F1) e il deploy parte dalla stessa pipeline. | M | F0 |
 
 ## Architettura
 
@@ -290,6 +292,7 @@ Il telefono non chiama mai direttamente i provider AI né Open Food Facts: passa
 | Hosting | Servizio gestito con Postgres, autenticazione e storage (es. Supabase); tutto containerizzato | Avvio rapido, migrazione su AWS possibile | Infrastruttura gestita a mano |
 | Notifiche | Locali, programmate dall'app dallo stack integratori | Funzionano offline, nessun server di push | Push da backend |
 | Distribuzione Android | APK, poi test interno di Google Play | La verifica sviluppatori per il sideloading parte il 30/09/2026 in alcuni Paesi e si estende nel 2027 | — |
+| Processo e CI/CD | GitHub Actions con job per pacchetto e un controllo aggregato; uv e lockfile, mypy `strict`, pre-commit; immagine del backend su GHCR; EAS per build e OTA dell'app | Build riproducibili e regole applicate dagli strumenti anche con un solo sviluppatore (RNF-13, RNF-14) | pip senza lockfile; build dell'app su GitHub Actions al posto di EAS |
 
 ### Layer di traduzione
 
@@ -377,7 +380,7 @@ Per la fase personale bastano fonti gratuite; la BDA dell'IEO ha condizioni da r
 
 Fasi in sequenza: ognuna parte solo quando la precedente supera il suo gate. Nessuna funzione AI extra prima di due settimane di uso reale dell'MVP.
 
-1. **F0 · Fondamenta** — repo, CI, schema dati, autenticazione, backend online; import di CIQUAL/CALNUT e USDA con nomi tradotti in italiano.
+1. **F0 · Fondamenta** — repo, CI/CD, schema dati, autenticazione, backend online; import di CIQUAL/CALNUT e USDA con nomi tradotti in italiano.
    *Gate:* la ricerca di un generico restituisce valori corretti.
 2. **F1 · MVP «disinstallo FatSecret»** — catalogo, barcode con Open Food Facts, lettura etichetta, inserimento manuale; ricette, pasti salvati, diario con copia, preferiti e recenti; target per tipo di giornata, contatore acqua, peso con media mobile.
    *Gate (vincolante):* due settimane di uso esclusivo, senza FatSecret.
@@ -393,13 +396,15 @@ La lettura etichette entra già nell'MVP perché è il modo base di inserire un 
 
 ## Questioni aperte e rischi
 
-Nessuna questione aperta blocca la fase F0: le scelte qui sotto servono entro F1 o più avanti.
+L'hosting del backend va scelto entro la fine della fase F0, perché da lui dipendono il backend online e l'autenticazione; le altre scelte servono entro F1 o più avanti.
 
 ### Questioni aperte
 
 - [ ] Verifica della disponibilità del nome Tara su Google Play, App Store e dominio prima della pubblicazione.
 - [ ] Modello AI per l'estrazione etichette, da scegliere con un confronto su 30–50 etichette reali.
-- [ ] Provider di hosting del backend (es. Supabase) e regione europea.
+- [ ] Provider di hosting del backend (es. Supabase) e regione europea: determina il job di deploy della CD e il metodo di autenticazione. Opzioni in `docs/strumenti.md`.
+- [ ] Piano GitHub per proteggere `main` sul repository privato (GitHub Pro, anche tramite Student Developer Pack) oppure repository pubblico.
+- [ ] Account Expo per attivare EAS Build, EAS Update e il server MCP di Expo.
 - [ ] Acquisto della BDA dell'IEO per gli alimenti tipici italiani.
 - [ ] Tassonomia delle categorie: riuso di quella di Open Food Facts o una versione ridotta.
 - [ ] Peso da cotto per singola preparazione o solo a livello di ricetta.
