@@ -4,8 +4,12 @@ version: 2
 
 updates:
   # App mobile. Le dipendenze dell'SDK Expo e di React Native si aggiornano solo con
-  # `npx expo install --fix` o con l'upgrade di SDK, mai a mano: Dependabot propone
-  # solo le patch, compatibili con l'SDK corrente.
+  # `npx expo install --fix` o con l'upgrade di SDK, mai a mano:
+  # - react, react-dom e react-native sono fissati a una versione esatta dall'SDK:
+  #   Dependabot non li tocca, nemmeno per le patch;
+  # - gli altri pacchetti dell'SDK (range ~) ricevono solo le patch;
+  # - eslint resta sulla major supportata da eslint-config-expo (ESLint 10 rompe
+  #   eslint-plugin-react: vedi la PR #4).
   - package-ecosystem: npm
     directory: /apps/mobile
     schedule:
@@ -16,24 +20,23 @@ updates:
       prefix: chore
       include: scope
     ignore:
+      - dependency-name: "react"
+      - dependency-name: "react-dom"
+      - dependency-name: "react-native"
       - dependency-name: "expo"
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
       - dependency-name: "expo-*"
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
       - dependency-name: "eslint-config-expo"
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
-      - dependency-name: "react"
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
-      - dependency-name: "react-dom"
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
       - dependency-name: "@types/react"
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
-      - dependency-name: "react-native"
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
       - dependency-name: "react-native-*"
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
     groups:
       mobile:
         patterns: ["*"]
