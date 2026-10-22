@@ -5,3 +5,7 @@
 *.jpg binary
 *.jpeg binary
 *.xlsx binary
+
+# Lockfile generati: diff compressi nelle PR
+apps/mobile/package-lock.json linguist-generated=true
+**/uv.lock linguist-generated=true

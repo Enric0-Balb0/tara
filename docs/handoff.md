@@ -41,13 +41,27 @@ Enrico è un AI engineer e un appassionato di bodybuilding. Usa la versione grat
 
 ## Stato del repository
 
-Primo commit: solo scheletro, nessuna funzione di prodotto.
+Scheletro più processo di sviluppo completo; ancora nessuna funzione di prodotto.
 
 - `apps/mobile`: Expo SDK 58 con Expo Router e quattro tab segnaposto (Oggi, Alimenti, Progressi, Profilo). `src/domain/nutrition.ts` contiene il controllo kcal 4/4/9/2 (RF-15) e la conversione sale → sodio (RF-16), con test Vitest. Verificati typecheck, lint, test e bundle Android.
 - `services/api`: FastAPI con `/health`, configurazione da variabili `TARA_*`, test.
 - `pipelines/catalog`: glossario (`data/glossario.toml`), tabella dei nutrienti in italiano (`data/nutrienti.csv`), validatore di coerenza dello stato crudo/cotto, test.
-- `infra/docker-compose.yml`: Postgres 17 con pgvector.
-- `.github/workflows/ci.yml`: lint e test dei tre pacchetti; parte quando il repository è su GitHub.
+- `infra/docker-compose.yml`: Postgres 17 con pgvector; con `--profile api` anche il backend in container.
+- Processo e CI/CD (`docs/processo.md`, RNF-13 e RNF-14):
+  - uv con lockfile e Python 3.12 fissato; mypy `strict`; coverage minima dell'80% su backend, pipeline e `src/domain`; lint dell'app con zero warning; `expo-doctor` in CI.
+  - Hook pre-commit, commit-msg e pre-push, con gitleaks, actionlint e Conventional Commits.
+  - `ci.yml` con job per pacchetto, scansione dei segreti, build e smoke test dell'immagine dell'API e il controllo aggregato "CI passata"; `pr.yml` controlla il titolo della PR; `cd.yml` pubblica l'immagine su GHCR quando `main` è verde.
+  - Dependabot, modelli di PR e issue.
+- `docs/strumenti.md`: ricerca su plugin, skill, MCP e librerie, con l'ordine di adozione.
+
+### Azioni manuali in sospeso
+
+Non si possono fare dal repository; dettagli in `docs/processo.md`:
+
+1. Ruleset su `main` (PR obbligatoria, controlli "CI passata" e "Titolo Conventional Commits", squash merge). Sul repository privato serve GitHub Pro (Student Developer Pack) oppure il repository pubblico.
+2. Ricollegare l'MCP di GitHub o installare `gh`, così Claude può aprire PR e leggere la CI.
+3. Installare il plugin `expo` e `pyright-lsp`; creare l'account Expo e collegare il progetto a EAS.
+4. Scegliere l'hosting del backend, poi aggiungere il job di deploy a `cd.yml`.
 
 ## Prossimi passi (fase F0)
 

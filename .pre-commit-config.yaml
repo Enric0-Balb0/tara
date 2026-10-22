@@ -1,0 +1,145 @@
+# Hook git di Tara. Installazione una tantum (vedi docs/processo.md):
+#   uv tool install pre-commit
+#   pre-commit install
+#
+# - pre-commit: controlli rapidi su file, segreti e formattazione;
+# - commit-msg: Conventional Commits;
+# - pre-push: type check e test dei pacchetti toccati, gli stessi della CI.
+#
+# Ruff, mypy e pytest girano con `uv run --locked` dentro ogni pacchetto: la versione
+# è quella del lockfile, identica in locale e in CI.
+default_install_hook_types: [pre-commit, commit-msg, pre-push]
+default_stages: [pre-commit]
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: \.md$
+      - id: end-of-file-fixer
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=1024]
+      - id: detect-private-key
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.12
+    hooks:
+      - id: actionlint
+
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.4.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args:
+          - --scopes=mobile,api,catalog,infra,ci,deps,deps-dev,docs
+          - feat
+          - fix
+          - docs
+          - refactor
+          - perf
+          - test
+          - build
+          - ci
+          - chore
+          - revert
+
+  - repo: local
+    hooks:
+      # I commit hanno un solo autore, Enrico: niente co-autori o trailer degli assistenti AI.
+      - id: no-ai-attribution
+        name: commit senza attribuzioni AI
+        entry: (?i)^(co-authored-by:.*(claude|anthropic|copilot|openai)|claude-session:)
+        language: pygrep
+        stages: [commit-msg]
+
+      # Backend API
+      - id: api-ruff
+        name: api · ruff check
+        entry: uv --directory services/api run --locked ruff check --fix .
+        language: system
+        files: ^services/api/.*\.py$
+        pass_filenames: false
+      - id: api-format
+        name: api · ruff format
+        entry: uv --directory services/api run --locked ruff format .
+        language: system
+        files: ^services/api/.*\.py$
+        pass_filenames: false
+      - id: api-mypy
+        name: api · mypy
+        entry: uv --directory services/api run --locked mypy
+        language: system
+        files: ^services/api/
+        pass_filenames: false
+        stages: [pre-push]
+      - id: api-test
+        name: api · pytest
+        entry: uv --directory services/api run --locked pytest -q --cov
+        language: system
+        files: ^services/api/
+        pass_filenames: false
+        stages: [pre-push]
+
+      # Pipeline del catalogo
+      - id: catalog-ruff
+        name: catalog · ruff check
+        entry: uv --directory pipelines/catalog run --locked ruff check --fix .
+        language: system
+        files: ^pipelines/catalog/.*\.py$
+        pass_filenames: false
+      - id: catalog-format
+        name: catalog · ruff format
+        entry: uv --directory pipelines/catalog run --locked ruff format .
+        language: system
+        files: ^pipelines/catalog/.*\.py$
+        pass_filenames: false
+      - id: catalog-mypy
+        name: catalog · mypy
+        entry: uv --directory pipelines/catalog run --locked mypy
+        language: system
+        files: ^pipelines/catalog/
+        pass_filenames: false
+        stages: [pre-push]
+      - id: catalog-test
+        name: catalog · pytest
+        entry: uv --directory pipelines/catalog run --locked pytest -q --cov
+        language: system
+        files: ^pipelines/catalog/
+        pass_filenames: false
+        stages: [pre-push]
+
+      # App mobile
+      - id: mobile-typecheck
+        name: mobile · tsc
+        entry: npm --prefix apps/mobile run typecheck
+        language: system
+        files: ^apps/mobile/
+        pass_filenames: false
+        stages: [pre-push]
+      - id: mobile-lint
+        name: mobile · eslint
+        entry: npm --prefix apps/mobile run lint
+        language: system
+        files: ^apps/mobile/
+        pass_filenames: false
+        stages: [pre-push]
+      - id: mobile-test
+        name: mobile · vitest
+        entry: npm --prefix apps/mobile run test:coverage
+        language: system
+        files: ^apps/mobile/
+        pass_filenames: false
+        stages: [pre-push]

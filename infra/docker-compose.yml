@@ -1,5 +1,7 @@
-# Database locale per lo sviluppo: Postgres 17 con l'estensione pgvector.
-# Avvio: docker compose -f infra/docker-compose.yml up -d
+# Ambiente locale: Postgres 17 con pgvector e, a richiesta, il backend nella stessa
+# immagine che va in produzione.
+# Solo database:      docker compose -f infra/docker-compose.yml up -d
+# Database e backend: docker compose -f infra/docker-compose.yml --profile api up -d --build
 services:
   db:
     image: pgvector/pgvector:pg17
@@ -16,6 +18,18 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  api:
+    profiles: [api]
+    build: ../services/api
+    environment:
+      TARA_ENVIRONMENT: development
+      TARA_DATABASE_URL: postgresql://tara:tara@db:5432/tara
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
 
 volumes:
   tara-db:

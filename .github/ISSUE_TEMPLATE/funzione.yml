@@ -1,0 +1,35 @@
+name: Funzione
+description: Una funzione da sviluppare, collegata a un requisito di docs/requisiti.md
+title: "feat: "
+labels: [funzione]
+body:
+  - type: input
+    id: requisito
+    attributes:
+      label: Requisito
+      description: ID in docs/requisiti.md (RF-xx o RNF-xx) e fase della roadmap
+      placeholder: RF-41 · F1
+    validations:
+      required: true
+  - type: textarea
+    id: obiettivo
+    attributes:
+      label: Obiettivo
+      description: Cosa deve poter fare l'utente quando la funzione è finita
+    validations:
+      required: true
+  - type: textarea
+    id: criteri
+    attributes:
+      label: Criteri di accettazione
+      description: Condizioni verificabili, una per riga
+      placeholder: |
+        - [ ] Un alimento noto si registra in ≤ 3 tap
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    id: note
+    attributes:
+      label: Note tecniche
+      description: Vincoli, dipendenze, rischi

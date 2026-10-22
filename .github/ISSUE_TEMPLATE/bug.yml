@@ -1,0 +1,41 @@
+name: Bug
+description: Un comportamento sbagliato dell'app, del backend o della pipeline
+title: "fix: "
+labels: [bug]
+body:
+  - type: dropdown
+    id: pacchetto
+    attributes:
+      label: Dove
+      options:
+        - App mobile
+        - Backend API
+        - Pipeline del catalogo
+        - CI/CD o infrastruttura
+    validations:
+      required: true
+  - type: textarea
+    id: passi
+    attributes:
+      label: Passi per riprodurlo
+      placeholder: |
+        1. ...
+        2. ...
+    validations:
+      required: true
+  - type: textarea
+    id: atteso
+    attributes:
+      label: Cosa ti aspettavi e cosa è successo
+    validations:
+      required: true
+  - type: input
+    id: versione
+    attributes:
+      label: Versione o commit
+      description: Versione dell'app, SHA del commit o tag dell'immagine
+  - type: textarea
+    id: dati
+    attributes:
+      label: Dati nutrizionali coinvolti
+      description: Se il bug riguarda valori sbagliati, indica alimento, fonte e valori attesi

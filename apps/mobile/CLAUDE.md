@@ -14,15 +14,17 @@ Expo introduce breaking change a ogni SDK. Prima di scrivere codice che tocca AP
 
 ```bash
 npx expo install <package>  # SEMPRE al posto di npm install: sceglie versioni compatibili con l'SDK
+npx expo install <package> -- --save-dev  # strumenti di sviluppo
 npx expo start              # dev server
 npm run typecheck           # tsc --noEmit
-npm run lint                # expo lint
+npm run lint                # expo lint, zero warning
 npm test                    # vitest (solo src/domain)
-npx expo-doctor             # diagnosi dipendenze e configurazione
+npm run test:coverage       # vitest con soglia 80% su src/domain, come in CI
+npm run doctor              # expo-doctor: dipendenze e configurazione
 npx expo install --fix      # allinea versioni incompatibili
 ```
 
-Lint, typecheck e test devono passare prima di dichiarare finito un lavoro.
+Typecheck, lint, test con coverage e doctor devono passare prima di dichiarare finito un lavoro: sono i controlli del job "App mobile" in CI.
 
 ## Struttura
 
