@@ -1,0 +1,92 @@
+# Aggiornamenti delle dipendenze: una PR raggruppata per ecosistema ogni lunedì.
+# I titoli seguono Conventional Commits, così passano il controllo sul titolo della PR.
+version: 2
+
+updates:
+  # App mobile. Le dipendenze dell'SDK Expo e di React Native si aggiornano solo con
+  # `npx expo install --fix` o con l'upgrade di SDK, mai a mano: Dependabot propone
+  # solo le patch, compatibili con l'SDK corrente.
+  - package-ecosystem: npm
+    directory: /apps/mobile
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Rome
+    commit-message:
+      prefix: chore
+      include: scope
+    ignore:
+      - dependency-name: "expo"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "expo-*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "eslint-config-expo"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "react"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "react-dom"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "@types/react"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "react-native"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "react-native-*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+    groups:
+      mobile:
+        patterns: ["*"]
+
+  - package-ecosystem: uv
+    directory: /services/api
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Rome
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      api:
+        patterns: ["*"]
+
+  - package-ecosystem: uv
+    directory: /pipelines/catalog
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Rome
+    commit-message:
+      prefix: chore
+      include: scope
+    groups:
+      catalog:
+        patterns: ["*"]
+
+  # Immagini base del Dockerfile: si resta su Python 3.12 finché non si decide di salire.
+  - package-ecosystem: docker
+    directory: /services/api
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Rome
+    commit-message:
+      prefix: chore
+      include: scope
+    ignore:
+      - dependency-name: "python"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Rome
+    commit-message:
+      prefix: ci
+      include: scope
+    groups:
+      actions:
+        patterns: ["*"]
