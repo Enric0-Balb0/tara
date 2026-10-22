@@ -64,7 +64,7 @@ docker compose -f infra/docker-compose.yml up -d
 - Valori nutrizionali sempre per 100 g o 100 ml; quantità in grammi o millilitri.
 - TypeScript `strict`; Python con ruff (lint e format) e mypy `strict`.
 - Prima di dichiarare finito un lavoro: typecheck, lint e test con coverage del pacchetto toccato devono passare (soglia 80%, solo verso l'alto). Definition of Done completa in `docs/processo.md`.
-- Commit piccoli in stile Conventional Commits (`feat(mobile): …`, `fix(api): …`, `docs: …`), in italiano o inglese ma coerenti nel branch; scope ammessi: `mobile`, `api`, `catalog`, `infra`, `ci`, `deps`, `deps-dev`, `docs`. Gli hook git lo verificano.
+- Commit piccoli in stile Conventional Commits, con messaggio **in inglese** all'imperativo (`feat(mobile): add gram keypad`, `fix(api): …`, `docs: …`); anche il titolo della PR è in inglese, perché diventa il commit su `main`, mentre la descrizione della PR resta in italiano. Scope ammessi: `mobile`, `api`, `catalog`, `infra`, `ci`, `deps`, `deps-dev`, `docs`. Gli hook git lo verificano.
 - Commit e PR hanno come unico autore Enrico: niente `Co-Authored-By` di Claude o altri assistenti, niente `Claude-Session`, niente "Generated with Claude Code" nelle descrizioni delle PR. Un hook commit-msg rifiuta questi trailer.
 - Branch per funzione (`feat/<id-requisito>-<breve>`), PR con il modello del repository, merge squash su `main` solo con CI verde. Mai commit diretti su `main`.
 - Dipendenze: `npx expo install` nell'app, `uv add` / `uv add --dev` in Python; mai `pip install` nei progetti. Lockfile sempre committati.

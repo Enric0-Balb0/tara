@@ -13,7 +13,7 @@ Tara ha un solo sviluppatore ma segue il processo di un team: ogni modifica pass
 
 ## Conventional Commits
 
-Formato: `tipo(scope): descrizione`, in italiano, all'imperativo o al presente, senza punto finale. Un cambiamento incompatibile aggiunge `!` dopo lo scope e una riga `BREAKING CHANGE:` nel corpo.
+Formato: `tipo(scope): descrizione`, **in inglese**, all'imperativo (*add*, *fix*, *update*), senza punto finale, al massimo 72 caratteri; il corpo, anch'esso in inglese, spiega il perché. Il titolo della PR segue le stesse regole, perché con lo squash diventa il commit su `main`; la descrizione della PR resta in italiano, come il resto della documentazione. Un cambiamento incompatibile aggiunge `!` dopo lo scope e una riga `BREAKING CHANGE:` nel corpo.
 
 | Tipo | Quando |
 | --- | --- |
@@ -28,7 +28,7 @@ Formato: `tipo(scope): descrizione`, in italiano, all'imperativo o al presente, 
 | `chore` | Manutenzione che non tocca codice di prodotto |
 | `revert` | Annulla un commit precedente |
 
-Scope ammessi: `mobile`, `api`, `catalog`, `infra`, `ci`, `deps`, `deps-dev`, `docs`; lo scope è facoltativo. Esempi: `feat(api): ricerca full-text dei generici`, `fix(mobile): virgola decimale nel tastierino`, `chore(deps): aggiorna fastapi`.
+Scope ammessi: `mobile`, `api`, `catalog`, `infra`, `ci`, `deps`, `deps-dev`, `docs`; lo scope è facoltativo. Esempi: `feat(api): add full-text search for generic foods`, `fix(mobile): accept decimal comma in the gram keypad`, `chore(deps): bump fastapi`.
 
 ## Quality gate
 

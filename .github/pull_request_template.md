@@ -14,7 +14,7 @@
 
 ## Definition of Done
 
-- [ ] Titolo della PR in Conventional Commits (diventa il commit su `main`)
+- [ ] Titolo della PR in Conventional Commits e in inglese (diventa il commit su `main`)
 - [ ] Test scritti insieme al codice; coverage sopra la soglia
 - [ ] Type check, lint e test verdi in locale e in CI
 - [ ] `docs/requisiti.md` aggiornato se cambia un requisito o una decisione
