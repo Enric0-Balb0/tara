@@ -1,0 +1,54 @@
+codice,originale,nome_atteso,stato_atteso,parole_nome
+22000,Oeuf cru,Uovo intero,raw,uovo
+22001,"Oeuf, blanc (blanc d'oeuf), cru",Albume d'uovo,raw,albume
+22010,Oeuf dur,Uovo intero,cooked,uovo
+36017,"Poulet, filet sans peau cru",Petto di pollo senza pelle,raw,pollo;petto
+36018,"Poulet, filet sans peau grillé/poêlé",Petto di pollo senza pelle,cooked,pollo;petto
+36304,"Dinde, escalope crue",Fettina di tacchino,raw,tacchino
+6250,"Boeuf, steak haché 5% MG cru",Macinato di manzo 5% di grassi,raw,manzo;5%
+6251,"Boeuf, steak haché 5% MG cuit",Macinato di manzo 5% di grassi,cooked,manzo;5%
+28503,Bresaola,Bresaola,not_applicable,bresaola
+26039,"Thon, au naturel, appertisé, égoutté","Tonno al naturale in scatola, sgocciolato",not_applicable,tonno;naturale
+26036,"Saumon, élevage, cru",Salmone d'allevamento,raw,salmone
+26037,Saumon fumé,Salmone affumicato,not_applicable,salmone;affumicato
+26229,"Saumon, grillé/poêlé",Salmone,cooked,salmone
+26043,"Cabillaud, cru",Merluzzo,raw,merluzzo
+9100,"Riz blanc, cru",Riso bianco,raw,riso
+9104,"Riz blanc, cuit, sans sel ajouté",Riso bianco,cooked,riso
+9125,"Riz basmati, cuit, sans sel ajouté",Riso basmati,cooked,riso;basmati
+9810,"Pâtes sèches, standard, crues",Pasta secca,raw,pasta
+9811,"Pâtes sèches, standard, cuites, sans sel ajouté",Pasta secca,cooked,pasta
+9870,"Pâtes sèches, au blé complet, crues",Pasta secca integrale,raw,pasta;integrale
+9310,"Avoine, crue",Avena,raw,avena
+32140,Flocons d'avoine,Fiocchi d'avena,raw,avena
+9313,Flocons d'avoine bouillis/cuits à l'eau,Fiocchi d'avena,cooked,avena
+9340,"Quinoa, cru",Quinoa,raw,quinoa
+9341,"Quinoa, bouilli/cuit à l'eau, sans sel ajouté",Quinoa,cooked,quinoa
+4101,"Patate douce, crue",Patata dolce,raw,patata;dolce
+4102,"Patate douce, cuite",Patata dolce,cooked,patata;dolce
+4003,"Pomme de terre, bouillie/cuite à l'eau",Patata,cooked,patat
+20057,"Brocoli, cru",Broccoli,raw,broccol
+20350,"Brocoli, bouilli/cuit à l'eau (aliment moyen)",Broccoli,cooked,broccol
+20059,"Épinard, cru",Spinaci,raw,spinac
+20516,"Pois chiche, sec",Ceci secchi,raw,ceci
+20507,"Pois chiche, bouilli/cuit à l'eau",Ceci,cooked,ceci
+20532,"Pois chiche, appertisé, égoutté","Ceci in scatola, sgocciolati",not_applicable,ceci
+20585,"Lentille verte, sèche",Lenticchie verdi secche,raw,lenticchi
+13005,"Banane, chair sans peau, crue",Banana,raw,banana
+13039,"Pomme, chair et peau, crue",Mela con buccia,raw,mela
+13028,"Myrtille, crue",Mirtilli,raw,mirtill
+13089,"Banane, chair sans peau, sèche",Banana essiccata,not_applicable,banana;essiccat
+17270,Huile d'olive vierge extra,Olio extravergine di oliva,not_applicable,olio;oliv
+15202,Beurre de cacahuète ou pâte d'arachide,Burro di arachidi,not_applicable,burro;arachid
+15000,"Amande, avec peau, sans sel ajouté",Mandorle con buccia,not_applicable,mandorl
+19860,Yaourt à la grecque nature,Yogurt greco bianco,not_applicable,yogurt;greco
+19644,"Fromage blanc, nature, 0% MG","Formaggio fresco tipo quark, 0% di grassi",not_applicable,0%
+19585,Ricotta,Ricotta,not_applicable,ricotta
+19590,Mozzarella au lait de vache,Mozzarella di latte vaccino,not_applicable,mozzarella
+12120,Parmesan,Parmigiano,not_applicable,parmigian
+19050,"Lait écrémé, UHT",Latte scremato UHT,not_applicable,latte;scremato
+31008,Miel,Miele,not_applicable,miele
+31074,"Chocolat noir 70 % de cacao environ, de dégustation, tablette",Cioccolato fondente 70%,not_applicable,cioccolat;fondente;70
+7352,Galette de riz complet soufflé,Gallette di riso integrale soffiato,not_applicable,gallett;riso
+11017,"Sel blanc alimentaire, non iodé, non fluoré (marin, ignigène ou gemme)",Sale bianco non iodato,not_applicable,sale
+76069,"Eau minérale Levissima, embouteillée, plate, faiblement minéralisée (Italie)","Acqua minerale Levissima, naturale, oligominerale",not_applicable,acqua;levissima

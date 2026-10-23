@@ -294,6 +294,8 @@ Il telefono non chiama mai direttamente i provider AI né Open Food Facts: passa
 | Distribuzione Android | APK, poi test interno di Google Play | La verifica sviluppatori per il sideloading parte il 30/09/2026 in alcuni Paesi e si estende nel 2027 | — |
 | Catalogo dei generici | CIQUAL 2025 in XML; proteine ed energia secondo il Reg. UE 1169/2011 (azoto × 6,25); "traces" e "< x" = 0 con confidenza dimezzata; `-` = nessun valore; confidenza dai codici A–D (energia: dal macronutriente misurato meno affidabile) | Coerenza con le etichette (RF-91) e con il principio "un dato mancante non vale zero"; regole in `pipelines/catalog/data/mappatura_ciqual.toml` | CALNUT (solo versione 2020, allineata alla tabella precedente); proteine N × fattore di Jones |
 | Processo e CI/CD | GitHub Actions con job per pacchetto e un controllo aggregato; uv e lockfile, mypy `strict`, pre-commit; immagine del backend su GHCR; EAS per build e OTA dell'app | Build riproducibili e regole applicate dagli strumenti anche con un solo sviluppatore (RNF-13, RNF-14) | pip senza lockfile; build dell'app su GitHub Actions al posto di EAS |
+| Costi e fornitori | Zero costi finché l'app la usa solo Enrico: piani gratuiti o esecuzione locale. Ogni fornitore sta dietro una variabile d'ambiente o un'interfaccia standard (Docker, Postgres + Alembic, JWT con JWKS) | Passare a un piano a pagamento (modello migliore, hosting senza sospensioni) cambia la configurazione, non il codice | Servizi a pagamento come default |
+| Modelli AI | Layer multi-provider (Pydantic AI): il modello si sceglie con `TARA_AI_MODEL` (`google:…`, `ollama:…`, `anthropic:…`); prompt e schemi versionati, scelta del modello con la valutazione su un set di riferimento | Gemini con chiave di AI Studio senza fatturazione Cloud (piano gratuito) o modello locale con Ollama; a pagamento basta cambiare la variabile | Un solo provider cablato nel codice; l'abbonamento Google AI Pro, che non copre le chiamate API |
 
 ### Layer di traduzione
 
@@ -412,7 +414,7 @@ L'hosting del backend va scelto entro la fine della fase F0, perché da lui dipe
 
 - [ ] Verifica della disponibilità del nome Tara su Google Play, App Store e dominio prima della pubblicazione.
 - [ ] Modello AI per l'estrazione etichette, da scegliere con un confronto su 30–50 etichette reali.
-- [ ] Provider di hosting del backend (es. Supabase) e regione europea: determina il job di deploy della CD e il metodo di autenticazione. Opzioni in `docs/strumenti.md`.
+- [x] Provider di hosting del backend: Supabase Free (Postgres + pgvector, Auth, regione UE) e Render Free (Francoforte) per il container dell'API, finché l'uso è personale; upgrade ai piani a pagamento senza cambiare codice.
 - [ ] Piano GitHub per proteggere `main` sul repository privato (GitHub Pro, anche tramite Student Developer Pack) oppure repository pubblico.
 - [x] Account Expo per attivare EAS Build, EAS Update e il server MCP di Expo: progetto `@enricobalbo/tara`, prima development build Android il 22/10/2026.
 - [ ] Acquisto della BDA dell'IEO per gli alimenti tipici italiani.
