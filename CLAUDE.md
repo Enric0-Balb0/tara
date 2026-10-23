@@ -40,10 +40,12 @@ npm ci
 npm run typecheck; npm run lint; npm run test:coverage; npm run doctor
 npx expo start            # dev server
 
-# Backend
+# Backend (i test usano il Postgres del docker-compose, porta 55432)
 cd services/api
 uv sync                   # .venv dal lockfile
 uv run ruff check .; uv run ruff format --check .; uv run mypy; uv run pytest --cov
+uv run alembic upgrade head                              # applica le migrazioni
+uv run alembic revision --autogenerate -m "describe"     # nuova migrazione, da rileggere
 uv run uvicorn tara_api.main:app --reload
 
 # Pipeline del catalogo
@@ -56,7 +58,7 @@ uv tool install pre-commit; pre-commit install
 
 # CI in locale: in VS Code aprire tara.code-workspace e lanciare il task "CI locale completa"
 
-# Database locale (con --profile api anche il backend in container)
+# Database locale su localhost:55432 (con --profile api anche il backend in container)
 docker compose -f infra/docker-compose.yml up -d
 ```
 
@@ -71,6 +73,7 @@ docker compose -f infra/docker-compose.yml up -d
 - Branch per funzione (`feat/<id-requisito>-<breve>`), PR con il modello del repository, merge squash su `main` solo con CI verde. Mai commit diretti su `main`.
 - Dipendenze: `npx expo install` nell'app, `uv add` / `uv add --dev` in Python; mai `pip install` nei progetti. Lockfile sempre committati.
 - Quando una decisione cambia i requisiti, aggiorna `docs/requisiti.md` nello stesso commit.
+- Database: ogni modifica allo schema passa da una migrazione Alembic riletta a mano; le regole di dominio sono vincoli del database, verificati da test che nominano il vincolo atteso.
 - Prompt e schemi di output dei modelli AI vivono nel repository e sono versionati; ogni cambio di modello o prompt passa dagli eval.
 
 ## Come lavorare

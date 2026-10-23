@@ -40,7 +40,8 @@ Scope ammessi: `mobile`, `api`, `catalog`, `infra`, `ci`, `deps`, `deps-dev`, `d
 | Messaggio del commit / titolo della PR in Conventional Commits | commit-msg | | titolo PR |
 | Python: ruff check e ruff format | ✓ | | ✓ |
 | Python: mypy `strict` | | ✓ | ✓ |
-| Python: pytest con coverage di ramo ≥ 80% | | ✓ | ✓ |
+| Python: pytest con coverage di ramo ≥ 80%, con i test di integrazione su Postgres | | ✓ | ✓ |
+| Backend: migrazioni reversibili e allineate ai modelli ORM | | ✓ | ✓ |
 | Mobile: TypeScript `strict` (`tsc --noEmit`) | | ✓ | ✓ |
 | Mobile: ESLint con zero warning | | ✓ | ✓ |
 | Mobile: Vitest con coverage ≥ 80% su `src/domain` | | ✓ | ✓ |
@@ -176,6 +177,8 @@ docker compose -f infra/docker-compose.yml up -d
 ```
 
 `uv sync` installa anche Python 3.12 se manca (la versione è in `.python-version`).
+
+Il Postgres di sviluppo ascolta su `localhost:55432`, non sulla 5432: così non si scontra con un PostgreSQL installato su Windows. I test del backend creano e cancellano database temporanei su quel server: va avviato prima di `uv run pytest` e prima del push, perché l'hook pre-push lancia i test.
 
 Per l'app servono anche:
 
