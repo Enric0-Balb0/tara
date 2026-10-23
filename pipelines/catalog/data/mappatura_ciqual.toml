@@ -1,0 +1,60 @@
+# Mappatura CIQUAL 2025 → nutrienti di Tara (data/nutrienti.csv) e regole di confidenza.
+# Riferimento: documentazione "Table Ciqual 2025 doc FR" (Anses, 19/11/2025).
+
+[confidenza]
+# Codici di confiance CIQUAL (§3.1.5) → confidence 0–1.
+# A: dati francesi rappresentativi; B e C: fonti di 10 anni o meno, con punteggio di qualità
+# rispettivamente ≥ 40 e < 40; D: fonti di più di 10 anni.
+A = 1.0
+B = 0.85
+C = 0.7
+D = 0.55
+# "traces" e "< x" si salvano come 0 (valore noto e trascurabile, non mancante); la
+# confidenza si moltiplica per questo fattore perché è un limite, non una misura.
+tracce_o_sotto_limite = 0.5
+# Valore preso da un codice di ripiego (secondo o successivo della lista).
+ripiego = 0.9
+
+[nutrienti]
+# Per ogni nutriente, i codici CIQUAL in ordine di preferenza: vale il primo con un valore.
+# Le unità coincidono (per 100 g); la build lo verifica sul nome del componente.
+#
+# Energia e proteine come in etichetta (Reg. UE 1169/2011): proteine = azoto × 6,25 e
+# energia calcolata su queste (§3.3.3, §3.3.6). Così il generico e i prodotti di marca
+# collegati sono confrontabili (RF-91).
+energy_kcal = [328]
+energy_kj = [327]
+protein_g = [25003]
+carbs_g = [31000]
+sugars_g = [32000]
+fat_g = [40000]
+sat_fat_g = [40302]
+fiber_g = [34100]
+salt_g = [10004]
+sodium_mg = [10110]
+potassium_mg = [10190]
+calcium_mg = [10200]
+magnesium_mg = [10120]
+phosphorus_mg = [10150]
+iron_mg = [10260]
+zinc_mg = [10300]
+# Equivalenti retinolo: CIQUAL li pubblica solo se retinolo e beta-carotene sono entrambi
+# noti (§3.3.7); non si ricalcolano qui.
+vit_a_ug = [51104]
+vit_d_ug = [52100]
+# Alfa-tocoferolo (EFSA 2015); in sua assenza CIQUAL dà una "vitamina E" generica (§3.3.11).
+vit_e_mg = [71010, 53100]
+vit_c_mg = [55100]
+vit_b12_ug = [56600]
+# Folati in equivalenti alimentari (DFE); in loro assenza i folati totali (§3.3.9).
+folate_ug = [56702, 56700]
+water_g = [400]
+alcohol_g = [60000]
+# caffeine_mg: non presente in CIQUAL.
+
+[derivati]
+# CIQUAL calcola l'energia dai macronutrienti e le assegna sempre il codice D (§3.3.6),
+# anche quando i contributori sono di codice A: la confidenza dell'energia è quella del
+# contributore meno affidabile tra quelli presenti.
+energy_kcal = ["protein_g", "carbs_g", "fat_g", "fiber_g", "alcohol_g"]
+energy_kj = ["protein_g", "carbs_g", "fat_g", "fiber_g", "alcohol_g"]

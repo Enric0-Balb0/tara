@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<TABLE>
+   <ALIM>
+      <alim_code> 9104 </alim_code>
+      <alim_nom_fr> Riz blanc, cuit, sans sel ajouté </alim_nom_fr>
+      <alim_nom_eng> Rice, white, cooked, no added salt </alim_nom_eng>
+      <alim_nom_sci missing=" " />
+      <alim_grp_code> 03 </alim_grp_code>
+      <alim_ssgrp_code> 0301 </alim_ssgrp_code>
+      <alim_ssssgrp_code> 030101 </alim_ssssgrp_code>
+      <facteur_Jones> 5.95 </facteur_Jones>
+   </ALIM>
+   <ALIM>
+      <alim_code> 11017 </alim_code>
+      <alim_nom_fr> Sel blanc alimentaire, non iodé, non fluoré (marin, ignigène ou gemme) </alim_nom_fr>
+      <alim_nom_eng> Salt, white (sea, igneous or rock), no fortification </alim_nom_eng>
+      <alim_nom_sci missing=" " />
+      <alim_grp_code> 10 </alim_grp_code>
+      <alim_ssgrp_code> 1004 </alim_ssgrp_code>
+      <alim_ssssgrp_code> 000000 </alim_ssssgrp_code>
+      <facteur_Jones> 6.25 </facteur_Jones>
+   </ALIM>
+   <ALIM>
+      <alim_code> 22001 </alim_code>
+      <alim_nom_fr> Oeuf, blanc (blanc d&apos;oeuf), cru </alim_nom_fr>
+      <alim_nom_eng> Egg white, raw </alim_nom_eng>
+      <alim_nom_sci missing=" " />
+      <alim_grp_code> 04 </alim_grp_code>
+      <alim_ssgrp_code> 0410 </alim_ssgrp_code>
+      <alim_ssssgrp_code> 041002 </alim_ssssgrp_code>
+      <facteur_Jones> 6.25 </facteur_Jones>
+   </ALIM>
+   <ALIM>
+      <alim_code> 36017 </alim_code>
+      <alim_nom_fr> Poulet, filet sans peau cru </alim_nom_fr>
+      <alim_nom_eng> Chicken, breast, without skin, raw </alim_nom_eng>
+      <alim_nom_sci missing=" " />
+      <alim_grp_code> 04 </alim_grp_code>
+      <alim_ssgrp_code> 0402 </alim_ssgrp_code>
+      <alim_ssssgrp_code> 040203 </alim_ssssgrp_code>
+      <facteur_Jones> 6.25 </facteur_Jones>
+   </ALIM>
+</TABLE>

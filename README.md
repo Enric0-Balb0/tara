@@ -25,4 +25,4 @@ Comandi di ogni pacchetto e convenzioni: [CLAUDE.md](CLAUDE.md). Ogni modifica p
 
 ## Fonti dati
 
-Open Food Facts (ODbL), CIQUAL/CALNUT (ANSES), USDA FoodData Central (pubblico dominio). Attribuzioni e condizioni in [docs/requisiti.md](docs/requisiti.md#fonti-dati-e-licenze).
+Open Food Facts (ODbL), Anses. 2025. Table de composition nutritionnelle des aliments Ciqual (Licence Ouverte / Etalab 2.0), USDA FoodData Central (pubblico dominio). Attribuzioni e condizioni in [docs/requisiti.md](docs/requisiti.md#fonti-dati-e-licenze).

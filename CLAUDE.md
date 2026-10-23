@@ -52,6 +52,8 @@ uv run uvicorn tara_api.main:app --reload
 cd pipelines/catalog
 uv sync
 uv run ruff check .; uv run ruff format --check .; uv run mypy; uv run pytest --cov
+uv run python -m tara_catalog.fetch ciqual    # scarica CIQUAL in data/raw/ (ignorata), verifica MD5
+uv run python -m tara_catalog.build ciqual    # snapshot normalizzato in data/build/ (ignorata)
 
 # Hook git, una volta per macchina
 uv tool install pre-commit; pre-commit install

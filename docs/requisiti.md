@@ -51,7 +51,7 @@ Un nuovo prodotto entra nel catalogo da barcode, foto dell'etichetta o inserimen
 
 | ID | Requisito | Priorità | Fase |
 | --- | --- | --- | --- |
-| RF-01 | Catalogo di alimenti generici importato da CIQUAL/CALNUT e USDA FoodData Central, con nomi in italiano. | M | F0 |
+| RF-01 | Catalogo di alimenti generici importato da CIQUAL 2025 (e USDA FoodData Central per i generici mancanti), con nomi in italiano. | M | F0 |
 | RF-02 | Prodotti di marca con nome, marca, categoria, barcode, unità base (g o ml), porzione dichiarata e alimento generico di riferimento. | M | F1 |
 | RF-03 | Valori nutrizionali salvati per 100 g o 100 ml, un record per nutriente con provenienza e confidenza. | M | F0 |
 | RF-04 | Varianti crudo e cotto come alimenti distinti, etichettate nella ricerca; il crudo è la variante predefinita. | M | F1 |
@@ -264,7 +264,7 @@ Tara è un'app Expo local-first con un backend FastAPI. Il catalogo dei generici
 
 ```
 Pipeline del catalogo (offline):
-  Fonti (CIQUAL/CALNUT, USDA) → Traduzione (LLM + glossario) → Validazione (regole + revisione) → Snapshot versionato
+  Fonti (CIQUAL, USDA) → Traduzione (LLM + glossario) → Validazione (regole + revisione) → Snapshot versionato
                                                                                                         │ import
                                                                                                         ▼
 App Expo (telefono)  ── sync ──▶  API FastAPI  ◀──▶  Postgres + pgvector (catalogo e dati utente)
@@ -292,6 +292,7 @@ Il telefono non chiama mai direttamente i provider AI né Open Food Facts: passa
 | Hosting | Servizio gestito con Postgres, autenticazione e storage (es. Supabase); tutto containerizzato | Avvio rapido, migrazione su AWS possibile | Infrastruttura gestita a mano |
 | Notifiche | Locali, programmate dall'app dallo stack integratori | Funzionano offline, nessun server di push | Push da backend |
 | Distribuzione Android | APK, poi test interno di Google Play | La verifica sviluppatori per il sideloading parte il 30/09/2026 in alcuni Paesi e si estende nel 2027 | — |
+| Catalogo dei generici | CIQUAL 2025 in XML; proteine ed energia secondo il Reg. UE 1169/2011 (azoto × 6,25); "traces" e "< x" = 0 con confidenza dimezzata; `-` = nessun valore; confidenza dai codici A–D (energia: dal macronutriente misurato meno affidabile) | Coerenza con le etichette (RF-91) e con il principio "un dato mancante non vale zero"; regole in `pipelines/catalog/data/mappatura_ciqual.toml` | CALNUT (solo versione 2020, allineata alla tabella precedente); proteine N × fattore di Jones |
 | Processo e CI/CD | GitHub Actions con job per pacchetto e un controllo aggregato; uv e lockfile, mypy `strict`, pre-commit; immagine del backend su GHCR; EAS per build e OTA dell'app | Build riproducibili e regole applicate dagli strumenti anche con un solo sviluppatore (RNF-13, RNF-14) | pip senza lockfile; build dell'app su GitHub Actions al posto di EAS |
 
 ### Layer di traduzione
@@ -379,7 +380,7 @@ Per la fase personale bastano fonti gratuite; la BDA dell'IEO ha condizioni da r
 | Fonte | Uso nell'app | Accesso | Condizioni |
 | --- | --- | --- | --- |
 | [Open Food Facts](https://openfoodfacts.github.io/documentation/docs/Product-Opener/api/tutorials/finding-healthy-cereals/) | Barcode e prodotti di marca | API senza autenticazione con User-Agent dell'app; dump completi in CSV e Parquet | [Dati aperti](https://data.europa.eu/it/publications/use-cases/open-food-facts-una-banca-dati-aperta-e-collaborativa-sui-prodotti), riutilizzabili per qualsiasi scopo con attribuzione |
-| [CIQUAL e CALNUT](https://www.data.gouv.fr/datasets/table-de-composition-nutritionnelle-des-aliments-ciqual/) (ANSES) | Generici con micronutrienti; CALNUT senza valori mancanti | Download gratuito in Excel | Attribuzione ad ANSES; nomi in francese e inglese da tradurre |
+| [CIQUAL 2025](https://doi.org/10.57745/RDMHWY) (Anses, 19/11/2025) | Generici con micronutrienti: 3.484 alimenti, 74 componenti, codice di affidabilità per ogni valore | Download gratuito in XML ed Excel da recherche.data.gouv.fr; `tara_catalog.fetch` verifica l'MD5 | Licence Ouverte / Etalab 2.0: citare "Anses. 2025. Table de composition nutritionnelle des aliments Ciqual" con la versione, senza alterarne il senso; nomi in francese e inglese da tradurre |
 | USDA FoodData Central | Generici con micronutrienti dettagliati | Download gratuito | Pubblico dominio; nomi in inglese da tradurre |
 | [BDA dell'IEO](https://www.fondazioneieomonzino.it/?p=31728) | Alimenti tipici italiani | Consultazione online gratuita; Excel completo con donazione minima di 50 € | Uso commerciale solo con [autorizzazione scritta](https://bda.ieo.it/?p=53); citazione obbligatoria |
 | [Tabelle CREA](https://qds.it/un-portale-per-fare-scelte-consapevoli-nellaquisto-di-prodotti-agroalimentari/) | Riscontro sugli alimenti italiani | Consultazione online, dati aggiornati al 2019 | Nessun download ufficiale in blocco trovato |
@@ -389,7 +390,7 @@ Per la fase personale bastano fonti gratuite; la BDA dell'IEO ha condizioni da r
 
 Fasi in sequenza: ognuna parte solo quando la precedente supera il suo gate. Nessuna funzione AI extra prima di due settimane di uso reale dell'MVP.
 
-1. **F0 · Fondamenta** — repo, CI/CD, schema dati, autenticazione, backend online; import di CIQUAL/CALNUT e USDA con nomi tradotti in italiano.
+1. **F0 · Fondamenta** — repo, CI/CD, schema dati, autenticazione, backend online; import di CIQUAL 2025 (e USDA per i generici mancanti) con nomi tradotti in italiano.
    *Gate:* la ricerca di un generico restituisce valori corretti.
 2. **F1 · MVP «disinstallo FatSecret»** — catalogo, barcode con Open Food Facts, lettura etichetta, inserimento manuale; ricette, pasti salvati, diario con copia, preferiti e recenti; target per tipo di giornata, contatore acqua, peso con media mobile.
    *Gate (vincolante):* due settimane di uso esclusivo, senza FatSecret.

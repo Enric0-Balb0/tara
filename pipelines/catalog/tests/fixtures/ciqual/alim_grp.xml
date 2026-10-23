@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<TABLE>
+   <ALIM_GRP>
+      <alim_grp_code> 03 </alim_grp_code>
+      <alim_grp_nom_fr> produits céréaliers </alim_grp_nom_fr>
+      <alim_grp_nom_eng> cereal products </alim_grp_nom_eng>
+      <alim_ssgrp_code> 0301 </alim_ssgrp_code>
+      <alim_ssgrp_nom_fr> pâtes, riz et céréales </alim_ssgrp_nom_fr>
+      <alim_ssgrp_nom_eng> pasta, rice and grains </alim_ssgrp_nom_eng>
+      <alim_ssssgrp_code> 030101 </alim_ssssgrp_code>
+      <alim_ssssgrp_nom_fr> pâtes, riz et céréales cuits </alim_ssssgrp_nom_fr>
+      <alim_ssssgrp_nom_eng> pasta, rice and grains, cooked </alim_ssssgrp_nom_eng>
+   </ALIM_GRP>
+   <ALIM_GRP>
+      <alim_grp_code> 03 </alim_grp_code>
+      <alim_grp_nom_fr> produits céréaliers </alim_grp_nom_fr>
+      <alim_grp_nom_eng> cereal products </alim_grp_nom_eng>
+      <alim_ssgrp_code> 0301 </alim_ssgrp_code>
+      <alim_ssgrp_nom_fr> pâtes, riz et céréales </alim_ssgrp_nom_fr>
+      <alim_ssgrp_nom_eng> pasta, rice and grains </alim_ssgrp_nom_eng>
+      <alim_ssssgrp_code> 030102 </alim_ssssgrp_code>
+      <alim_ssssgrp_nom_fr> pâtes, riz et céréales crus </alim_ssssgrp_nom_fr>
+      <alim_ssssgrp_nom_eng> pasta, rice and grains, raw </alim_ssssgrp_nom_eng>
+   </ALIM_GRP>
+   <ALIM_GRP>
+      <alim_grp_code> 04 </alim_grp_code>
+      <alim_grp_nom_fr> viandes, oeufs, poissons </alim_grp_nom_fr>
+      <alim_grp_nom_eng> meat, egg and fish </alim_grp_nom_eng>
+      <alim_ssgrp_code> 0402 </alim_ssgrp_code>
+      <alim_ssgrp_nom_fr> viandes crues </alim_ssgrp_nom_fr>
+      <alim_ssgrp_nom_eng> raw meat </alim_ssgrp_nom_eng>
+      <alim_ssssgrp_code> 040201 </alim_ssssgrp_code>
+      <alim_ssssgrp_nom_fr> boeuf et veau </alim_ssssgrp_nom_fr>
+      <alim_ssssgrp_nom_eng> beef and veal </alim_ssssgrp_nom_eng>
+   </ALIM_GRP>
+   <ALIM_GRP>
+      <alim_grp_code> 04 </alim_grp_code>
+      <alim_grp_nom_fr> viandes, oeufs, poissons </alim_grp_nom_fr>
+      <alim_grp_nom_eng> meat, egg and fish </alim_grp_nom_eng>
+      <alim_ssgrp_code> 0402 </alim_ssgrp_code>
+      <alim_ssgrp_nom_fr> viandes crues </alim_ssgrp_nom_fr>
+      <alim_ssgrp_nom_eng> raw meat </alim_ssgrp_nom_eng>
+      <alim_ssssgrp_code> 040202 </alim_ssssgrp_code>
+      <alim_ssssgrp_nom_fr> porc </alim_ssssgrp_nom_fr>
+      <alim_ssssgrp_nom_eng> pork </alim_ssssgrp_nom_eng>
+   </ALIM_GRP>
+   <ALIM_GRP>
+      <alim_grp_code> 04 </alim_grp_code>
+      <alim_grp_nom_fr> viandes, oeufs, poissons </alim_grp_nom_fr>
+      <alim_grp_nom_eng> meat, egg and fish </alim_grp_nom_eng>
+      <alim_ssgrp_code> 0402 </alim_ssgrp_code>
+      <alim_ssgrp_nom_fr> viandes crues </alim_ssgrp_nom_fr>
+      <alim_ssgrp_nom_eng> raw meat </alim_ssgrp_nom_eng>
+      <alim_ssssgrp_code> 040203 </alim_ssssgrp_code>
+      <alim_ssssgrp_nom_fr> poulet </alim_ssssgrp_nom_fr>
+      <alim_ssssgrp_nom_eng> poultry </alim_ssssgrp_nom_eng>
+   </ALIM_GRP>
+   <ALIM_GRP>
+      <alim_grp_code> 04 </alim_grp_code>
+      <alim_grp_nom_fr> viandes, oeufs, poissons </alim_grp_nom_fr>
+      <alim_grp_nom_eng> meat, egg and fish </alim_grp_nom_eng>
+      <alim_ssgrp_code> 0402 </alim_ssgrp_code>
+      <alim_ssgrp_nom_fr> viandes crues </alim_ssgrp_nom_fr>
+      <alim_ssgrp_nom_eng> raw meat </alim_ssgrp_nom_eng>
+      <alim_ssssgrp_code> 040204 </alim_ssssgrp_code>
+      <alim_ssssgrp_nom_fr> dinde </alim_ssssgrp_nom_fr>
+      <alim_ssssgrp_nom_eng> turkey </alim_ssssgrp_nom_eng>
+   </ALIM_GRP>
+   <ALIM_GRP>
+      <alim_grp_code> 04 </alim_grp_code>
+      <alim_grp_nom_fr> viandes, oeufs, poissons </alim_grp_nom_fr>
+      <alim_grp_nom_eng> meat, egg and fish </alim_grp_nom_eng>
+      <alim_ssgrp_code> 0402 </alim_ssgrp_code>
+      <alim_ssgrp_nom_fr> viandes crues </alim_ssgrp_nom_fr>
+      <alim_ssgrp_nom_eng> raw meat </alim_ssgrp_nom_eng>
+      <alim_ssssgrp_code> 040205 </alim_ssssgrp_code>
+      <alim_ssssgrp_nom_fr> agneau et mouton </alim_ssssgrp_nom_fr>
+      <alim_ssssgrp_nom_eng> lamb and mutton </alim_ssssgrp_nom_eng>
+   </ALIM_GRP>
+   <ALIM_GRP>
+      <alim_grp_code> 04 </alim_grp_code>
+      <alim_grp_nom_fr> viandes, oeufs, poissons </alim_grp_nom_fr>
+      <alim_grp_nom_eng> meat, egg and fish </alim_grp_nom_eng>
+      <alim_ssgrp_code> 0402 </alim_ssgrp_code>
+      <alim_ssgrp_nom_fr> viandes crues </alim_ssgrp_nom_fr>
+      <alim_ssgrp_nom_eng> raw meat </alim_ssgrp_nom_eng>
+      <alim_ssssgrp_code> 040206 </alim_ssssgrp_code>
+      <alim_ssssgrp_nom_fr> gibier </alim_ssssgrp_nom_fr>
+      <alim_ssssgrp_nom_eng> game </alim_ssssgrp_nom_eng>
+   </ALIM_GRP>
+   <ALIM_GRP>
+      <alim_grp_code> 04 </alim_grp_code>
+      <alim_grp_nom_fr> viandes, oeufs, poissons </alim_grp_nom_fr>
+      <alim_grp_nom_eng> meat, egg and fish </alim_grp_nom_eng>
+      <alim_ssgrp_code> 0402 </alim_ssgrp_code>
+      <alim_ssgrp_nom_fr> viandes crues </alim_ssgrp_nom_fr>
+      <alim_ssgrp_nom_eng> raw meat </alim_ssgrp_nom_eng>
+      <alim_ssssgrp_code> 040207 </alim_ssssgrp_code>
+      <alim_ssssgrp_nom_fr> autres viandes </alim_ssssgrp_nom_fr>
+      <alim_ssssgrp_nom_eng> other meats </alim_ssssgrp_nom_eng>
+   </ALIM_GRP>
+   <ALIM_GRP>
+      <alim_grp_code> 04 </alim_grp_code>
+      <alim_grp_nom_fr> viandes, oeufs, poissons </alim_grp_nom_fr>
+      <alim_grp_nom_eng> meat, egg and fish </alim_grp_nom_eng>
+      <alim_ssgrp_code> 0402 </alim_ssgrp_code>
+      <alim_ssgrp_nom_fr> viandes crues </alim_ssgrp_nom_fr>
+      <alim_ssgrp_nom_eng> raw meat </alim_ssgrp_nom_eng>
+      <alim_ssssgrp_code> 040208 </alim_ssssgrp_code>
+      <alim_ssssgrp_nom_fr> abats </alim_ssssgrp_nom_fr>
+      <alim_ssssgrp_nom_eng> offals </alim_ssssgrp_nom_eng>
+   </ALIM_GRP>
+   <ALIM_GRP>
+      <alim_grp_code> 04 </alim_grp_code>
+      <alim_grp_nom_fr> viandes, oeufs, poissons </alim_grp_nom_fr>
+      <alim_grp_nom_eng> meat, egg and fish </alim_grp_nom_eng>
+      <alim_ssgrp_code> 0410 </alim_ssgrp_code>
+      <alim_ssgrp_nom_fr> oeufs </alim_ssgrp_nom_fr>
+      <alim_ssgrp_nom_eng> eggs </alim_ssgrp_nom_eng>
+      <alim_ssssgrp_code> 041001 </alim_ssssgrp_code>
+      <alim_ssssgrp_nom_fr> oeufs cuits </alim_ssssgrp_nom_fr>
+      <alim_ssssgrp_nom_eng> eggs, cooked </alim_ssssgrp_nom_eng>
+   </ALIM_GRP>
+   <ALIM_GRP>
+      <alim_grp_code> 04 </alim_grp_code>
+      <alim_grp_nom_fr> viandes, oeufs, poissons </alim_grp_nom_fr>
+      <alim_grp_nom_eng> meat, egg and fish </alim_grp_nom_eng>
+      <alim_ssgrp_code> 0410 </alim_ssgrp_code>
+      <alim_ssgrp_nom_fr> oeufs </alim_ssgrp_nom_fr>
+      <alim_ssgrp_nom_eng> eggs </alim_ssgrp_nom_eng>
+      <alim_ssssgrp_code> 041002 </alim_ssssgrp_code>
+      <alim_ssssgrp_nom_fr> oeufs crus </alim_ssssgrp_nom_fr>
+      <alim_ssssgrp_nom_eng> eggs, raw </alim_ssssgrp_nom_eng>
+   </ALIM_GRP>
+   <ALIM_GRP>
+      <alim_grp_code> 04 </alim_grp_code>
+      <alim_grp_nom_fr> viandes, oeufs, poissons </alim_grp_nom_fr>
+      <alim_grp_nom_eng> meat, egg and fish </alim_grp_nom_eng>
+      <alim_ssgrp_code> 0410 </alim_ssgrp_code>
+      <alim_ssgrp_nom_fr> oeufs </alim_ssgrp_nom_fr>
+      <alim_ssgrp_nom_eng> eggs </alim_ssgrp_nom_eng>
+      <alim_ssssgrp_code> 041003 </alim_ssssgrp_code>
+      <alim_ssssgrp_nom_fr> omelettes et autres ovoproduits </alim_ssssgrp_nom_fr>
+      <alim_ssssgrp_nom_eng> omelettes and other egg products </alim_ssssgrp_nom_eng>
+   </ALIM_GRP>
+   <ALIM_GRP>
+      <alim_grp_code> 10 </alim_grp_code>
+      <alim_grp_nom_fr> aides culinaires et ingrédients divers </alim_grp_nom_fr>
+      <alim_grp_nom_eng> miscellaneous </alim_grp_nom_eng>
+      <alim_ssgrp_code> 1004 </alim_ssgrp_code>
+      <alim_ssgrp_nom_fr> sels </alim_ssgrp_nom_fr>
+      <alim_ssgrp_nom_eng> salts </alim_ssgrp_nom_eng>
+      <alim_ssssgrp_code> 000000 </alim_ssssgrp_code>
+      <alim_ssssgrp_nom_fr> - </alim_ssssgrp_nom_fr>
+      <alim_ssssgrp_nom_eng> - </alim_ssssgrp_nom_eng>
+   </ALIM_GRP>
+</TABLE>
