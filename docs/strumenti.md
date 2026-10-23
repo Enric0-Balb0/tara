@@ -79,8 +79,8 @@ SDK 58 è uscito il 15/10/2026: React Native 0.88, Node 22.13+ o 24.3+. Cambiame
 | --- | --- | --- | --- |
 | Pacchetti e lockfile | **uv** con `uv.lock` (**adottato**). | — | Adottato |
 | Type checking | **mypy `strict`** con il plugin Pydantic (**adottato**). | Pyrefly (1.0 da maggio 2026) o ty di Astral (ancora beta, 0.0.x a luglio 2026): più veloci, da rivalutare quando ty arriva a 1.0. | Adottato |
-| Database | **SQLAlchemy 2** (ORM tipizzato) + **Alembic** + **psycopg 3** + **pgvector-python**; schemi Pydantic separati dai modelli ORM. | SQLModel (meno codice, ma mescola i due livelli). | F0 (passo 1) |
-| Test di integrazione | Postgres con pgvector come *service container* in CI e da `infra/docker-compose.yml` in locale; ogni test in una transazione annullata alla fine. | testcontainers-python. | F0 (passo 1) |
+| Database | **SQLAlchemy 2.1** (ORM tipizzato) + **Alembic** + **psycopg 3** (**adottati**); schemi Pydantic separati dai modelli ORM. **pgvector-python** entra con gli embedding della ricerca semantica (RF-92). | SQLModel (meno codice, ma mescola i due livelli). | Adottato (F0, passo 1) |
+| Test di integrazione | Postgres con pgvector come *service container* in CI e da `infra/docker-compose.yml` in locale; un database temporaneo per sessione, ogni test in una transazione annullata alla fine (**adottato**). | testcontainers-python. | Adottato |
 | Autenticazione | Se l'hosting è Supabase: **Supabase Auth** con chiavi di firma asimmetriche; FastAPI verifica i JWT con la JWKS del progetto (ES256), tenuta in cache per poco tempo per non ritardare le revoche. | fastapi-users o un'autenticazione propria (più codice da mantenere e mettere in sicurezza). | F0 (passo 4) |
 | Open Food Facts | **httpx** con timeout, User-Agent dell'app e cache dei prodotti in Postgres. | — | F1 |
 | Gateway AI | Interfaccia propria sottile con output validati da modelli Pydantic: **SDK Anthropic** con output strutturati, oppure **Pydantic AI** per cambiare provider senza riscrivere (RNF-05). Si sceglie con il confronto su 30–50 etichette reali. | Instructor. | F1 |

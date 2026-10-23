@@ -4,8 +4,12 @@ version = "0.1.0"
 description = "Backend di Tara: sincronizzazione, gateway AI e proxy Open Food Facts"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "alembic>=1.20.1",
     "fastapi>=0.159",
+    "psycopg[binary]>=3.3.6",
     "pydantic-settings>=2.16",
+    "sqlalchemy>=2.1",
+    "uuid-utils>=1.1.0",
     "uvicorn[standard]>=0.54",
 ]
 
@@ -28,6 +32,7 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = ["--strict-markers"]
+pythonpath = ["."]
 
 [tool.coverage.run]
 source = ["tara_api"]
@@ -40,7 +45,7 @@ skip_covered = true
 
 [tool.mypy]
 strict = true
-files = ["src", "tests"]
+files = ["src", "tests", "migrations"]
 plugins = ["pydantic.mypy"]
 
 [tool.ruff]

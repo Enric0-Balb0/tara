@@ -45,6 +45,8 @@ jobs:
             api:
               - *workflow
               - 'services/api/**'
+              # I test del backend verificano che i nutrienti seminati coincidano con questa tabella.
+              - 'pipelines/catalog/data/nutrienti.csv'
             catalog:
               - *workflow
               - 'pipelines/catalog/**'
@@ -107,6 +109,23 @@ jobs:
     needs: changes
     if: needs.changes.outputs.api == 'true' || github.event_name != 'pull_request'
     runs-on: ubuntu-latest
+    # I test di integrazione creano database temporanei su un Postgres vero, come in locale.
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: tara
+          POSTGRES_PASSWORD: tara
+          POSTGRES_DB: tara
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tara -d tara"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      TARA_TEST_ADMIN_URL: postgresql://tara:tara@localhost:5432/postgres
     defaults:
       run:
         working-directory: services/api

@@ -68,14 +68,13 @@ Trovati con la prima verifica sull'emulatore, da risolvere con il design system 
 Non si possono fare dal repository; dettagli in `docs/processo.md`:
 
 1. Ruleset su `main` (PR obbligatoria, controlli "CI passata" e "Titolo Conventional Commits", squash merge). Sul repository privato serve GitHub Pro (Student Developer Pack) oppure il repository pubblico.
-2. Ricollegare l'MCP di GitHub o installare `gh`, così Claude può aprire PR e leggere la CI.
-3. Installare il plugin `expo` e `pyright-lsp`, poi accedere all'MCP di Expo da `/mcp`. Account Expo e collegamento a EAS: fatti.
-4. Scegliere l'hosting del backend, poi aggiungere il job di deploy a `cd.yml`.
+2. ~~`gh`, plugin `expo` e `pyright-lsp`, impostazioni di merge del repository~~: fatti.
+3. Scegliere l'hosting del backend prima del passo 4 della F0, poi aggiungere il job di deploy a `cd.yml`.
 
 ## Prossimi passi (fase F0)
 
-1. **Schema del database**: migrazioni (Alembic) per `food`, `food_name`, `category`, `nutrient`, `nutrient_value` e utenti; seed dei nutrienti da `pipelines/catalog/data/nutrienti.csv`.
-2. **Import CIQUAL/CALNUT**: scaricare l'Excel da ciqual.anses.fr (i file grezzi vanno in `pipelines/catalog/data/raw/`, ignorata da git), parser, mappatura dei codici nutriente.
+1. ~~**Schema del database**~~: fatto. Tabelle del catalogo e utenti con i vincoli di dominio, migrazione Alembic con i 25 nutrienti, test di integrazione su Postgres (`services/api/migrations`, `tara_api/db`).
+2. **Import CIQUAL/CALNUT**: allineare prima la pipeline ai valori del database (`State` oggi usa `crudo`/`cotto`, nel database sono `raw`/`cooked`/`not_applicable`); poi scaricare l'Excel da ciqual.anses.fr (i file grezzi vanno in `pipelines/catalog/data/raw/`, ignorata da git), parser, mappatura dei codici nutriente.
 3. **Traduzione**: modulo con output strutturato (nome, alias, stato, cottura, parte), suggerimenti dal glossario, `check_state` sulle uscite, CSV di revisione per i generici più usati.
 4. **API di ricerca** dei generici su nomi e alias italiani (full-text) e autenticazione.
 5. **App**: SQLite locale (`npx expo install expo-sqlite`), snapshot del catalogo, schermata di ricerca.

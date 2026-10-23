@@ -10,7 +10,8 @@ services:
       POSTGRES_PASSWORD: tara
       POSTGRES_DB: tara
     ports:
-      - "5432:5432"
+      # Porta 55432: la 5432 è spesso occupata da un PostgreSQL installato sul PC.
+      - "55432:5432"
     volumes:
       - tara-db:/var/lib/postgresql/data
     healthcheck:

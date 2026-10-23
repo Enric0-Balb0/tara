@@ -1,0 +1,9 @@
+{
+  "venvPath": "services/api",
+  "venv": ".venv",
+  "pythonVersion": "3.12",
+  "executionEnvironments": [
+    { "root": "services/api", "extraPaths": ["services/api"] },
+    { "root": "pipelines/catalog", "extraPaths": ["pipelines/catalog/src"] }
+  ]
+}

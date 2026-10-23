@@ -22,6 +22,9 @@ FROM python:3.12-slim AS runtime
 RUN useradd --create-home --uid 10001 tara
 WORKDIR /app
 COPY --from=build --chown=tara:tara /app/.venv /app/.venv
+# Migrazioni nell'immagine: il deploy le applica con `alembic upgrade head` prima di avviare.
+COPY --chown=tara:tara alembic.ini ./
+COPY --chown=tara:tara migrations ./migrations
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     TARA_ENVIRONMENT=production
