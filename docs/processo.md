@@ -160,6 +160,7 @@ Queste impostazioni non stanno nel repository e si fanno una volta dalla pagina 
 - gitleaks controlla i file in stage a ogni commit e tutta la storia in CI.
 - Le chiavi dei provider AI esistono solo sul backend (vedi `docs/requisiti.md`).
 - Segreti previsti: `EXPO_TOKEN` (EAS), credenziali di deploy dell'hosting, `TARA_DATABASE_URL` di produzione, chiavi dei provider AI.
+- Chiavi dei modelli AI della pipeline: in `pipelines/catalog/.env` (modello in `.env.example`). Si incollano solo lì, mai in chat, nei commit o nelle issue; gitleaks blocca i commit che le contengono.
 
 ## Preparare una nuova macchina
 

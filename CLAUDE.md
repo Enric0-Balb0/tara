@@ -54,6 +54,8 @@ uv sync
 uv run ruff check .; uv run ruff format --check .; uv run mypy; uv run pytest --cov
 uv run python -m tara_catalog.fetch ciqual    # scarica CIQUAL in data/raw/ (ignorata), verifica MD5
 uv run python -m tara_catalog.build ciqual    # snapshot normalizzato in data/build/ (ignorata)
+uv run python -m tara_catalog.translate eval  # valuta il modello di TARA_AI_MODEL (.env, da .env.example)
+uv run python -m tara_catalog.translate ciqual  # traduce i nomi a lotti, con ripresa
 
 # Hook git, una volta per macchina
 uv tool install pre-commit; pre-commit install
@@ -77,6 +79,7 @@ docker compose -f infra/docker-compose.yml up -d
 - Quando una decisione cambia i requisiti, aggiorna `docs/requisiti.md` nello stesso commit.
 - Database: ogni modifica allo schema passa da una migrazione Alembic riletta a mano; le regole di dominio sono vincoli del database, verificati da test che nominano il vincolo atteso.
 - Prompt e schemi di output dei modelli AI vivono nel repository e sono versionati; ogni cambio di modello o prompt passa dagli eval.
+- Costi: zero finché l'app è personale (piani gratuiti o esecuzione locale), con ogni fornitore sostituibile via configurazione. Nessun servizio a pagamento come default.
 
 ## Come lavorare
 

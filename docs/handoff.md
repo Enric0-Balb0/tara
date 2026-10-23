@@ -70,13 +70,13 @@ Non si possono fare dal repository; dettagli in `docs/processo.md`:
 
 1. Ruleset su `main` (PR obbligatoria, controlli "CI passata" e "Titolo Conventional Commits", squash merge). Sul repository privato serve GitHub Pro (Student Developer Pack) oppure il repository pubblico.
 2. ~~`gh`, plugin `expo` e `pyright-lsp`, impostazioni di merge del repository~~: fatti.
-3. Scegliere l'hosting del backend prima del passo 4 della F0, poi aggiungere il job di deploy a `cd.yml`.
+3. ~~Scegliere l'hosting~~: Supabase Free + Render Free (vedi `docs/requisiti.md`). Restano da creare gli account e da aggiungere il job di deploy a `cd.yml`.
 
 ## Prossimi passi (fase F0)
 
 1. ~~**Schema del database**~~: fatto. Tabelle del catalogo e utenti con i vincoli di dominio, migrazione Alembic con i 25 nutrienti, test di integrazione su Postgres (`services/api/migrations`, `tara_api/db`).
 2. ~~**Import CIQUAL**~~: fatto con CIQUAL 2025. Download verificato (`tara_catalog.fetch`), mappatura sui 24 nutrienti di Tara che CIQUAL copre (`data/mappatura_ciqual.toml`), snapshot normalizzato con provenienza e confidenza (`tara_catalog.build` → `data/build/ciqual-2025/`). La pipeline usa ora i valori di stato del database (`raw`/`cooked`/`not_applicable`). Il caricamento nel database avviene dopo la traduzione, perché `food.name` richiede il nome italiano.
-3. **Traduzione**: modulo con output strutturato (nome, alias, stato, cottura, parte), suggerimenti dal glossario, `check_state` sulle uscite, CSV di revisione per i generici più usati.
+3. **Traduzione** (in corso): layer multi-provider con Pydantic AI, prompt `prompts/traduzione-v1.md`, schema di output, controlli deterministici, set di valutazione di 54 alimenti (`data/eval/traduzioni.csv`) e traduzione a lotti con ripresa (`python -m tara_catalog.translate eval|ciqual`). Serve la chiave gratuita di Gemini in `pipelines/catalog/.env`. Poi: scelta del modello con la valutazione, traduzione completa, CSV di revisione per i generici più usati.
 4. **API di ricerca** dei generici su nomi e alias italiani (full-text) e autenticazione.
 5. **App**: SQLite locale (`npx expo install expo-sqlite`), snapshot del catalogo, schermata di ricerca.
 6. **Gate F0**: la ricerca di un generico restituisce valori corretti.
