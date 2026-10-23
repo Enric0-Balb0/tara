@@ -12,7 +12,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
-State = Literal["crudo", "cotto", "na"]
+# Stessi valori della colonna `food.state` del database (services/api).
+State = Literal["raw", "cooked", "not_applicable"]
 Lang = Literal["en", "fr"]
 
 DEFAULT_PATH = Path(__file__).resolve().parents[2] / "data" / "glossario.toml"
@@ -63,9 +64,9 @@ def check_state(glossary: Glossary, original_names: dict[Lang, str], state: Stat
         implied.update(term.state for term in glossary.matches(name, lang) if term.state)
 
     issues: list[str] = []
-    if "crudo" in implied and state != "crudo":
+    if "raw" in implied and state != "raw":
         issues.append(f"l'originale indica crudo, la traduzione dice {state}")
-    if "cotto" in implied and state == "crudo":
+    if "cooked" in implied and state == "raw":
         issues.append("l'originale indica una cottura, la traduzione dice crudo")
     return issues
 

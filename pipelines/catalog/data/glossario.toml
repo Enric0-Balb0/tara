@@ -2,62 +2,63 @@
 #
 # Ogni voce collega i termini delle fonti alla forma italiana da usare nel nome.
 # `state` (facoltativo) dice cosa il termine implica sullo stato dell'alimento:
-#   "crudo" | "cotto". Se manca, il termine non dice nulla sullo stato.
+#   "raw" | "cooked", come la colonna `food.state` del database. Se manca, il termine
+#   non dice nulla sullo stato.
 # I validatori usano `state` per mandare in revisione le traduzioni incoerenti.
 
 [[term]]
 it = "crudo"
 en = ["raw"]
 fr = ["cru", "crue", "crus", "crues"]
-state = "crudo"
+state = "raw"
 
 [[term]]
 it = "cotto"
 en = ["cooked"]
 fr = ["cuit", "cuite", "cuits", "cuites"]
-state = "cotto"
+state = "cooked"
 
 [[term]]
 it = "lessato"
 en = ["boiled", "cooked in water"]
 fr = ["bouilli", "bouillie", "cuit à l'eau", "cuite à l'eau"]
-state = "cotto"
+state = "cooked"
 
 [[term]]
 it = "al vapore"
 en = ["steamed"]
 fr = ["cuit à la vapeur", "cuite à la vapeur"]
-state = "cotto"
+state = "cooked"
 
 [[term]]
 it = "arrosto"
 en = ["roasted"]
 fr = ["rôti", "rôtie"]
-state = "cotto"
+state = "cooked"
 
 [[term]]
 it = "alla griglia"
 en = ["grilled"]
 fr = ["grillé", "grillée"]
-state = "cotto"
+state = "cooked"
 
 [[term]]
 it = "fritto"
 en = ["fried"]
 fr = ["frit", "frite"]
-state = "cotto"
+state = "cooked"
 
 [[term]]
 it = "al forno"
 en = ["baked", "oven-baked"]
 fr = ["cuit au four", "cuite au four"]
-state = "cotto"
+state = "cooked"
 
 [[term]]
 it = "in padella"
 en = ["pan-fried", "sauteed"]
 fr = ["poêlé", "poêlée"]
-state = "cotto"
+state = "cooked"
 
 [[term]]
 it = "sgocciolato"

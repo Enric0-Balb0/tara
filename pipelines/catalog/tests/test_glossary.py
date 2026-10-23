@@ -20,7 +20,7 @@ def test_glossary_terms_are_unique_per_language(glossary: Glossary) -> None:
 
 
 def test_glossary_states_are_valid(glossary: Glossary) -> None:
-    assert {term.state for term in glossary.terms} <= {"crudo", "cotto", None}
+    assert {term.state for term in glossary.terms} <= {"raw", "cooked", None}
 
 
 def test_italian_hints_from_ciqual_name(glossary: Glossary) -> None:
@@ -37,20 +37,20 @@ def test_raw_original_translated_as_cooked_is_flagged(glossary: Glossary) -> Non
     issues = check_state(
         glossary,
         {"fr": "Poulet, filet, sans peau, cru", "en": "Chicken, breast, skinless, raw"},
-        "cotto",
+        "cooked",
     )
     assert issues
 
 
 def test_cooked_original_translated_as_raw_is_flagged(glossary: Glossary) -> None:
-    issues = check_state(glossary, {"fr": "Riz blanc, cuit", "en": "Rice, white, cooked"}, "crudo")
+    issues = check_state(glossary, {"fr": "Riz blanc, cuit", "en": "Rice, white, cooked"}, "raw")
     assert issues
 
 
 def test_consistent_translations_pass(glossary: Glossary) -> None:
-    assert check_state(glossary, {"en": "Egg, white, raw"}, "crudo") == []
-    assert check_state(glossary, {"fr": "Thon, appertisé, égoutté"}, "na") == []
-    assert check_state(glossary, {"fr": "Riz blanc, cuit à l'eau"}, "cotto") == []
+    assert check_state(glossary, {"en": "Egg, white, raw"}, "raw") == []
+    assert check_state(glossary, {"fr": "Thon, appertisé, égoutté"}, "not_applicable") == []
+    assert check_state(glossary, {"fr": "Riz blanc, cuit à l'eau"}, "cooked") == []
 
 
 def test_nutrient_table_has_unique_codes() -> None:
