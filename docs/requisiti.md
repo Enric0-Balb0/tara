@@ -312,15 +312,19 @@ Il peso predefinito è a crudo: lo stato è un campo, la ricerca propone prima l
 Lo schema di partenza ruota attorno a `food`: generici, prodotti di marca e ricette sono tutti alimenti, e i nutrienti stanno in una tabella a righe con la loro provenienza.
 
 ```
+-- Utenti
+app_user             id, created_at
+
 -- Catalogo
-food                 id, user_id (null = catalogo condiviso), name, brand, category_id,
+food                 id, user_id (null = catalogo condiviso), name, brand, category_code,
                      barcode, base_unit (g|ml), density_g_ml, serving_size,
-                     state (crudo|cotto|n.a.), parent_food_id,
-                     source (ciqual|usda|off|label|manual|recipe), created_at, updated_at
-food_name            food_id, lang, name, kind (principale|alias), origin (fonte|llm|revisionato|utente)
-category             id, name, parent_id
-nutrient             code, name_it, unit
-nutrient_value       food_id, nutrient_code, amount_per_100, provenance, confidence
+                     state (raw|cooked|not_applicable), parent_food_id,
+                     source (ciqual|usda|open_food_facts|label|manual|recipe), created_at, updated_at
+food_name            id, food_id, lang (it|fr|en), name, origin (source|llm|reviewed|user)
+category             code, name_it, parent_code
+nutrient             code, name_it, unit, display_order
+nutrient_value       food_id, nutrient_code, amount_per_100, provenance
+                     (label|open_food_facts|reference|estimated|manual), confidence (0–1)
 recipe               food_id, yield_mode (portions|weight), portions, cooked_weight_g
 recipe_item          recipe_id, ingredient_food_id, grams_raw
 saved_meal           id, user_id, name
@@ -358,7 +362,12 @@ competition          id, user_id, date, goal_weight_kg
 notification_rule    id, user_id, kind, schedule_json, enabled, quiet_hours_json
 ```
 
-- `user_id` nullo indica il catalogo condiviso dei generici importati; valorizzato, il catalogo personale.
+- `user_id` nullo indica il catalogo condiviso dei generici importati; valorizzato, il catalogo personale. Il catalogo condiviso accetta solo le tabelle di composizione (CIQUAL, USDA).
+- Le tabelle del catalogo esistono dalla F0 (migrazione `services/api/migrations`); le regole sono vincoli del database. Le altre tabelle entrano con le loro fasi.
+- I valori fissi (stato, fonte, provenienza, lingua, origine del nome) sono in inglese nel database e nel codice; le etichette in italiano appartengono all'interfaccia.
+- `food.name` è il nome canonico in italiano mostrato nell'app; `food_name` contiene i nomi alternativi usati nella ricerca: originali delle fonti e alias italiani, unici per lingua senza distinguere maiuscole.
+- Un nutriente senza valore noto non ha riga in `nutrient_value`: un dato mancante non vale zero.
+- Identificativi UUIDv7, generati dall'applicazione anche sul telefono offline; il barcode è unico per catalogo.
 - `parent_food_id` collega un prodotto di marca al suo generico: serve per ricerca, sostituzioni nelle ricette ed eredità dei micronutrienti.
 - `nutrients_snapshot` rende il diario immutabile (RF-43); `day_type_target.valid_from` fa lo stesso per i target (RF-53).
 - `label_scan` conserva immagini ed estrazioni: diventa il dataset dell'eval set per la lettura etichette (RNF-07).
