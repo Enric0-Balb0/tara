@@ -28,6 +28,7 @@ Enrico è un AI engineer e un appassionato di bodybuilding. Usa la versione grat
 | Dati sul telefono | Local-first con SQLite e coda di sync | Ricerca istantanea, uso offline sui mezzi. |
 | Backend | FastAPI + Postgres/pgvector; chiavi AI solo lato server | Stesso linguaggio di pipeline ed eval. |
 | Traduzione | Una volta, nella pipeline, come dato versionato; glossario + validatori deterministici | Vedi `docs/requisiti.md`, sezione "Layer di traduzione". |
+| Catalogo | CIQUAL 2025 al posto di CIQUAL 2020 + CALNUT; proteine ed energia come in etichetta (N × 6,25); tracce e "< x" = 0 con confidenza ridotta | Versione più recente (19/11/2025); generici e prodotti di marca confrontabili; un valore trascurabile non è un valore mancante. |
 | Notifiche | Locali, programmate dall'app | Funzionano offline, nessun server di push. |
 | MVP | Fase F1, senza AI oltre alla lettura etichette; gate: due settimane senza FatSecret | Se il logging base non è più veloce di FatSecret, l'AI non lo salva. |
 
@@ -74,7 +75,7 @@ Non si possono fare dal repository; dettagli in `docs/processo.md`:
 ## Prossimi passi (fase F0)
 
 1. ~~**Schema del database**~~: fatto. Tabelle del catalogo e utenti con i vincoli di dominio, migrazione Alembic con i 25 nutrienti, test di integrazione su Postgres (`services/api/migrations`, `tara_api/db`).
-2. **Import CIQUAL/CALNUT**: allineare prima la pipeline ai valori del database (`State` oggi usa `crudo`/`cotto`, nel database sono `raw`/`cooked`/`not_applicable`); poi scaricare l'Excel da ciqual.anses.fr (i file grezzi vanno in `pipelines/catalog/data/raw/`, ignorata da git), parser, mappatura dei codici nutriente.
+2. ~~**Import CIQUAL**~~: fatto con CIQUAL 2025. Download verificato (`tara_catalog.fetch`), mappatura sui 24 nutrienti di Tara che CIQUAL copre (`data/mappatura_ciqual.toml`), snapshot normalizzato con provenienza e confidenza (`tara_catalog.build` → `data/build/ciqual-2025/`). La pipeline usa ora i valori di stato del database (`raw`/`cooked`/`not_applicable`). Il caricamento nel database avviene dopo la traduzione, perché `food.name` richiede il nome italiano.
 3. **Traduzione**: modulo con output strutturato (nome, alias, stato, cottura, parte), suggerimenti dal glossario, `check_state` sulle uscite, CSV di revisione per i generici più usati.
 4. **API di ricerca** dei generici su nomi e alias italiani (full-text) e autenticazione.
 5. **App**: SQLite locale (`npx expo install expo-sqlite`), snapshot del catalogo, schermata di ricerca.
@@ -85,4 +86,4 @@ Prima di toccare API di Expo, leggere `apps/mobile/CLAUDE.md`: Expo cambia a ogn
 ## Riferimenti
 
 - Documento vivo dei requisiti: https://claude.ai/artifact/Ks8ELqYdsPiqUY8gtM2tGg
-- Fonti dati e licenze: `docs/requisiti.md`, sezione "Fonti dati e licenze".
+- Fonti dati e licenze: `docs/requisiti.md`, sezione "Fonti dati e licenze". L'attribuzione di CIQUAL (Etalab 2.0) dovrà comparire nell'app, in una schermata di informazioni (RNF-10).
