@@ -5,6 +5,8 @@ description = "Pipeline del catalogo di Tara: import CIQUAL/USDA, traduzione e v
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "defusedxml>=0.7.1",
+    "pydantic-ai-slim[anthropic,google,openai]>=2.60",
+    "python-dotenv>=1.2.4",
 ]
 
 [dependency-groups]
@@ -26,6 +28,8 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = ["--strict-markers"]
+# Avviso interno di pydantic_graph con run_sync su Python 3.12: non dipende dal nostro codice.
+filterwarnings = ["ignore:There is no current event loop:DeprecationWarning:pydantic_graph"]
 
 [tool.coverage.run]
 source = ["tara_catalog"]
