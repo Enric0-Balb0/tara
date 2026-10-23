@@ -34,3 +34,6 @@ pipelines/catalog/data/raw/
 
 # Claude Code: impostazioni personali
 .claude/settings.local.json
+
+# Output della pipeline (snapshot intermedi, rigenerabili)
+pipelines/catalog/data/build/
