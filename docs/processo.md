@@ -56,7 +56,7 @@ Le soglie di coverage si alzano, non si abbassano: una PR che scende sotto sogli
 
 Aprire `tara.code-workspace` (*File → Open Workspace from File*): ogni pacchetto è una cartella del workspace con il suo ambiente, quindi test, type check e lint usano le versioni dei lockfile, come in CI. Al primo avvio VS Code propone le estensioni consigliate (`.vscode/extensions.json`).
 
-- **Barra Testing**: i test pytest di backend e catalogo (estensione Python) e i test Vitest dell'app (estensione Vitest), da lanciare uno per uno, per file o tutti, anche in debug o con la coverage.
+- **Barra Testing**: i test pytest di backend e catalogo (estensione Python) e i test Vitest dell'app (estensione Vitest), da lanciare uno per uno, per file o tutti, anche in debug o con la coverage. I test del backend richiedono il Postgres acceso (task *Database: avvia Postgres*): se manca, la sessione si ferma subito con il comando per avviarlo.
 - **Task** (*Terminal → Run Task*):
 
 | Task | Cosa fa |
