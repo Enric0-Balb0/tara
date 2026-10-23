@@ -25,18 +25,22 @@ ADMIN_URL = to_sqlalchemy_url(
 @contextmanager
 def temporary_database() -> Generator[str]:
     """Crea un database vuoto con nome casuale e lo elimina all'uscita."""
-    admin = create_engine(ADMIN_URL, isolation_level="AUTOCOMMIT")
+    admin = create_engine(
+        ADMIN_URL, isolation_level="AUTOCOMMIT", connect_args={"connect_timeout": 3}
+    )
     name = f"tara_test_{uuid.uuid4().hex[:12]}"
     try:
         with admin.connect() as conn:
             conn.execute(text(f'CREATE DATABASE "{name}"'))
     except OperationalError as exc:
         admin.dispose()
-        pytest.fail(
+        # Interrompe tutta la sessione: senza database ogni test ripeterebbe il tentativo
+        # aspettando il timeout, per minuti.
+        pytest.exit(
             "Postgres non raggiungibile per i test del backend. Avvialo con "
-            "`docker compose -f infra/docker-compose.yml up -d` oppure imposta "
-            f"TARA_TEST_ADMIN_URL.\n{exc}",
-            pytrace=False,
+            "`docker compose -f infra/docker-compose.yml up -d --wait db` (in VS Code: task "
+            f"'Database: avvia Postgres') oppure imposta TARA_TEST_ADMIN_URL.\n{exc}",
+            returncode=pytest.ExitCode.USAGE_ERROR,
         )
     try:
         yield make_url(ADMIN_URL).set(database=name).render_as_string(hide_password=False)

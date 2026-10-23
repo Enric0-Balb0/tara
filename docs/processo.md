@@ -52,6 +52,25 @@ Nelle PR la CI esegue solo i job dei pacchetti modificati; su `main` esegue semp
 
 Le soglie di coverage si alzano, non si abbassano: una PR che scende sotto soglia aggiunge test, non cambia il numero.
 
+### CI in locale con VS Code
+
+Aprire `tara.code-workspace` (*File → Open Workspace from File*): ogni pacchetto è una cartella del workspace con il suo ambiente, quindi test, type check e lint usano le versioni dei lockfile, come in CI. Al primo avvio VS Code propone le estensioni consigliate (`.vscode/extensions.json`).
+
+- **Barra Testing**: i test pytest di backend e catalogo (estensione Python) e i test Vitest dell'app (estensione Vitest), da lanciare uno per uno, per file o tutti, anche in debug o con la coverage. I test del backend richiedono il Postgres acceso (task *Database: avvia Postgres*): se manca, la sessione si ferma subito con il comando per avviarlo.
+- **Task** (*Terminal → Run Task*):
+
+| Task | Cosa fa |
+| --- | --- |
+| **CI locale completa** | Tutti i passi qui sotto in sequenza: è anche il *test task* predefinito (*Tasks: Run Test Task*) |
+| Database: avvia Postgres | `docker compose up -d --wait db`, serve ai test del backend |
+| Igiene, lint e formattazione | Hook pre-commit su tutti i file |
+| Tipi e test di tutti i pacchetti | Hook pre-push: mypy, pytest, tsc, ESLint, Vitest, con coverage |
+| App: expo-doctor | Dipendenze compatibili con l'SDK Expo |
+| Backend: immagine Docker e /health | `scripts/smoke-api-image.mjs`, lo stesso script del job di CI |
+| App: test E2E (Maestro) | Fuori dalla CI locale: richiede emulatore e dev server |
+
+Restano solo in GitHub la scansione dei segreti sulla storia completa e il controllo del titolo della PR; l'estensione GitHub Actions mostra in VS Code l'esito della CI remota.
+
 ## Definition of Done
 
 Una modifica è finita quando:

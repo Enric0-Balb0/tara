@@ -45,6 +45,7 @@ jobs:
             api:
               - *workflow
               - 'services/api/**'
+              - 'scripts/smoke-api-image.mjs'
               # I test del backend verificano che i nutrienti seminati coincidano con questa tabella.
               - 'pipelines/catalog/data/nutrienti.csv'
             catalog:
@@ -156,15 +157,9 @@ jobs:
           cache-from: type=gha,scope=api
           cache-to: type=gha,scope=api,mode=max
       # Smoke test: l'immagine che andrà in produzione deve avviarsi e rispondere.
+      # Stesso script del task VS Code "Backend: immagine Docker e /health".
       - name: Avvio del container e /health
-        run: |
-          docker run -d --name tara-api -p 8000:8000 tara-api:ci
-          for _ in $(seq 1 20); do
-            if curl -fsS http://localhost:8000/health; then exit 0; fi
-            sleep 1
-          done
-          docker logs tara-api
-          exit 1
+        run: node scripts/smoke-api-image.mjs --no-build tara-api:ci
 
   catalog:
     name: Pipeline del catalogo
