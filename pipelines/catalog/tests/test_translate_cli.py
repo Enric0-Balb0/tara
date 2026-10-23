@@ -11,7 +11,7 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from tara_catalog import translate
 from tara_catalog.build import build_ciqual
-from tara_catalog.translation import load_eval_cases
+from tara_catalog.translation import PROMPT_VERSION, load_eval_cases
 
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "ciqual"
 GOOD = {
@@ -69,7 +69,7 @@ def test_eval_scores_the_cases_found_in_the_snapshot(snapshot: Path, tmp_path: P
     assert report["translated"] == 4
     saved = json.loads(path.read_text(encoding="utf-8"))
     assert saved["model"] == "test:fake"
-    assert path.name == "traduzione-v1__test_fake.json"
+    assert path.name == f"{PROMPT_VERSION}__test_fake.json"
     text = translate.format_eval(report, "test:fake")
     assert "stato corretto" in text and "non tradotto" in text
 

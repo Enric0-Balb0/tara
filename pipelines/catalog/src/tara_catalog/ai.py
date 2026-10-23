@@ -31,6 +31,8 @@ class AISettings:
 def load_settings(env_file: Path = ENV_FILE) -> AISettings:
     """Legge la configurazione; le variabili già impostate nell'ambiente hanno la precedenza."""
     load_dotenv(env_file, override=False)
+    # Il banner di Pydantic AI copre i progressi della pipeline.
+    os.environ.setdefault("PYDANTIC_AI_NO_BANNER", "1")
     model = os.environ.get("TARA_AI_MODEL", "").strip()
     if not model:
         raise AIConfigError(

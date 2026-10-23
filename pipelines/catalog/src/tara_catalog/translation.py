@@ -21,7 +21,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import TypedDict
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from pydantic_ai import Agent, AgentRunResult
 from pydantic_ai.exceptions import ModelHTTPError
 from pydantic_ai.models import Model
@@ -31,7 +31,7 @@ from tara_catalog.glossary import Glossary, State, check_state, load_glossary
 PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 PROMPTS_DIR = PACKAGE_ROOT / "prompts"
 EVAL_PATH = PACKAGE_ROOT / "data" / "eval" / "traduzioni.csv"
-PROMPT_VERSION = "traduzione-v1"
+PROMPT_VERSION = "traduzione-v2"
 
 RETRYABLE_STATUS = {429, 500, 502, 503, 504}
 STATE_WORDS = ("crudo", "cruda", "crudi", "crude", "cotto", "cotta", "cotti", "cotte")
@@ -46,6 +46,14 @@ class FoodTranslation(BaseModel):
     state: State
     cooking: str | None = None
     part: str | None = None
+
+    @field_validator("cooking", "part", mode="before")
+    @classmethod
+    def _no_value(cls, value: object) -> object:
+        """Alcuni modelli scrivono "null" come testo invece di omettere il campo."""
+        if isinstance(value, str) and value.strip().casefold() in {"", "null", "none"}:
+            return None
+        return value
 
 
 class TranslationBatch(BaseModel):
@@ -84,17 +92,32 @@ def load_prompt(version: str = PROMPT_VERSION) -> str:
 
 
 def build_agent() -> Agent[None, TranslationBatch]:
-    return Agent(output_type=TranslationBatch, instructions=load_prompt(), retries={"output": 2})
+    # Temperatura 0: la stessa richiesta deve dare, per quanto possibile, la stessa traduzione.
+    return Agent(
+        output_type=TranslationBatch,
+        instructions=load_prompt(),
+        retries={"output": 2},
+        model_settings={"temperature": 0},
+    )
 
 
 def format_request(foods: Iterable[SourceFood], glossary: Glossary) -> str:
-    """Una riga per alimento: codice | francese | inglese | suggerimenti del glossario."""
+    """Una riga per alimento: codice | francese | inglese | forme per il nome | cottura.
+
+    I termini di stato ("crudo", "cotto") non si suggeriscono: finivano nel nome, mentre lo
+    stato è un campo a parte. I metodi di cottura si suggeriscono per il campo `cooking`.
+    """
     lines = []
     for food in foods:
-        hints = dict.fromkeys(
-            glossary.italian_hints(food.name_fr, "fr") + glossary.italian_hints(food.name_en, "en")
+        terms = glossary.matches(food.name_fr, "fr") + glossary.matches(food.name_en, "en")
+        name_hints = dict.fromkeys(term.it for term in terms if term.state is None)
+        cooking_hints = dict.fromkeys(
+            term.it for term in terms if term.state == "cooked" and term.it != "cotto"
         )
-        lines.append(f"{food.code} | {food.name_fr} | {food.name_en} | {', '.join(hints)}")
+        lines.append(
+            f"{food.code} | {food.name_fr} | {food.name_en} | "
+            f"{', '.join(name_hints)} | {', '.join(cooking_hints)}"
+        )
     return "\n".join(lines)
 
 
@@ -114,14 +137,48 @@ def review_issues(item: FoodTranslation, food: SourceFood, glossary: Glossary) -
         issues.append(f"stato nel nome: {item.name_it!r} (va solo nel campo state)")
     if item.cooking and item.state != "cooked":
         issues.append(f"metodo di cottura {item.cooking!r} con stato {item.state}")
-    name = _normalized(item.name_it)
-    if any(_normalized(alias) == name for alias in item.aliases_it):
-        issues.append("un alias ripete il nome")
+    if _words(item.name_it) & _cooking_words(glossary):
+        issues.append(f"cottura nel nome: {item.name_it!r} (va solo nel campo cooking)")
     return issues
+
+
+def _cooking_words(glossary: Glossary) -> set[str]:
+    """Parole che identificano un metodo di cottura del glossario.
+
+    Si prende l'ultima parola ("alla griglia" → "griglia", "al forno" → "forno"), così le
+    preposizioni non fanno scattare il controllo ("Pasta alla carbonara"); gli aggettivi
+    di una sola parola valgono in tutte le forme ("lessato", "lessata", "lessati", "lessate").
+    """
+    words: set[str] = set()
+    for term in glossary.terms:
+        if term.state != "cooked" or term.it == "cotto":
+            continue
+        parts = term.it.split()
+        last = _normalized(parts[-1])
+        words.add(last)
+        if len(parts) == 1 and last.endswith("o"):
+            words |= {last[:-1] + ending for ending in "aie"}
+    return words
+
+
+def _clean_aliases(name: str, aliases: list[str]) -> list[str]:
+    """Alias senza duplicati né ripetizioni del nome: rumore, non errori da rivedere."""
+    seen = {_normalized(name)}
+    clean = []
+    for alias in (a.strip() for a in aliases):
+        key = _normalized(alias)
+        if alias and key not in seen:
+            seen.add(key)
+            clean.append(alias)
+    return clean
 
 
 def _wait_for(error: ModelHTTPError, attempt: int) -> float:
     return error.retry_after if error.retry_after else min(10.0 * 2**attempt, 120.0)
+
+
+def _ignore(_: str) -> None:
+    pass
 
 
 def _run_with_retries(
@@ -130,8 +187,9 @@ def _run_with_retries(
     model: Model | str,
     sleep: Callable[[float], None],
     max_attempts: int,
+    notify: Callable[[str], None],
 ) -> AgentRunResult[TranslationBatch]:
-    """Ritenta solo limiti di richieste ed errori temporanei del provider."""
+    """Ritenta solo limiti di richieste ed errori temporanei del provider, annunciandoli."""
     attempt = 0
     while True:
         try:
@@ -140,7 +198,12 @@ def _run_with_retries(
             attempt += 1
             if error.status_code not in RETRYABLE_STATUS or attempt >= max_attempts:
                 raise
-            sleep(_wait_for(error, attempt - 1))
+            wait = _wait_for(error, attempt - 1)
+            notify(
+                f"HTTP {error.status_code} dal provider: nuovo tentativo tra {wait:.0f} s "
+                f"({attempt + 1}/{max_attempts})"
+            )
+            sleep(wait)
 
 
 def translate_batch(
@@ -151,38 +214,43 @@ def translate_batch(
     *,
     agent: Agent[None, TranslationBatch] | None = None,
     sleep: Callable[[float], None] = time.sleep,
-    max_attempts: int = 5,
+    max_attempts: int = 4,
+    notify: Callable[[str], None] = _ignore,
 ) -> BatchResult:
-    """Traduce un lotto di alimenti e controlla ogni risposta."""
-    request = format_request(foods, glossary)
-    result = _run_with_retries(agent or build_agent(), request, model, sleep, max_attempts)
+    """Traduce un lotto di alimenti e controlla ogni risposta.
 
+    Gli alimenti saltati dal modello ricevono una seconda richiesta, solo per loro.
+    """
+    agent = agent or build_agent()
     by_code = {food.code: food for food in foods}
-    records: list[TranslationRecord] = []
-    for item in result.output.items:
-        food = by_code.pop(item.code, None)
-        if food is None:
-            continue  # codice inventato o ripetuto: si ignora, l'alimento resta da tradurre
-        records.append(
-            {
-                "source_code": food.code,
-                "name_it": item.name_it.strip(),
-                "aliases_it": [alias.strip() for alias in item.aliases_it if alias.strip()],
-                "state": item.state,
-                "cooking": item.cooking,
-                "part": item.part,
-                "issues": review_issues(item, food, glossary),
-                "model": model_id,
-                "prompt_version": PROMPT_VERSION,
-            }
-        )
-    usage = result.usage
-    return BatchResult(
-        records=records,
-        missing=list(by_code),
-        input_tokens=usage.input_tokens or 0,
-        output_tokens=usage.output_tokens or 0,
-    )
+    batch = BatchResult(records=[], missing=[])
+    for _ in range(2):
+        request = format_request(by_code.values(), glossary)
+        result = _run_with_retries(agent, request, model, sleep, max_attempts, notify)
+        batch.input_tokens += result.usage.input_tokens or 0
+        batch.output_tokens += result.usage.output_tokens or 0
+        for item in result.output.items:
+            food = by_code.pop(item.code, None)
+            if food is None:
+                continue  # codice inventato o ripetuto: si ignora
+            name = item.name_it.strip()
+            batch.records.append(
+                {
+                    "source_code": food.code,
+                    "name_it": name,
+                    "aliases_it": _clean_aliases(name, item.aliases_it),
+                    "state": item.state,
+                    "cooking": item.cooking,
+                    "part": item.part,
+                    "issues": review_issues(item, food, glossary),
+                    "model": model_id,
+                    "prompt_version": PROMPT_VERSION,
+                }
+            )
+        if not by_code:
+            break
+    batch.missing = list(by_code)
+    return batch
 
 
 # --- Esecuzione con ripresa -----------------------------------------------------------------
@@ -218,6 +286,7 @@ def translate_pending(
     min_interval: float = 0.0,
     usage_log: Path | None = None,
     sleep: Callable[[float], None] = time.sleep,
+    notify: Callable[[str], None] = _ignore,
 ) -> RunSummary:
     """Traduce gli alimenti non ancora tradotti con questo modello e questo prompt.
 
@@ -232,11 +301,14 @@ def translate_pending(
     out.parent.mkdir(parents=True, exist_ok=True)
 
     summary: RunSummary = {"translated": 0, "flagged": 0, "missing": 0, "pending": 0}
-    for start in range(0, len(todo), batch_size):
+    batches = (len(todo) + batch_size - 1) // batch_size
+    for number, start in enumerate(range(0, len(todo), batch_size), start=1):
         if start and min_interval:
             sleep(min_interval)
         batch = todo[start : start + batch_size]
-        result = translate_batch(model, model_id, batch, glossary, agent=agent, sleep=sleep)
+        result = translate_batch(
+            model, model_id, batch, glossary, agent=agent, sleep=sleep, notify=notify
+        )
         with out.open("a", encoding="utf-8", newline="\n") as f:
             for record in result.records:
                 f.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
@@ -245,6 +317,7 @@ def translate_pending(
         summary["translated"] += len(result.records)
         summary["flagged"] += sum(1 for record in result.records if record["issues"])
         summary["missing"] += len(result.missing)
+        notify(f"lotto {number}/{batches}: {len(result.records)} tradotti")
     summary["pending"] = len(pending) - summary["translated"]
     return summary
 
@@ -333,7 +406,11 @@ def score_eval(cases: list[EvalCase], records: Iterable[TranslationRecord]) -> E
             state_ok += 1
         else:
             problems.append(f"stato {record['state']}, atteso {case.expected_state}")
-        missing_words = [w for w in case.required_words if _normalized(w) not in name]
+        missing_words = [
+            w
+            for w in case.required_words
+            if not any(_normalized(option) in name for option in w.split("|"))
+        ]
         if missing_words:
             problems.append(f"mancano: {', '.join(missing_words)}")
         else:

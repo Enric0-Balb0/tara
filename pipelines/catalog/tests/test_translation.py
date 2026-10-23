@@ -75,18 +75,30 @@ def fake_model(
 
 
 def test_request_lists_codes_names_and_glossary_hints(glossary: Glossary) -> None:
+    chicken = SourceFood(
+        "36018", "Poulet, filet sans peau grillé/poêlé", "Chicken, breast, grilled"
+    )
+
+    lines = format_request([EGG_WHITE, chicken], glossary).splitlines()
+
+    assert lines[0] == "22001 | Oeuf, blanc (blanc d'oeuf), cru | Egg white, raw |  | "
+    assert lines[1] == (
+        "36018 | Poulet, filet sans peau grillé/poêlé | Chicken, breast, grilled"
+        " | senza pelle | alla griglia, in padella"
+    )
+
+
+def test_state_words_are_never_suggested_for_the_name(glossary: Glossary) -> None:
+    """ "crudo"/"cotto" come suggerimento finivano nel nome: lo stato è un campo a parte."""
     request = format_request([EGG_WHITE, RICE_COOKED], glossary)
 
-    lines = request.splitlines()
-    assert lines[0] == "22001 | Oeuf, blanc (blanc d'oeuf), cru | Egg white, raw | crudo"
-    assert lines[1].startswith("9104 | Riz blanc, cuit, sans sel ajouté | Rice, white, cooked")
-    assert lines[1].endswith("| cotto")
+    assert "crudo" not in request and "cotto" not in request
 
 
 def test_prompt_is_versioned_in_the_repository() -> None:
     prompt = translation.load_prompt()
 
-    assert PROMPT_VERSION == "traduzione-v1"
+    assert PROMPT_VERSION == "traduzione-v2"
     assert "name_it" in prompt and "not_applicable" in prompt
 
 
@@ -125,10 +137,21 @@ def test_cooking_without_cooked_state_is_flagged(glossary: Glossary) -> None:
     assert any("metodo di cottura" in issue for issue in issues)
 
 
-def test_aliases_repeating_the_name_are_flagged(glossary: Glossary) -> None:
-    issues = review_issues(answer(aliases_it=["riso bianco"]), RICE_COOKED, glossary)
+def test_aliases_repeating_the_name_are_dropped_without_review(glossary: Glossary) -> None:
+    def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        item = {
+            "code": "9104",
+            "name_it": "Riso bianco",
+            "state": "cooked",
+            "cooking": "lessato",
+            "aliases_it": ["riso bianco", "Riso", "riso"],
+        }
+        return ModelResponse(parts=[ToolCallPart(info.output_tools[0].name, {"items": [item]})])
 
-    assert any("alias" in issue for issue in issues)
+    result = run(FunctionModel(respond), [RICE_COOKED], glossary)
+
+    assert result.records[0]["aliases_it"] == ["Riso"]
+    assert result.records[0]["issues"] == []
 
 
 # --- Lotti ----------------------------------------------------------------------------------
@@ -362,3 +385,125 @@ def test_untranslated_cases_count_as_failures() -> None:
     assert report["translated"] == 1
     assert report["state_accuracy"] == 0.5
     assert {f["code"] for f in report["failures"]} == {"9104"}
+
+
+# --- Visibilità ----------------------------------------------------------------------------
+
+
+def test_retries_are_announced_with_the_wait(glossary: Glossary) -> None:
+    calls = 0
+    messages: list[str] = []
+    inner = fake_model()
+
+    def busy_once(messages_: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise ModelHTTPError(503, "fake")
+        return inner.function(messages_, info)  # type: ignore[misc, return-value]
+
+    translate_batch(
+        FunctionModel(busy_once),
+        "test:fake",
+        [EGG_WHITE],
+        glossary,
+        sleep=lambda _: None,
+        notify=messages.append,
+    )
+
+    assert len(messages) == 1
+    assert "503" in messages[0] and "10 s" in messages[0] and "2/" in messages[0]
+
+
+def test_progress_is_announced_after_each_batch(tmp_path: Path, glossary: Glossary) -> None:
+    messages: list[str] = []
+
+    translate_pending(
+        fake_model(),
+        "test:fake",
+        [EGG_WHITE, RICE_COOKED, TUNA],
+        tmp_path / "t.jsonl",
+        glossary=glossary,
+        batch_size=2,
+        sleep=lambda _: None,
+        notify=messages.append,
+    )
+
+    assert messages == ["lotto 1/2: 2 tradotti", "lotto 2/2: 1 tradotti"]
+
+
+def test_foods_skipped_by_the_model_get_a_second_request(glossary: Glossary) -> None:
+    requests: list[list[str]] = []
+    inner = fake_model()
+
+    def lazy_first(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        codes = codes_in(messages)
+        requests.append(codes)
+        if len(requests) == 1:  # la prima risposta salta il tonno
+            items = [{"code": c, **ANSWERS[c]} for c in codes if c != "26039"]
+            return ModelResponse(parts=[ToolCallPart(info.output_tools[0].name, {"items": items})])
+        return inner.function(messages, info)  # type: ignore[misc, return-value]
+
+    result = run(FunctionModel(lazy_first), [EGG_WHITE, TUNA], glossary)
+
+    assert requests == [["22001", "26039"], ["26039"]]
+    assert {r["source_code"] for r in result.records} == {"22001", "26039"}
+    assert result.missing == []
+
+
+def test_required_words_accept_alternatives() -> None:
+    cases = [c for c in load_eval_cases() if c.code == "13089"]
+
+    report = score_eval(cases, [record("13089", "Banana disidratata", "not_applicable")])
+
+    assert report["name_words_accuracy"] == 1.0
+
+
+def test_prompt_examples_never_come_from_the_eval_set() -> None:
+    """Un esempio del prompt preso dal set di valutazione gonfierebbe i punteggi."""
+    prompt = translation.load_prompt()
+
+    leaked = [case.original for case in load_eval_cases() if case.original in prompt]
+
+    assert leaked == []
+
+
+@pytest.mark.parametrize("empty", ["null", "None", "", "  "])
+def test_null_strings_from_the_model_are_no_value(empty: str) -> None:
+    item = translation.FoodTranslation(
+        code="22001", name_it="Albume d'uovo", state="raw", cooking=empty, part=empty
+    )
+
+    assert item.cooking is None
+    assert item.part is None
+
+
+@pytest.mark.parametrize(
+    ("name", "cooking"),
+    [
+        ("Ceci lessati", "lessato"),
+        ("Salmone al vapore", "al vapore"),
+        ("Pollo alla griglia", "alla griglia"),
+    ],
+)
+def test_cooking_method_in_the_name_is_flagged(glossary: Glossary, name: str, cooking: str) -> None:
+    item = answer(name_it=name, cooking=cooking)
+
+    assert any("cottura nel nome" in issue for issue in review_issues(item, RICE_COOKED, glossary))
+
+
+@pytest.mark.parametrize(
+    "name", ["Riso integrale", "Pasta alla carbonara", "Pollo alla cacciatora"]
+)
+def test_prepositions_of_cooking_methods_are_not_flagged(glossary: Glossary, name: str) -> None:
+    """Conta solo il metodo ("griglia", "lessato"), non "alla" o "al" da soli."""
+    item = answer(name_it=name, cooking="lessato")
+
+    assert review_issues(item, RICE_COOKED, glossary) == []
+
+
+def test_agent_uses_temperature_zero_for_reproducible_runs() -> None:
+    settings = translation.build_agent().model_settings
+
+    assert isinstance(settings, dict)
+    assert settings.get("temperature") == 0

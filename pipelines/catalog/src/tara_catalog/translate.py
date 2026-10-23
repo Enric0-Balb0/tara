@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 import time
 from collections.abc import Sequence
 from pathlib import Path
@@ -40,6 +41,11 @@ TRANSLATIONS = BUILD_DIR / "ciqual-2025" / "traduzioni.jsonl"
 USAGE_LOG = BUILD_DIR / "uso-ai.jsonl"
 EVAL_DIR = BUILD_DIR / "eval"
 BATCH_SIZE = 25
+
+
+def notify(message: str) -> None:
+    """Progressi e ritentativi su stderr, subito visibili anche in esecuzioni lunghe."""
+    print(message, file=sys.stderr, flush=True)
 
 
 def snapshot_foods(path: Path | None = None) -> list[SourceFood]:
@@ -74,7 +80,8 @@ def run_eval(
         if start and min_interval:
             time.sleep(min_interval)
         batch = foods[start : start + BATCH_SIZE]
-        records.extend(translate_batch(model, model_id, batch, glossary).records)
+        records.extend(translate_batch(model, model_id, batch, glossary, notify=notify).records)
+        notify(f"valutazione: {len(records)}/{len(foods)} alimenti tradotti")
     report = score_eval(cases, records)
     out_dir = out_dir or EVAL_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -123,6 +130,10 @@ def main(argv: Sequence[str] | None = None, model: Model | None = None) -> None:
         "--limit", type=int, default=None, help="massimo di alimenti per esecuzione"
     )
     args = parser.parse_args(argv)
+    # Il terminale di Windows usa cp1252: nomi e simboli vanno stampati in UTF-8.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
 
     settings = ai.load_settings()
     chosen: Model | str = model or settings.model
@@ -140,6 +151,7 @@ def main(argv: Sequence[str] | None = None, model: Model | None = None) -> None:
         limit=args.limit,
         min_interval=settings.min_interval,
         usage_log=USAGE_LOG,
+        notify=notify,
     )
     print(format_run(summary))
     print(f"traduzioni in {TRANSLATIONS}")
