@@ -7,6 +7,7 @@ Leggi prima:
 - `docs/handoff.md`: decisioni prese finora, perché, e prossimi passi concreti.
 - `docs/processo.md`: flusso di sviluppo, quality gate, Definition of Done, CI/CD.
 - `docs/strumenti.md`: plugin, skill, MCP e librerie raccomandati per fase.
+- `docs/valutazioni.md`: valutazioni che giustificano modelli e prompt AI.
 
 ## Principi non negoziabili
 
