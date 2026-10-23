@@ -64,10 +64,12 @@ def check_state(glossary: Glossary, original_names: dict[Lang, str], state: Stat
         implied.update(term.state for term in glossary.matches(name, lang) if term.state)
 
     issues: list[str] = []
-    if "raw" in implied and state != "raw":
+    if implied == {"raw", "cooked"}:
+        issues.append("l'originale indica sia crudo sia una cottura: da rivedere")
+    elif "raw" in implied and state != "raw":
         issues.append(f"l'originale indica crudo, la traduzione dice {state}")
-    if "cooked" in implied and state == "raw":
-        issues.append("l'originale indica una cottura, la traduzione dice crudo")
+    elif "cooked" in implied and state != "cooked":
+        issues.append(f"l'originale indica una cottura, la traduzione dice {state}")
     return issues
 
 
