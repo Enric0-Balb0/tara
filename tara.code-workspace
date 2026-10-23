@@ -1,0 +1,26 @@
+{
+  // Aprire con File → Open Workspace from File: ogni pacchetto è una cartella con il suo
+  // ambiente (venv o node_modules), così Testing, Pylance, mypy, Ruff ed ESLint usano
+  // le stesse versioni dei lockfile e della CI.
+  "folders": [
+    { "name": "tara", "path": "." },
+    { "name": "app mobile", "path": "apps/mobile" },
+    { "name": "backend API", "path": "services/api" },
+    { "name": "pipeline catalogo", "path": "pipelines/catalog" }
+  ],
+  "settings": {
+    // La cartella "tara" mostra solo ciò che sta fuori dai pacchetti (docs, infra, CI).
+    "files.exclude": {
+      "apps": true,
+      "services": true,
+      "pipelines": true
+    },
+    "search.exclude": {
+      "**/.venv": true,
+      "**/node_modules": true,
+      "**/e2e-results": true
+    },
+    // I test Python si scoprono solo nelle cartelle dei pacchetti, con la loro venv.
+    "python.testing.pytestEnabled": false
+  }
+}

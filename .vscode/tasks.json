@@ -1,0 +1,65 @@
+{
+  // Terminal → Run Task (o "Tasks: Run Test Task" per la CI locale completa).
+  // Gli stessi controlli della CI: gli hook pre-commit e pre-push lanciano lint, format,
+  // type check e test con coverage di tutti i pacchetti con le versioni dei lockfile.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "CI locale completa",
+      "detail": "Postgres, igiene, tipi e test di tutti i pacchetti, expo-doctor, immagine API",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "Database: avvia Postgres",
+        "Igiene, lint e formattazione",
+        "Tipi e test di tutti i pacchetti",
+        "App: expo-doctor",
+        "Backend: immagine Docker e /health"
+      ],
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "Database: avvia Postgres",
+      "detail": "Postgres + pgvector del docker-compose su localhost:55432",
+      "type": "shell",
+      "command": "docker compose -f infra/docker-compose.yml up -d --wait db",
+      "problemMatcher": []
+    },
+    {
+      "label": "Igiene, lint e formattazione",
+      "detail": "pre-commit su tutti i file: spazi, YAML/TOML/JSON, segreti, workflow, ruff",
+      "type": "shell",
+      "command": "pre-commit run --all-files",
+      "problemMatcher": []
+    },
+    {
+      "label": "Tipi e test di tutti i pacchetti",
+      "detail": "mypy, pytest con coverage, tsc, eslint, vitest con coverage (hook pre-push)",
+      "type": "shell",
+      "command": "pre-commit run --all-files --hook-stage pre-push",
+      "dependsOn": ["Database: avvia Postgres"],
+      "problemMatcher": []
+    },
+    {
+      "label": "App: expo-doctor",
+      "detail": "Dipendenze compatibili con l'SDK Expo",
+      "type": "shell",
+      "command": "npm --prefix apps/mobile run doctor",
+      "problemMatcher": []
+    },
+    {
+      "label": "Backend: immagine Docker e /health",
+      "detail": "Costruisce l'immagine di produzione e verifica che risponda",
+      "type": "shell",
+      "command": "node scripts/smoke-api-image.mjs",
+      "problemMatcher": []
+    },
+    {
+      "label": "App: test E2E (Maestro)",
+      "detail": "Richiede emulatore acceso, development build installata e dev server avviato",
+      "type": "shell",
+      "command": "npm --prefix apps/mobile run e2e:dev",
+      "problemMatcher": []
+    }
+  ]
+}

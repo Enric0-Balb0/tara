@@ -29,6 +29,8 @@ repos:
         files: ^apps/mobile/\.maestro/
       - id: check-toml
       - id: check-json
+        # Le impostazioni di VS Code sono JSONC: ammettono commenti.
+        exclude: (^|/)\.vscode/
       - id: check-merge-conflict
       - id: check-added-large-files
         args: [--maxkb=1024]

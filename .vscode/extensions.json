@@ -1,0 +1,14 @@
+{
+  "recommendations": [
+    "ms-python.python",
+    "ms-python.vscode-pylance",
+    "ms-python.mypy-type-checker",
+    "charliermarsh.ruff",
+    "vitest.explorer",
+    "dbaeumer.vscode-eslint",
+    "expo.vscode-expo-tools",
+    "github.vscode-github-actions",
+    "editorconfig.editorconfig"
+  ],
+  "unwantedRecommendations": ["orta.vscode-jest"]
+}

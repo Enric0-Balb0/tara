@@ -1,0 +1,9 @@
+{
+  // TypeScript del progetto (quello del lockfile), non quello incluso in VS Code.
+  "typescript.tsdk": "node_modules/typescript/lib",
+  // I test sono Vitest (estensione vitest.explorer): l'estensione Jest qui non serve.
+  "jest.enable": false,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  }
+}

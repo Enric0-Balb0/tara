@@ -54,6 +54,8 @@ uv run ruff check .; uv run ruff format --check .; uv run mypy; uv run pytest --
 # Hook git, una volta per macchina
 uv tool install pre-commit; pre-commit install
 
+# CI in locale: in VS Code aprire tara.code-workspace e lanciare il task "CI locale completa"
+
 # Database locale (con --profile api anche il backend in container)
 docker compose -f infra/docker-compose.yml up -d
 ```
