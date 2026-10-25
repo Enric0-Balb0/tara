@@ -37,7 +37,7 @@ codice,originale,nome_atteso,stato_atteso,parole_nome
 13005,"Banane, chair sans peau, crue",Banana,raw,banana
 13039,"Pomme, chair et peau, crue",Mela con buccia,raw,mela
 13028,"Myrtille, crue",Mirtilli,raw,mirtill
-13089,"Banane, chair sans peau, sèche",Banana essiccata,not_applicable,banana;essiccat
+13089,"Banane, chair sans peau, sèche",Banana essiccata,not_applicable,banana;essiccat|disidratat
 17270,Huile d'olive vierge extra,Olio extravergine di oliva,not_applicable,olio;oliv
 15202,Beurre de cacahuète ou pâte d'arachide,Burro di arachidi,not_applicable,burro;arachid
 15000,"Amande, avec peau, sans sel ajouté",Mandorle con buccia,not_applicable,mandorl
