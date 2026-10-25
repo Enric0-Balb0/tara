@@ -133,12 +133,17 @@ def _words(text: str) -> set[str]:
 def review_issues(item: FoodTranslation, food: SourceFood, glossary: Glossary) -> list[str]:
     """Problemi deterministici della risposta: vuota se la traduzione è coerente."""
     issues = check_state(glossary, {"fr": food.name_fr, "en": food.name_en}, item.state)
-    if _words(item.name_it) & set(STATE_WORDS):
+    if has_state_words(item.name_it):
         issues.append(f"stato nel nome: {item.name_it!r} (va solo nel campo state)")
     return issues
 
 
-def _clean_aliases(name: str, aliases: list[str]) -> list[str]:
+def has_state_words(name: str) -> bool:
+    """Il nome contiene "crudo"/"cotto" (in qualsiasi forma), che vanno solo nel campo state."""
+    return bool(_words(name) & set(STATE_WORDS))
+
+
+def clean_aliases(name: str, aliases: list[str]) -> list[str]:
     """Alias senza duplicati né ripetizioni del nome: rumore, non errori da rivedere."""
     seen = {_normalized(name)}
     clean = []
@@ -215,7 +220,7 @@ def translate_batch(
                 {
                     "source_code": food.code,
                     "name_it": name,
-                    "aliases_it": _clean_aliases(name, item.aliases_it),
+                    "aliases_it": clean_aliases(name, item.aliases_it),
                     "state": item.state,
                     # La cottura è un dettaglio secondario e vale solo per i cotti.
                     "cooking": item.cooking if item.state == "cooked" else None,

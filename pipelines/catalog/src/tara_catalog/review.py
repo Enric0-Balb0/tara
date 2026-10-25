@@ -9,14 +9,30 @@ from __future__ import annotations
 
 import csv
 from collections.abc import Iterable
+from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
+from typing import TypedDict
 
 from tara_catalog.glossary import State
-from tara_catalog.translation import SourceFood, TranslationRecord
+from tara_catalog.translation import (
+    SourceFood,
+    TranslationRecord,
+    clean_aliases,
+    has_state_words,
+)
 
+REVIEWED_PATH = Path(__file__).resolve().parents[2] / "data" / "revisioni.csv"
 STATE_LABELS: dict[State, str] = {"raw": "crudo", "cooked": "cotto", "not_applicable": "n.a."}
+LABEL_STATES: dict[str, State] = {
+    "crudo": "raw",
+    "cotto": "cooked",
+    "n.a.": "not_applicable",
+    "n.a": "not_applicable",
+    "na": "not_applicable",
+}
 
-COLUMNS = (
+COLUMNS: tuple[str, ...] = (
     "codice",
     "motivo",
     "originale",
@@ -42,6 +58,10 @@ ALIAS_SEPARATOR = " | "
 
 class ReviewInProgressError(RuntimeError):
     """Il file di revisione contiene già correzioni: non si sovrascrive."""
+
+
+class ReviewError(ValueError):
+    """Correzioni non valide: nessuna viene applicata."""
 
 
 def read_review(path: Path) -> list[dict[str, str]]:
@@ -73,6 +93,7 @@ def export_review(
     out: Path,
     *,
     diet_codes: set[str],
+    reviewed_codes: set[str] | frozenset[str] = frozenset(),
 ) -> int:
     """Scrive il CSV di revisione; restituisce il numero di righe.
 
@@ -89,6 +110,8 @@ def export_review(
     diet: list[TranslationRecord] = []
     flagged: list[TranslationRecord] = []
     for record in records:
+        if record["source_code"] in reviewed_codes:
+            continue  # già rivisto: la revisione vale anche dopo una nuova traduzione
         if record["source_code"] in diet_codes:
             diet.append(record)
         elif record["issues"]:
@@ -115,3 +138,118 @@ def export_review(
                     }
                 )
     return len(diet) + len(flagged)
+
+
+# --- Applicazione delle correzioni ----------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ReviewedTranslation:
+    """Traduzione rivista a mano: prevale su quella del modello, anche dopo una ritraduzione."""
+
+    code: str
+    name: str
+    state: State
+    cooking: str | None
+    aliases: tuple[str, ...]
+    note: str
+
+
+REVIEWED_COLUMNS = ("codice", "nome", "stato", "cottura", "alias", "note")
+
+
+class ApplySummary(TypedDict):
+    applied: int
+    total: int
+
+
+def load_reviewed(path: Path = REVIEWED_PATH) -> dict[str, ReviewedTranslation]:
+    if not path.exists():
+        return {}
+    with path.open(encoding="utf-8", newline="") as f:
+        return {
+            row["codice"]: ReviewedTranslation(
+                code=row["codice"],
+                name=row["nome"],
+                state=row["stato"],  # type: ignore[arg-type]
+                cooking=row["cottura"] or None,
+                aliases=tuple(a for a in row["alias"].split(ALIAS_SEPARATOR.strip()) if a),
+                note=row["note"],
+            )
+            for row in csv.DictReader(f)
+        }
+
+
+def _write_reviewed(path: Path, entries: dict[str, ReviewedTranslation]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="\n") as f:
+        writer = csv.DictWriter(f, fieldnames=REVIEWED_COLUMNS, lineterminator="\n")
+        writer.writeheader()
+        for code in sorted(entries, key=lambda c: (len(c), c)):
+            entry = entries[code]
+            writer.writerow(
+                {
+                    "codice": entry.code,
+                    "nome": entry.name,
+                    "stato": entry.state,
+                    "cottura": entry.cooking or "",
+                    "alias": ALIAS_SEPARATOR.strip().join(entry.aliases),
+                    "note": entry.note,
+                }
+            )
+
+
+def _cell(row: dict[str, str], column: str) -> str:
+    return (row.get(column) or "").strip()
+
+
+def _reviewed_from_row(row: dict[str, str], problems: list[str]) -> ReviewedTranslation | None:
+    """La correzione di una riga; None se la riga non è stata toccata."""
+    corrections = {c: _cell(row, c) for c in ("nome", "stato", "cottura", "alias")}
+    if not _cell(row, "ok") and not any(corrections.values()):
+        return None
+    code = _cell(row, "codice")
+    name = corrections["nome"] or _cell(row, "nome_proposto")
+    label = (corrections["stato"] or _cell(row, "stato_proposto")).casefold()
+    state = LABEL_STATES.get(label)
+    if state is None:
+        problems.append(f"{code}: stato {label!r} non valido (crudo, cotto o n.a.)")
+        return None
+    if not name:
+        problems.append(f"{code}: nome vuoto")
+        return None
+    if has_state_words(name):
+        problems.append(f"{code}: {name!r} contiene crudo/cotto, che va solo nella colonna stato")
+        return None
+    aliases = corrections["alias"] or _cell(row, "alias_proposti")
+    cooking = corrections["cottura"] or _cell(row, "cottura_proposta")
+    return ReviewedTranslation(
+        code=code,
+        name=name,
+        state=state,
+        cooking=cooking if state == "cooked" and cooking else None,
+        aliases=tuple(clean_aliases(name, aliases.split("|"))),
+        note=_cell(row, "note"),
+    )
+
+
+def apply_review(review: Path, reviewed_path: Path = REVIEWED_PATH) -> ApplySummary:
+    """Aggiunge le righe confermate o corrette a revisioni.csv e archivia il CSV compilato.
+
+    Se una sola correzione non è valida non si applica niente: si corregge il file e si
+    rilancia.
+    """
+    problems: list[str] = []
+    reviewed = [
+        entry
+        for row in read_review(review)
+        if (entry := _reviewed_from_row(row, problems)) is not None
+    ]
+    if problems:
+        raise ReviewError("correzioni non applicate:\n" + "\n".join(problems))
+    entries = load_reviewed(reviewed_path)
+    entries.update({entry.code: entry for entry in reviewed})
+    _write_reviewed(reviewed_path, entries)
+    stamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+    review.rename(review.with_name(f"revisione-applicata-{stamp}.csv"))
+    return {"applied": len(reviewed), "total": len(entries)}
