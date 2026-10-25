@@ -213,6 +213,26 @@ def test_rate_limit_is_retried_after_waiting(glossary: Glossary) -> None:
     assert waits == [7]
 
 
+def test_provider_overload_is_waited_out_for_minutes(glossary: Glossary) -> None:
+    calls = 0
+    waits: list[float] = []
+    inner = fake_model()
+
+    def overloaded(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        nonlocal calls
+        calls += 1
+        if calls <= 7:
+            raise ModelHTTPError(503, "fake")
+        return inner.function(messages, info)  # type: ignore[misc, return-value]
+
+    result = translate_batch(
+        FunctionModel(overloaded), "test:fake", [EGG_WHITE], glossary, sleep=waits.append
+    )
+
+    assert len(result.records) == 1
+    assert waits == [10, 20, 40, 80, 120, 120, 120]
+
+
 def test_persistent_errors_stop_after_the_last_attempt(glossary: Glossary) -> None:
     def always_down(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
         raise ModelHTTPError(503, "fake")
