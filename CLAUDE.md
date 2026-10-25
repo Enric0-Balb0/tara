@@ -57,6 +57,8 @@ uv run python -m tara_catalog.fetch ciqual    # scarica CIQUAL in data/raw/ (ign
 uv run python -m tara_catalog.build ciqual    # snapshot normalizzato in data/build/ (ignorata)
 uv run python -m tara_catalog.translate eval  # valuta il modello di TARA_AI_MODEL (.env, da .env.example)
 uv run python -m tara_catalog.translate ciqual  # traduce i nomi a lotti, con ripresa
+uv run python -m tara_catalog.translate revisione  # CSV per Excel con le traduzioni da rivedere
+uv run python -m tara_catalog.translate applica  # salva le correzioni in data/revisioni.csv (versionato)
 
 # Hook git, una volta per macchina
 uv tool install pre-commit; pre-commit install
