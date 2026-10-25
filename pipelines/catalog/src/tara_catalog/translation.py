@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 import time
 import unicodedata
 from collections.abc import Callable, Iterable
@@ -37,6 +38,18 @@ RETRYABLE_STATUS = {429, 500, 502, 503, 504}
 # Waits of 10, 20, 40, 80 s, then 120 s: about 8.5 minutes, enough for overload spikes.
 DEFAULT_MAX_ATTEMPTS = 8
 STATE_WORDS = ("crudo", "cruda", "crudi", "crude", "cotto", "cotta", "cotti", "cotte")
+# Names where crudo/cotto is part of the product, not its state (normalized, no accents).
+NAME_COMPOUNDS = (
+    "prosciutto crudo",
+    "prosciutto cotto",
+    "latte crudo",
+    "verdure crude",
+    "verdura cruda",
+    "panna cotta",
+    "pasta pressata cotta",
+    "pressata non cotta",
+)
+_STATE_SUFFIX = {"raw": r"crud[oaie]", "cooked": r"cott[oaie]"}
 
 
 class FoodTranslation(BaseModel):
@@ -128,10 +141,6 @@ def _normalized(text: str) -> str:
     return "".join(char for char in decomposed if not unicodedata.combining(char))
 
 
-def _words(text: str) -> set[str]:
-    return set("".join(c if c.isalnum() else " " for c in _normalized(text)).split())
-
-
 def review_issues(item: FoodTranslation, food: SourceFood, glossary: Glossary) -> list[str]:
     """Problemi deterministici della risposta: vuota se la traduzione è coerente."""
     issues = check_state(glossary, {"fr": food.name_fr, "en": food.name_en}, item.state)
@@ -141,8 +150,43 @@ def review_issues(item: FoodTranslation, food: SourceFood, glossary: Glossary) -
 
 
 def has_state_words(name: str) -> bool:
-    """Il nome contiene "crudo"/"cotto" (in qualsiasi forma), che vanno solo nel campo state."""
-    return bool(_words(name) & set(STATE_WORDS))
+    """Il nome contiene "crudo"/"cotto" (in qualsiasi forma), che vanno solo nel campo state.
+
+    Non contano i nomi di prodotto come "Prosciutto cotto" o "formaggio a latte crudo".
+    """
+    words = "".join(c if c.isalnum() else " " for c in _normalized(name)).split()
+    text = f" {' '.join(words)} "
+    for compound in NAME_COMPOUNDS:
+        text = text.replace(f" {compound} ", " ")
+    return bool(set(text.split()) & set(STATE_WORDS))
+
+
+def strip_repeated_state(name: str, state: State) -> str:
+    """Toglie dal nome lo stato già presente nel campo ("Riso thai, cotto" con stato cotto).
+
+    Si toglie solo come voce a sé tra virgole o come ultima parola. Se il nome contraddice
+    lo stato, o lo stato è n.a., il nome resta com'è e va in revisione.
+    """
+    pattern = _STATE_SUFFIX.get(state)
+    if pattern is None or not has_state_words(name):
+        return name
+    stripped = re.sub(rf"\s*,\s*{pattern}\s*(?=,|$)", "", name, flags=re.IGNORECASE)
+    stripped = re.sub(rf"\s+{pattern}\s*$", "", stripped, flags=re.IGNORECASE)
+    return stripped if stripped and not has_state_words(stripped) else name
+
+
+def finalize(record: TranslationRecord, food: SourceFood, glossary: Glossary) -> TranslationRecord:
+    """Pulizia e controlli deterministici, uguali per le risposte nuove e per quelle salvate."""
+    name = strip_repeated_state(record["name_it"].strip(), record["state"])
+    item = FoodTranslation(code=food.code, name_it=name, state=record["state"])
+    return {
+        **record,
+        "name_it": name,
+        "aliases_it": clean_aliases(name, record["aliases_it"]),
+        # La cottura è un dettaglio secondario e vale solo per i cotti.
+        "cooking": record["cooking"] if record["state"] == "cooked" else None,
+        "issues": review_issues(item, food, glossary),
+    }
 
 
 def clean_aliases(name: str, aliases: list[str]) -> list[str]:
@@ -217,21 +261,18 @@ def translate_batch(
             food = by_code.pop(item.code, None)
             if food is None:
                 continue  # codice inventato o ripetuto: si ignora
-            name = item.name_it.strip()
-            batch.records.append(
-                {
-                    "source_code": food.code,
-                    "name_it": name,
-                    "aliases_it": clean_aliases(name, item.aliases_it),
-                    "state": item.state,
-                    # La cottura è un dettaglio secondario e vale solo per i cotti.
-                    "cooking": item.cooking if item.state == "cooked" else None,
-                    "part": item.part,
-                    "issues": review_issues(item, food, glossary),
-                    "model": model_id,
-                    "prompt_version": PROMPT_VERSION,
-                }
-            )
+            record: TranslationRecord = {
+                "source_code": food.code,
+                "name_it": item.name_it,
+                "aliases_it": item.aliases_it,
+                "state": item.state,
+                "cooking": item.cooking,
+                "part": item.part,
+                "issues": [],
+                "model": model_id,
+                "prompt_version": PROMPT_VERSION,
+            }
+            batch.records.append(finalize(record, food, glossary))
         if not by_code:
             break
     batch.missing = list(by_code)

@@ -17,10 +17,13 @@ from tara_catalog.translation import (
     PROMPT_VERSION,
     SourceFood,
     TranslationRecord,
+    finalize,
     format_request,
+    has_state_words,
     load_eval_cases,
     review_issues,
     score_eval,
+    strip_repeated_state,
     translate_batch,
     translate_pending,
 )
@@ -121,6 +124,61 @@ def test_state_words_in_the_name_are_flagged(glossary: Glossary, name: str) -> N
         "stato nel nome" in issue
         for issue in review_issues(answer(name_it=name), RICE_COOKED, glossary)
     )
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "Prosciutto crudo, affumicato",
+        "Panino baguette, prosciutto cotto e burro",
+        "Crottin di capra, a latte crudo",
+        "Wrap al pollo e verdure crude",
+        "Panna cotta, con caramello",
+        "Formaggio a pasta pressata non cotta",
+    ],
+)
+def test_state_words_that_are_part_of_the_product_name_are_fine(name: str) -> None:
+    assert not has_state_words(name)
+
+
+@pytest.mark.parametrize(
+    ("name", "state", "expected"),
+    [
+        ("Riso thai, cotto", "cooked", "Riso thai"),
+        ("Patate, cotte", "cooked", "Patate"),
+        ("Pasta sfoglia al burro cotta", "cooked", "Pasta sfoglia al burro"),
+        ("Petto di pollo, crudo, label rouge", "raw", "Petto di pollo, label rouge"),
+        ("Grano duro integrale, precotto, cotto", "cooked", "Grano duro integrale, precotto"),
+        # nome di prodotto, contraddizione, stato n.a.: restano per la revisione
+        ("Prosciutto cotto", "cooked", "Prosciutto cotto"),
+        ("Riso, crudo", "cooked", "Riso, crudo"),
+        ("Rene di manzo, cotto", "not_applicable", "Rene di manzo, cotto"),
+    ],
+)
+def test_state_repeated_in_the_name_is_removed_only_when_it_matches(
+    name: str, state: str, expected: str
+) -> None:
+    assert strip_repeated_state(name, state) == expected  # type: ignore[arg-type]
+
+
+def test_saved_translations_are_checked_again_with_the_current_rules(glossary: Glossary) -> None:
+    saved: TranslationRecord = {
+        "source_code": "9104",
+        "name_it": "Riso bianco, cotto",
+        "aliases_it": ["Riso bianco", "Riso lesso"],
+        "state": "cooked",
+        "cooking": "lessato",
+        "part": None,
+        "issues": ["stato nel nome: 'Riso bianco, cotto' (va solo nel campo state)"],
+        "model": "test:fake",
+        "prompt_version": PROMPT_VERSION,
+    }
+
+    record = finalize(saved, RICE_COOKED, glossary)
+
+    assert record["name_it"] == "Riso bianco"
+    assert record["aliases_it"] == ["Riso lesso"]
+    assert record["issues"] == []
 
 
 def test_state_inconsistent_with_the_original_is_flagged(glossary: Glossary) -> None:

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import csv
 import json
 import shutil
 from pathlib import Path
@@ -168,3 +169,29 @@ def test_cli_applies_the_review_and_skips_reviewed_foods_next_time(
     out = capsys.readouterr().out
     assert "correzioni applicate: 1 (totale rivisti: 1)" in out
     assert "righe da rivedere: 3" in out
+
+
+def test_review_applies_the_current_rules_to_saved_translations(
+    snapshot: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("TARA_AI_MODEL", "test:fake")
+    monkeypatch.setenv("TARA_AI_MIN_INTERVAL_S", "0")
+    monkeypatch.setattr(translate, "SNAPSHOT", snapshot)
+    monkeypatch.setattr(translate, "TRANSLATIONS", tmp_path / "traduzioni.jsonl")
+    monkeypatch.setattr(translate, "USAGE_LOG", tmp_path / "uso-ai.jsonl")
+    monkeypatch.setattr(translate, "REVIEW", tmp_path / "revisione.csv")
+    monkeypatch.setattr(translate, "REVIEWED", tmp_path / "revisioni.csv")
+    translate.main(["ciqual"], model=echo_model())
+    # una traduzione salvata con le regole di prima
+    saved = (tmp_path / "traduzioni.jsonl").read_text(encoding="utf-8").splitlines()
+    old = next(r for r in map(json.loads, saved) if r["source_code"] == "22001")
+    old.update(name_it="Albume d'uovo, crudo", issues=["stato nel nome"])
+    with (tmp_path / "traduzioni.jsonl").open("a", encoding="utf-8") as f:
+        f.write(json.dumps(old) + "\n")
+
+    translate.main(["revisione"])
+
+    with (tmp_path / "revisione.csv").open(encoding="utf-8-sig", newline="") as f:
+        rows = {row["codice"]: row for row in csv.DictReader(f, delimiter=";")}
+    assert rows[old["source_code"]]["nome_proposto"] == GOOD[old["source_code"]]["name_it"]
+    assert rows[old["source_code"]]["problemi"] == ""

@@ -34,6 +34,7 @@ from tara_catalog.translation import (
     RunSummary,
     SourceFood,
     TranslationRecord,
+    finalize,
     load_eval_cases,
     score_eval,
     translate_batch,
@@ -115,10 +116,18 @@ def current_records(model_id: str, path: Path | None = None) -> list[Translation
 
 
 def write_review(model_id: str) -> int:
+    """Le traduzioni salvate ripassano dai controlli correnti: cambiarli non richiede l'AI."""
     diet = {case.code for case in load_eval_cases()}
+    foods = {food.code: food for food in snapshot_foods()}
+    glossary = load_glossary()
+    records = [
+        finalize(record, foods[record["source_code"]], glossary)
+        for record in current_records(model_id)
+        if record["source_code"] in foods
+    ]
     return export_review(
-        current_records(model_id),
-        snapshot_foods(),
+        records,
+        list(foods.values()),
         REVIEW,
         diet_codes=diet,
         reviewed_codes=set(load_reviewed(REVIEWED)),
