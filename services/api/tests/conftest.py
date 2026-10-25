@@ -10,9 +10,12 @@ from collections.abc import Iterator
 
 import pytest
 from alembic import command
+from fastapi.testclient import TestClient
 from sqlalchemy import Engine, create_engine
 from sqlalchemy.orm import Session
 
+from tara_api.db.session import get_session
+from tara_api.main import app
 from tests.database import alembic_config, temporary_database
 
 
@@ -41,3 +44,13 @@ def session(engine: Engine) -> Iterator[Session]:
         finally:
             db_session.close()
             outer.rollback()
+
+
+@pytest.fixture
+def client(session: Session) -> Iterator[TestClient]:
+    """Client HTTP che usa la sessione del test: i dati scritti dal test sono visibili."""
+    app.dependency_overrides[get_session] = lambda: session
+    try:
+        yield TestClient(app)
+    finally:
+        app.dependency_overrides.clear()
