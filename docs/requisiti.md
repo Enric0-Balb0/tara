@@ -323,7 +323,9 @@ app_user             id, created_at
 food                 id, user_id (null = catalogo condiviso), name, brand, category_code,
                      barcode, base_unit (g|ml), density_g_ml, serving_size,
                      state (raw|cooked|not_applicable), parent_food_id,
-                     source (ciqual|usda|open_food_facts|label|manual|recipe), created_at, updated_at
+                     source (ciqual|usda|open_food_facts|label|manual|recipe),
+                     source_code (codice nella fonte; obbligatorio nel catalogo condiviso,
+                     unico per fonte e catalogo), created_at, updated_at
 food_name            id, food_id, lang (it|fr|en), name, origin (source|llm|reviewed|user)
 category             code, name_it, parent_code
 nutrient             code, name_it, unit, display_order

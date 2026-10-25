@@ -94,6 +94,20 @@ class Food(Base):
         CheckConstraint("density_g_ml > 0", name="density_positive"),
         CheckConstraint("serving_size > 0", name="serving_size_positive"),
         CheckConstraint("parent_food_id <> id", name="not_own_parent"),
+        # I generici condivisi si ricaricano dalla fonte: il codice li identifica.
+        CheckConstraint(
+            "user_id IS NOT NULL OR source_code IS NOT NULL", name="shared_has_source_code"
+        ),
+        CheckConstraint("length(btrim(source_code)) > 0", name="source_code_not_blank"),
+        Index(
+            "uq_food_user_id_source_source_code",
+            "user_id",
+            "source",
+            "source_code",
+            unique=True,
+            postgresql_nulls_not_distinct=True,
+            postgresql_where=text("source_code IS NOT NULL"),
+        ),
         # Un barcode identifica un solo prodotto per catalogo; lo stesso barcode può
         # stare nei cataloghi personali di utenti diversi.
         Index(
@@ -131,6 +145,8 @@ class Food(Base):
     )
     """Alimento generico di riferimento: ricerca, sostituzioni, micronutrienti ereditati."""
     source: Mapped[FoodSource] = mapped_column(str_enum(FoodSource, "source"))
+    source_code: Mapped[str | None] = mapped_column(Text)
+    """Codice dell'alimento nella fonte (CIQUAL `alim_code`, USDA `fdc_id`)."""
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

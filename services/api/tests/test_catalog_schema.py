@@ -31,7 +31,11 @@ def add_user(session: Session) -> AppUser:
 
 
 def add_food(session: Session, **fields: Any) -> Food:
-    values: dict[str, Any] = {"name": "Albume d'uovo", "source": FoodSource.CIQUAL}
+    values: dict[str, Any] = {
+        "name": "Albume d'uovo",
+        "source": FoodSource.CIQUAL,
+        "source_code": uuid.uuid4().hex[:8],
+    }
     values.update(fields)
     food = Food(**values)
     session.add(food)
@@ -96,6 +100,35 @@ def test_food_defaults_to_raw_weight_in_grams(session: Session) -> None:
 def test_shared_catalog_accepts_only_reference_tables(session: Session) -> None:
     with violates("ck_food_shared_only_reference_sources"):
         add_food(session, user_id=None, source=FoodSource.LABEL)
+
+
+def test_shared_food_needs_its_source_code(session: Session) -> None:
+    """Senza codice un ricaricamento dalla fonte creerebbe un doppione."""
+    with violates("ck_food_shared_has_source_code"):
+        add_food(session, source_code=None)
+
+
+def test_source_code_cannot_be_blank(session: Session) -> None:
+    with violates("ck_food_source_code_not_blank"):
+        add_food(session, source_code="  ")
+
+
+def test_source_code_is_unique_per_source_within_a_catalog(session: Session) -> None:
+    add_food(session, source_code="22001")
+    add_food(session, source=FoodSource.USDA, source_code="22001")
+
+    with violates("uq_food_user_id_source_source_code"):
+        add_food(session, source_code="22001")
+
+
+def test_personal_foods_may_reuse_a_shared_source_code(session: Session) -> None:
+    add_food(session, source_code="22001")
+    user = add_user(session)
+
+    copy = add_food(session, user_id=user.id, source_code="22001")
+    personal = add_food(session, user_id=user.id, source=FoodSource.MANUAL, source_code=None)
+
+    assert copy.id != personal.id
 
 
 def test_personal_catalog_accepts_any_source(session: Session) -> None:
