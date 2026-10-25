@@ -59,6 +59,7 @@ uv run python -m tara_catalog.translate eval  # valuta il modello di TARA_AI_MOD
 uv run python -m tara_catalog.translate ciqual  # traduce i nomi a lotti, con ripresa
 uv run python -m tara_catalog.translate revisione  # CSV per Excel con le traduzioni da rivedere
 uv run python -m tara_catalog.translate applica  # salva le correzioni in data/revisioni.csv (versionato)
+uv run python -m tara_catalog.export ciqual     # catalogo finale per il database: snapshot + traduzioni + revisioni
 
 # Hook git, una volta per macchina
 uv tool install pre-commit; pre-commit install
