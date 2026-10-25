@@ -28,6 +28,7 @@ jobs:
       pull-requests: read
     outputs:
       mobile: ${{ steps.filter.outputs.mobile }}
+      mobile-deps: ${{ steps.filter.outputs.mobile-deps }}
       api: ${{ steps.filter.outputs.api }}
       catalog: ${{ steps.filter.outputs.catalog }}
     steps:
@@ -42,6 +43,15 @@ jobs:
               - *workflow
               - '.nvmrc'
               - 'apps/mobile/**'
+            # expo-doctor confronta le versioni con le ultime patch pubblicate da Expo: come
+            # gate gira solo quando cambiano dipendenze o configurazione dell'app, così una
+            # release di Expo non rende rossa una PR che non le tocca (vedi expo.yml).
+            mobile-deps:
+              - *workflow
+              - 'apps/mobile/package.json'
+              - 'apps/mobile/package-lock.json'
+              - 'apps/mobile/app.json'
+              - 'apps/mobile/eas.json'
             api:
               - *workflow
               - 'services/api/**'
@@ -103,7 +113,9 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run test:coverage
-      - run: npm run doctor
+      - name: Compatibilità con l'SDK Expo
+        if: needs.changes.outputs.mobile-deps == 'true'
+        run: npm run doctor
 
   api:
     name: Backend API
