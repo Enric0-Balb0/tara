@@ -108,3 +108,63 @@ def test_cli_eval_prints_the_report(
     translate.main(["eval"], model=echo_model())
 
     assert "modello test:fake" in capsys.readouterr().out
+
+
+def test_cli_writes_the_review_file_for_the_configured_model(
+    snapshot: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setenv("TARA_AI_MODEL", "test:fake")
+    monkeypatch.setenv("TARA_AI_MIN_INTERVAL_S", "0")
+    monkeypatch.setattr(translate, "SNAPSHOT", snapshot)
+    monkeypatch.setattr(translate, "TRANSLATIONS", tmp_path / "traduzioni.jsonl")
+    monkeypatch.setattr(translate, "USAGE_LOG", tmp_path / "uso-ai.jsonl")
+    monkeypatch.setattr(translate, "REVIEW", tmp_path / "revisione.csv")
+    translate.main(["ciqual"], model=echo_model())
+    other = {
+        **json.loads((tmp_path / "traduzioni.jsonl").read_text(encoding="utf-8").splitlines()[0])
+    }
+    other["model"] = "test:altro"
+    with (tmp_path / "traduzioni.jsonl").open("a", encoding="utf-8") as f:
+        f.write(json.dumps(other) + "\n")
+
+    translate.main(["revisione"])
+
+    lines = (tmp_path / "revisione.csv").read_text(encoding="utf-8-sig").splitlines()
+    assert lines[0].startswith("codice;motivo;")
+    # gli alimenti delle fixture che sono nel set di valutazione, una riga ciascuno
+    assert len(lines) - 1 == 4
+    assert "righe da rivedere: 4" in capsys.readouterr().out
+
+
+def test_cli_applies_the_review_and_skips_reviewed_foods_next_time(
+    snapshot: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setenv("TARA_AI_MODEL", "test:fake")
+    monkeypatch.setenv("TARA_AI_MIN_INTERVAL_S", "0")
+    monkeypatch.setattr(translate, "SNAPSHOT", snapshot)
+    monkeypatch.setattr(translate, "TRANSLATIONS", tmp_path / "traduzioni.jsonl")
+    monkeypatch.setattr(translate, "USAGE_LOG", tmp_path / "uso-ai.jsonl")
+    monkeypatch.setattr(translate, "REVIEW", tmp_path / "revisione.csv")
+    monkeypatch.setattr(translate, "REVIEWED", tmp_path / "revisioni.csv")
+    translate.main(["ciqual"], model=echo_model())
+    translate.main(["revisione"])
+    review = tmp_path / "revisione.csv"
+    lines = review.read_text(encoding="utf-8-sig").splitlines()
+    header = lines[0].split(";")
+    first = lines[1].split(";")
+    first[header.index("ok")] = "x"
+    lines[1] = ";".join(first)
+    review.write_text("\n".join(lines) + "\n", encoding="utf-8-sig")
+
+    translate.main(["applica"])
+    translate.main(["revisione"])
+
+    out = capsys.readouterr().out
+    assert "correzioni applicate: 1 (totale rivisti: 1)" in out
+    assert "righe da rivedere: 3" in out

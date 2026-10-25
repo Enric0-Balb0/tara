@@ -98,7 +98,7 @@ def test_state_words_are_never_suggested_for_the_name(glossary: Glossary) -> Non
 def test_prompt_is_versioned_in_the_repository() -> None:
     prompt = translation.load_prompt()
 
-    assert PROMPT_VERSION == "traduzione-v2"
+    assert PROMPT_VERSION == "traduzione-v3"
     assert "name_it" in prompt and "not_applicable" in prompt
 
 
@@ -129,12 +129,22 @@ def test_state_inconsistent_with_the_original_is_flagged(glossary: Glossary) -> 
     assert any("cottura" in issue for issue in issues)
 
 
-def test_cooking_without_cooked_state_is_flagged(glossary: Glossary) -> None:
-    issues = review_issues(
-        answer(code="22001", state="raw", cooking="lessato", name_it="Albume"), EGG_WHITE, glossary
-    )
+def test_cooking_is_dropped_when_the_state_is_not_cooked(glossary: Glossary) -> None:
+    """La cottura è secondaria: senza stato cotto si scarta, senza segnalazioni."""
 
-    assert any("metodo di cottura" in issue for issue in issues)
+    def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        item = {
+            "code": "26039",
+            "name_it": "Tonno al naturale",
+            "state": "not_applicable",
+            "cooking": "sgocciolato",
+        }
+        return ModelResponse(parts=[ToolCallPart(info.output_tools[0].name, {"items": [item]})])
+
+    result = run(FunctionModel(respond), [TUNA], glossary)
+
+    assert result.records[0]["cooking"] is None
+    assert result.records[0]["issues"] == []
 
 
 def test_aliases_repeating_the_name_are_dropped_without_review(glossary: Glossary) -> None:
@@ -481,25 +491,17 @@ def test_null_strings_from_the_model_are_no_value(empty: str) -> None:
 @pytest.mark.parametrize(
     ("name", "cooking"),
     [
+        ("Patatine fritte, surgelate", "fritto"),
+        ("Pollo arrosto", "arrosto"),
         ("Ceci lessati", "lessato"),
-        ("Salmone al vapore", "al vapore"),
-        ("Pollo alla griglia", "alla griglia"),
+        ("Pasta alla carbonara", None),
     ],
 )
-def test_cooking_method_in_the_name_is_flagged(glossary: Glossary, name: str, cooking: str) -> None:
-    item = answer(name_it=name, cooking=cooking)
-
-    assert any("cottura nel nome" in issue for issue in review_issues(item, RICE_COOKED, glossary))
-
-
-@pytest.mark.parametrize(
-    "name", ["Riso integrale", "Pasta alla carbonara", "Pollo alla cacciatora"]
-)
-def test_prepositions_of_cooking_methods_are_not_flagged(glossary: Glossary, name: str) -> None:
-    """Conta solo il metodo ("griglia", "lessato"), non "alla" o "al" da soli."""
-    item = answer(name_it=name, cooking="lessato")
-
-    assert review_issues(item, RICE_COOKED, glossary) == []
+def test_cooking_words_that_are_part_of_the_name_are_fine(
+    glossary: Glossary, name: str, cooking: str | None
+) -> None:
+    """Solo "crudo"/"cotto" sono vietati nel nome; "Patatine fritte" è il nome del prodotto."""
+    assert review_issues(answer(name_it=name, cooking=cooking), RICE_COOKED, glossary) == []
 
 
 def test_agent_uses_temperature_zero_for_reproducible_runs() -> None:
