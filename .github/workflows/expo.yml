@@ -3,6 +3,9 @@
 # rilascia di nuove il controllo fallisce senza che il nostro codice sia cambiato. Per questo
 # non blocca le PR (in ci.yml gira solo quando cambiano le dipendenze dell'app): qui apre o
 # aggiorna una issue con il comando per allinearsi, e la chiude quando torna tutto verde.
+#
+# Due job separati: `npm ci` ed expo-doctor eseguono codice di terze parti, quindi girano senza
+# token e con permessi di sola lettura; la issue la gestisce un job che non esegue codice npm.
 name: Compatibilità Expo
 
 on:
@@ -10,9 +13,7 @@ on:
     - cron: "17 6 * * *"
   workflow_dispatch:
 
-permissions:
-  contents: read
-  issues: write
+permissions: {}
 
 concurrency:
   group: expo-doctor
@@ -22,14 +23,18 @@ jobs:
   doctor:
     name: expo-doctor su main
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      status: ${{ steps.doctor.outputs.status }}
+      report: ${{ steps.doctor.outputs.report }}
     defaults:
       run:
         working-directory: apps/mobile
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      ISSUE_TITLE: Dipendenze Expo da aggiornare
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
@@ -41,31 +46,55 @@ jobs:
         run: |
           set +e
           npm run doctor > doctor.txt 2>&1
-          echo "status=$?" >> "$GITHUB_OUTPUT"
+          status=$?
           cat doctor.txt
-      - name: Apri o aggiorna la issue
-        if: steps.doctor.outputs.status != '0'
-        run: |
+          echo "status=$status" >> "$GITHUB_OUTPUT"
           {
-            echo "expo-doctor segnala versioni non allineate all'SDK Expo installato."
-            echo
-            echo '```'
+            echo "report<<END_OF_REPORT"
             tail -n 40 doctor.txt
-            echo '```'
-            echo
-            echo 'Per allinearsi: `cd apps/mobile; npx expo install --fix`, verifica con'
-            echo '`npm run doctor` e apri una PR `chore(deps): update Expo SDK patches`.'
-          } > issue.md
+            echo "END_OF_REPORT"
+          } >> "$GITHUB_OUTPUT"
+
+  issue:
+    name: Issue sulle dipendenze Expo
+    needs: doctor
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GH_REPO: ${{ github.repository }}
+      ISSUE_TITLE: Dipendenze Expo da aggiornare
+      # Testo prodotto da codice di terze parti: si usa solo tramite variabile d'ambiente,
+      # mai interpolato nello script.
+      STATUS: ${{ needs.doctor.outputs.status }}
+      REPORT: ${{ needs.doctor.outputs.report }}
+    steps:
+      - name: Apri, aggiorna o chiudi la issue
+        run: |
           number=$(gh issue list --state open --search "in:title \"$ISSUE_TITLE\"" --json number --jq '.[0].number')
+          if [ "$STATUS" = "0" ]; then
+            if [ -n "$number" ]; then
+              gh issue close "$number" --comment "expo-doctor è di nuovo verde."
+            fi
+            exit 0
+          fi
+          {
+            cat <<'TEXT'
+          expo-doctor segnala versioni non allineate all'SDK Expo installato.
+
+          ```
+          TEXT
+            printf '%s\n' "$REPORT"
+            cat <<'TEXT'
+          ```
+
+          Per allinearsi: `cd apps/mobile; npx expo install --fix`, verifica con `npm run doctor`
+          e apri una PR `chore(deps): update Expo SDK patches`.
+          TEXT
+          } > issue.md
           if [ -n "$number" ]; then
             gh issue edit "$number" --body-file issue.md
           else
             gh issue create --title "$ISSUE_TITLE" --body-file issue.md
-          fi
-      - name: Chiudi la issue se è tutto allineato
-        if: steps.doctor.outputs.status == '0'
-        run: |
-          number=$(gh issue list --state open --search "in:title \"$ISSUE_TITLE\"" --json number --jq '.[0].number')
-          if [ -n "$number" ]; then
-            gh issue close "$number" --comment "expo-doctor è di nuovo verde."
           fi

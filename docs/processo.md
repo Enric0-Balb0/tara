@@ -170,6 +170,7 @@ Prerequisiti: Git, Node 22 (vedi `.nvmrc`), [uv](https://docs.astral.sh/uv/), Do
 
 ```powershell
 winget install --id astral-sh.uv -e
+winget install --id koalaman.shellcheck -e   # actionlint lo usa per gli script dei workflow, come in CI
 uv tool install pre-commit
 pre-commit install                 # hook pre-commit, commit-msg e pre-push
 
