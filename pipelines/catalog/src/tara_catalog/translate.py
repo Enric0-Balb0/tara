@@ -4,8 +4,11 @@
     uv run python -m tara_catalog.translate ciqual    traduce lo snapshot CIQUAL, con ripresa
     uv run python -m tara_catalog.translate ciqual --limit 100
 
+    uv run python -m tara_catalog.translate revisione  CSV per Excel con le traduzioni da rivedere
+
 Le traduzioni si scrivono in data/build/ciqual-2025/traduzioni.jsonl, l'uso del modello in
-data/build/uso-ai.jsonl, i risultati della valutazione in data/build/eval/.
+data/build/uso-ai.jsonl, i risultati della valutazione in data/build/eval/, il file di
+revisione in data/build/ciqual-2025/revisione.csv.
 """
 
 from __future__ import annotations
@@ -23,6 +26,7 @@ from pydantic_ai.models import Model
 from tara_catalog import ai
 from tara_catalog.build import BUILD_DIR
 from tara_catalog.glossary import load_glossary
+from tara_catalog.review import export_review
 from tara_catalog.translation import (
     PROMPT_VERSION,
     EvalReport,
@@ -38,6 +42,7 @@ from tara_catalog.translation import (
 DESCRIPTION = "Traduzione dei nomi del catalogo con il modello configurato in TARA_AI_MODEL."
 SNAPSHOT = BUILD_DIR / "ciqual-2025" / "alimenti.jsonl"
 TRANSLATIONS = BUILD_DIR / "ciqual-2025" / "traduzioni.jsonl"
+REVIEW = BUILD_DIR / "ciqual-2025" / "revisione.csv"
 USAGE_LOG = BUILD_DIR / "uso-ai.jsonl"
 EVAL_DIR = BUILD_DIR / "eval"
 BATCH_SIZE = 25
@@ -96,6 +101,22 @@ def run_eval(
     return report, path
 
 
+def current_records(model_id: str, path: Path | None = None) -> list[TranslationRecord]:
+    """Traduzioni del modello e del prompt correnti; per ogni alimento vale l'ultima."""
+    path = path or TRANSLATIONS
+    latest: dict[str, TranslationRecord] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        record: TranslationRecord = json.loads(line)
+        if record["model"] == model_id and record["prompt_version"] == PROMPT_VERSION:
+            latest[record["source_code"]] = record
+    return list(latest.values())
+
+
+def write_review(model_id: str) -> int:
+    diet = {case.code for case in load_eval_cases()}
+    return export_review(current_records(model_id), snapshot_foods(), REVIEW, diet_codes=diet)
+
+
 def format_eval(report: EvalReport, model_id: str) -> str:
     lines = [
         f"modello {model_id} · prompt {PROMPT_VERSION}",
@@ -125,7 +146,7 @@ def format_run(summary: RunSummary) -> str:
 
 def main(argv: Sequence[str] | None = None, model: Model | None = None) -> None:
     parser = argparse.ArgumentParser(description=DESCRIPTION)
-    parser.add_argument("target", choices=["eval", "ciqual"])
+    parser.add_argument("target", choices=["eval", "ciqual", "revisione"])
     parser.add_argument(
         "--limit", type=int, default=None, help="massimo di alimenti per esecuzione"
     )
@@ -137,6 +158,11 @@ def main(argv: Sequence[str] | None = None, model: Model | None = None) -> None:
 
     settings = ai.load_settings()
     chosen: Model | str = model or settings.model
+    if args.target == "revisione":
+        count = write_review(settings.model)
+        print(f"righe da rivedere: {count}")
+        print(f"file per Excel: {REVIEW}")
+        return
     if args.target == "eval":
         report, path = run_eval(chosen, settings.model, min_interval=settings.min_interval)
         print(format_eval(report, settings.model))
