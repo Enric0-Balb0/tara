@@ -26,6 +26,7 @@ Set: `pipelines/catalog/data/eval/traduzioni.csv`, 53 alimenti CIQUAL con traduz
 | v1 | gemini-3.1-flash-lite | 81% | 81% | 36% | 14 | 10 alimenti saltati dal modello |
 | v2 | gemini-3.5-flash-lite | 98% | 98–100% | 55% | 1 | Temperatura 0, due giri; riso basmati cotto tradotto come crudo (intercettato dai controlli) |
 | v2 | gemini-3.1-flash-lite | 98% | 100% | 49% | 0 | Temperatura 0, due giri identici; unico disaccordo: fiocchi d'avena n.a. invece di crudo |
+| v3 | gemini-3.1-flash-lite | 100% | 100% | 66% | 0 | Prodotti pronti e surgelati precotti n.a.; cottura secondaria; cottura ammessa nel nome se è il nome del prodotto |
 
 Correzioni tra la v1 e la v2:
 - i termini di stato non si suggeriscono più per il nome; i metodi di cottura si suggeriscono per il campo `cooking`;
@@ -36,3 +37,16 @@ Correzioni tra la v1 e la v2:
 - controllo della cottura nel nome.
 
 **Decisione:** `google:gemini-3.1-flash-lite` con il prompt `traduzione-v2`. È deterministico a temperatura 0, non ha segnalazioni e l'unico disaccordo è un caso ambiguo. `gemini-3.5-flash-lite` dà nomi leggermente più naturali, ma ha sbagliato lo stato di un alimento cotto.
+
+### Revisione della v2 e prompt v3 · 25 ottobre 2026
+
+La lettura del CSV di revisione (traduzione completa con la v2: 142 righe segnalate su 3.484) ha mostrato che quasi tutte le segnalazioni erano falsi allarmi sulla cottura. Le cause:
+- prodotti surgelati o pronti da scaldare tradotti "n.a.", che è corretto perché si pesano come venduti;
+- metodi di cottura che fanno parte del nome del prodotto ("Patatine fritte").
+
+Correzioni:
+- i controlli segnalano solo le contraddizioni crudo/cotto;
+- la cottura è un dettaglio secondario, mai controllato;
+- il prompt v3 dice esplicitamente quando lo stato è "n.a.".
+
+**Decisione:** `gemini-3.1-flash-lite` con il prompt `traduzione-v3`.
