@@ -45,12 +45,14 @@ Scope ammessi: `mobile`, `api`, `catalog`, `infra`, `ci`, `deps`, `deps-dev`, `d
 | Mobile: TypeScript `strict` (`tsc --noEmit`) | | ✓ | ✓ |
 | Mobile: ESLint con zero warning | | ✓ | ✓ |
 | Mobile: Vitest con coverage ≥ 80% su `src/domain` | | ✓ | ✓ |
-| Mobile: `expo-doctor` (versioni compatibili con l'SDK) | | | ✓ |
+| Mobile: `expo-doctor` (versioni compatibili con l'SDK) | | | ✓ solo se cambiano le dipendenze dell'app; ogni giorno su `main` (`expo.yml`), che apre una issue invece di bloccare |
 | Backend: build dell'immagine Docker e smoke test di `/health` | | | ✓ |
 
 Nelle PR la CI esegue solo i job dei pacchetti modificati; su `main` esegue sempre tutto. Il job **CI passata** riassume l'esito di tutti gli altri ed è l'unico controllo da rendere obbligatorio, insieme a **Titolo Conventional Commits**.
 
 Le soglie di coverage si alzano, non si abbassano: una PR che scende sotto soglia aggiunge test, non cambia il numero.
+
+`expo-doctor` confronta il lockfile con le ultime patch pubblicate da Expo, quindi può fallire senza che il nostro codice cambi. Per questo come gate gira solo quando una PR tocca le dipendenze dell'app; il controllo giornaliero su `main` apre la issue "Dipendenze Expo da aggiornare" con il comando `npx expo install --fix`.
 
 ### CI in locale con VS Code
 
