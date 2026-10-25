@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from tara_catalog.glossary import Glossary, check_state, load_glossary
+from tara_catalog.glossary import Glossary, State, check_state, load_glossary
 
 DATA = Path(__file__).resolve().parents[1] / "data"
 
@@ -60,11 +60,22 @@ def test_nutrient_table_has_unique_codes() -> None:
     assert {"energy_kcal", "protein_g", "carbs_g", "fat_g", "potassium_mg"} <= set(codes)
 
 
-def test_cooked_original_translated_as_not_applicable_is_flagged(glossary: Glossary) -> None:
-    issues = check_state(glossary, {"fr": "Poulet, filet sans peau grillé/poêlé"}, "not_applicable")
-    assert issues
+@pytest.mark.parametrize(
+    "name",
+    [
+        "Frites de pommes de terre, surgelées, cuites au four",
+        "Pomme de terre sautée, préfrite, surgelée, crue",
+        "Myrtille, crue",
+    ],
+)
+def test_not_applicable_is_always_accepted(glossary: Glossary, name: str) -> None:
+    """Prodotti pronti o surgelati si pesano come venduti: n.a. va bene anche se il nome
+    francese cita una cottura o il crudo."""
+    assert check_state(glossary, {"fr": name}, "not_applicable") == []
 
 
-def test_original_with_both_states_goes_to_review(glossary: Glossary) -> None:
-    issues = check_state(glossary, {"fr": "Banane plantain, crue puis cuite"}, "cooked")
-    assert issues
+def test_original_with_both_states_is_ambiguous_not_wrong(glossary: Glossary) -> None:
+    name = "Pomme de terre sautée/poêlée, préfrite, surgelée, crue"
+    states: tuple[State, ...] = ("raw", "cooked", "not_applicable")
+    for state in states:
+        assert check_state(glossary, {"fr": name}, state) == []

@@ -5,7 +5,9 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
-from tara_catalog.review import STATE_LABELS, export_review
+import pytest
+
+from tara_catalog.review import COLUMNS, STATE_LABELS, ReviewInProgressError, export_review
 from tara_catalog.translation import PROMPT_VERSION, SourceFood, TranslationRecord
 
 FOODS = [
@@ -95,3 +97,33 @@ def test_file_opens_in_italian_excel(tmp_path: Path) -> None:
 
 def test_state_labels_cover_every_state() -> None:
     assert set(STATE_LABELS) == {"raw", "cooked", "not_applicable"}
+
+
+def test_cooking_columns_come_last(tmp_path: Path) -> None:
+    """La cottura è secondaria: le sue colonne stanno in fondo al file."""
+    out = tmp_path / "revisione.csv"
+
+    export_review(RECORDS, FOODS, out, diet_codes={"22001"})
+
+    header = out.read_text(encoding="utf-8-sig").splitlines()[0].split(";")
+    assert header[-2:] == ["cottura_proposta", "cottura"]
+
+
+def test_a_review_with_corrections_is_never_overwritten(tmp_path: Path) -> None:
+    out = tmp_path / "revisione.csv"
+    export_review(RECORDS, FOODS, out, diet_codes={"22001"})
+    lines = out.read_text(encoding="utf-8-sig").splitlines()
+    cells = lines[1].split(";")
+    cells[COLUMNS.index("ok")] = "x"
+    lines[1] = ";".join(cells)
+    out.write_text("\n".join(lines) + "\n", encoding="utf-8-sig")
+
+    with pytest.raises(ReviewInProgressError, match="1 righe"):
+        export_review(RECORDS, FOODS, out, diet_codes={"22001"})
+
+
+def test_an_untouched_review_can_be_regenerated(tmp_path: Path) -> None:
+    out = tmp_path / "revisione.csv"
+    export_review(RECORDS, FOODS, out, diet_codes={"22001"})
+
+    assert export_review(RECORDS, FOODS, out, diet_codes={"22001", "9100"}) == 3

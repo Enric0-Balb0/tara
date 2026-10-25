@@ -31,7 +31,7 @@ from tara_catalog.glossary import Glossary, State, check_state, load_glossary
 PACKAGE_ROOT = Path(__file__).resolve().parents[2]
 PROMPTS_DIR = PACKAGE_ROOT / "prompts"
 EVAL_PATH = PACKAGE_ROOT / "data" / "eval" / "traduzioni.csv"
-PROMPT_VERSION = "traduzione-v2"
+PROMPT_VERSION = "traduzione-v3"
 
 RETRYABLE_STATUS = {429, 500, 502, 503, 504}
 STATE_WORDS = ("crudo", "cruda", "crudi", "crude", "cotto", "cotta", "cotti", "cotte")
@@ -135,30 +135,7 @@ def review_issues(item: FoodTranslation, food: SourceFood, glossary: Glossary) -
     issues = check_state(glossary, {"fr": food.name_fr, "en": food.name_en}, item.state)
     if _words(item.name_it) & set(STATE_WORDS):
         issues.append(f"stato nel nome: {item.name_it!r} (va solo nel campo state)")
-    if item.cooking and item.state != "cooked":
-        issues.append(f"metodo di cottura {item.cooking!r} con stato {item.state}")
-    if _words(item.name_it) & _cooking_words(glossary):
-        issues.append(f"cottura nel nome: {item.name_it!r} (va solo nel campo cooking)")
     return issues
-
-
-def _cooking_words(glossary: Glossary) -> set[str]:
-    """Parole che identificano un metodo di cottura del glossario.
-
-    Si prende l'ultima parola ("alla griglia" → "griglia", "al forno" → "forno"), così le
-    preposizioni non fanno scattare il controllo ("Pasta alla carbonara"); gli aggettivi
-    di una sola parola valgono in tutte le forme ("lessato", "lessata", "lessati", "lessate").
-    """
-    words: set[str] = set()
-    for term in glossary.terms:
-        if term.state != "cooked" or term.it == "cotto":
-            continue
-        parts = term.it.split()
-        last = _normalized(parts[-1])
-        words.add(last)
-        if len(parts) == 1 and last.endswith("o"):
-            words |= {last[:-1] + ending for ending in "aie"}
-    return words
 
 
 def _clean_aliases(name: str, aliases: list[str]) -> list[str]:
@@ -240,7 +217,8 @@ def translate_batch(
                     "name_it": name,
                     "aliases_it": _clean_aliases(name, item.aliases_it),
                     "state": item.state,
-                    "cooking": item.cooking,
+                    # La cottura è un dettaglio secondario e vale solo per i cotti.
+                    "cooking": item.cooking if item.state == "cooked" else None,
                     "part": item.part,
                     "issues": review_issues(item, food, glossary),
                     "model": model_id,

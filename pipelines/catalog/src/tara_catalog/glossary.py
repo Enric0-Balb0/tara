@@ -63,13 +63,16 @@ def check_state(glossary: Glossary, original_names: dict[Lang, str], state: Stat
     for lang, name in original_names.items():
         implied.update(term.state for term in glossary.matches(name, lang) if term.state)
 
+    # Solo le contraddizioni crudo/cotto sono errori. "not_applicable" va sempre bene: i
+    # prodotti pronti o surgelati si pesano come venduti, anche se il nome cita una cottura.
+    # Un originale che indica sia crudo sia cotto (es. prefritti surgelati) è ambiguo.
     issues: list[str] = []
     if implied == {"raw", "cooked"}:
-        issues.append("l'originale indica sia crudo sia una cottura: da rivedere")
-    elif "raw" in implied and state != "raw":
-        issues.append(f"l'originale indica crudo, la traduzione dice {state}")
-    elif "cooked" in implied and state != "cooked":
-        issues.append(f"l'originale indica una cottura, la traduzione dice {state}")
+        return issues
+    if "raw" in implied and state == "cooked":
+        issues.append("l'originale indica crudo, la traduzione dice cotto")
+    elif "cooked" in implied and state == "raw":
+        issues.append("l'originale indica una cottura, la traduzione dice crudo")
     return issues
 
 
