@@ -55,6 +55,23 @@
       "problemMatcher": []
     },
     {
+      "label": "Backend: avvia API in locale",
+      "detail": "uvicorn con ricaricamento su localhost:8000 (Swagger su /docs)",
+      "type": "shell",
+      "command": "uv run uvicorn tara_api.main:app --reload",
+      "options": { "cwd": "${workspaceFolder}/services/api" },
+      "dependsOn": ["Database: avvia Postgres"],
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Backend: collezione Postman",
+      "detail": "Esegue services/api/postman con Newman sull'API locale avviata",
+      "type": "shell",
+      "command": "npx --yes newman@6.2.1 run services/api/postman/tara-api.postman_collection.json -e services/api/postman/locale.postman_environment.json",
+      "problemMatcher": []
+    },
+    {
       "label": "App: test E2E (Maestro)",
       "detail": "Richiede emulatore acceso, development build installata e dev server avviato",
       "type": "shell",

@@ -20,6 +20,7 @@ from sqlalchemy import (
     SmallInteger,
     Text,
     func,
+    literal_column,
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -172,6 +173,14 @@ class FoodName(Base):
             "lang",
             text("lower(name)"),
             unique=True,
+        ),
+        # Ricerca per sottostringa senza accenti né maiuscole (trigrammi): "caffe" trova "Caffè".
+        Index(
+            "ix_food_name_search_text",
+            func.tara_search_text(literal_column("name")).label("search_text"),
+            postgresql_using="gin",
+            postgresql_ops={"search_text": "gin_trgm_ops"},
+            postgresql_where=text("lang = 'it'"),
         ),
     )
 

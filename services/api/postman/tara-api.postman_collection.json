@@ -1,0 +1,229 @@
+{
+  "info": {
+    "name": "Tara API",
+    "description": "Prove a mano dell'API di Tara. Ogni richiesta ha i suoi controlli: con \"Run collection\" si eseguono tutte in ordine. Serve il backend avviato e il catalogo caricato (vedi services/api/postman/README.md).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "foodId", "value": "" },
+    { "key": "catalogEtag", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Stato del backend",
+      "request": { "method": "GET", "url": "{{baseUrl}}/health" },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('risponde 200', () => pm.response.to.have.status(200));",
+              "pm.test('stato ok', () => pm.expect(pm.response.json().status).to.eql('ok'));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Ricerca",
+      "item": [
+        {
+          "name": "Cerca \"albume\"",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/v1/foods/search?q=albume",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "foods", "search"],
+              "query": [{ "key": "q", "value": "albume" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const first = body.items[0];",
+                  "pm.test('risponde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('in testa l\\'albume crudo', () => {",
+                  "  pm.expect(first.name).to.eql(\"Albume d'uovo\");",
+                  "  pm.expect(first.state).to.eql('raw');",
+                  "});",
+                  "pm.test('proteine per 100 g da CIQUAL', () => pm.expect(first.per_100.protein_g).to.eql(10.9));",
+                  "pm.collectionVariables.set('foodId', first.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cerca senza accenti (\"caffe\")",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/v1/foods/search?q=caffe&limit=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "foods", "search"],
+              "query": [
+                { "key": "q", "value": "caffe" },
+                { "key": "limit", "value": "5" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const items = pm.response.json().items;",
+                  "pm.test('risponde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('al massimo 5 risultati', () => pm.expect(items.length).to.be.within(1, 5));",
+                  "pm.test('trova Caffè', () => pm.expect(items[0].name).to.include('Caffè'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cerca con parole in ordine diverso (\"pollo petto\")",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/v1/foods/search?q=pollo petto",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "foods", "search"],
+              "query": [{ "key": "q", "value": "pollo petto" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const items = pm.response.json().items;",
+                  "pm.test('ogni risultato contiene pollo e petto', () => {",
+                  "  pm.expect(items.length).to.be.above(0);",
+                  "  items.forEach(i => pm.expect(i.name.toLowerCase()).to.include('pollo').and.to.include('petto'));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ricerca troppo corta (422)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/v1/foods/search?q=a",
+              "host": ["{{baseUrl}}"],
+              "path": ["v1", "foods", "search"],
+              "query": [{ "key": "q", "value": "a" }]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('rifiutata con 422', () => pm.response.to.have.status(422));"]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Scheda alimento",
+      "item": [
+        {
+          "name": "Scheda dell'albume (dalla ricerca)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/v1/foods/{{foodId}}" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('risponde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('fonte CIQUAL', () => pm.expect(body.source).to.eql('ciqual'));",
+                  "pm.test('ogni valore ha provenienza e confidenza', () => {",
+                  "  pm.expect(body.nutrients.length).to.be.above(10);",
+                  "  body.nutrients.forEach(n => {",
+                  "    pm.expect(n.provenance).to.be.a('string');",
+                  "    pm.expect(n.confidence).to.be.within(0, 1);",
+                  "  });",
+                  "});",
+                  "pm.test('in ordine: energia per prima', () => pm.expect(body.nutrients[0].code).to.eql('energy_kcal'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Alimento inesistente (404)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/v1/foods/00000000-0000-7000-8000-000000000000"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('non trovato', () => pm.response.to.have.status(404));"]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Catalogo per l'app",
+      "item": [
+        {
+          "name": "Catalogo completo",
+          "request": { "method": "GET", "url": "{{baseUrl}}/v1/catalog" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "pm.test('risponde 200', () => pm.response.to.have.status(200));",
+                  "pm.test('tutti i generici CIQUAL', () => pm.expect(body.foods.length).to.be.above(3000));",
+                  "pm.test('ETag uguale alla versione', () => pm.expect(pm.response.headers.get('ETag')).to.eql(`\"${body.version}\"`));",
+                  "pm.collectionVariables.set('catalogEtag', pm.response.headers.get('ETag'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Catalogo già aggiornato (304)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "If-None-Match", "value": "{{catalogEtag}}" }],
+            "url": "{{baseUrl}}/v1/catalog"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('non rimanda il catalogo', () => pm.response.to.have.status(304));"]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

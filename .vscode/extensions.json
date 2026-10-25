@@ -8,6 +8,7 @@
     "dbaeumer.vscode-eslint",
     "expo.vscode-expo-tools",
     "github.vscode-github-actions",
+    "postman.postman-for-vscode",
     "editorconfig.editorconfig"
   ],
   "unwantedRecommendations": ["orta.vscode-jest"]

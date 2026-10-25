@@ -1,9 +1,13 @@
 from fastapi import FastAPI
+from fastapi.middleware.gzip import GZipMiddleware
 
-from tara_api import __version__
+from tara_api import __version__, foods
 from tara_api.config import get_settings
 
 app = FastAPI(title="Tara API", version=__version__)
+# Lo snapshot del catalogo pesa qualche MB in JSON: compresso si scarica anche in 4G.
+app.add_middleware(GZipMiddleware, minimum_size=1000)
+app.include_router(foods.router)
 
 
 @app.get("/health")

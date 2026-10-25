@@ -47,7 +47,7 @@ uv sync                   # .venv dal lockfile
 uv run ruff check .; uv run ruff format --check .; uv run mypy; uv run pytest --cov
 uv run alembic upgrade head                              # applica le migrazioni
 uv run alembic revision --autogenerate -m "describe"     # nuova migrazione, da rileggere
-uv run uvicorn tara_api.main:app --reload
+uv run uvicorn tara_api.main:app --reload     # Swagger su http://localhost:8000/docs; prove a mano in services/api/postman/
 uv run python -m tara_api.catalog_load ../../pipelines/catalog/data/build/ciqual-2025/catalogo.jsonl  # carica i generici, idempotente
 
 # Pipeline del catalogo
