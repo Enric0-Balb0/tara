@@ -34,6 +34,8 @@ EVAL_PATH = PACKAGE_ROOT / "data" / "eval" / "traduzioni.csv"
 PROMPT_VERSION = "traduzione-v3"
 
 RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+# Waits of 10, 20, 40, 80 s, then 120 s: about 8.5 minutes, enough for overload spikes.
+DEFAULT_MAX_ATTEMPTS = 8
 STATE_WORDS = ("crudo", "cruda", "crudi", "crude", "cotto", "cotta", "cotti", "cotte")
 
 
@@ -196,7 +198,7 @@ def translate_batch(
     *,
     agent: Agent[None, TranslationBatch] | None = None,
     sleep: Callable[[float], None] = time.sleep,
-    max_attempts: int = 4,
+    max_attempts: int = DEFAULT_MAX_ATTEMPTS,
     notify: Callable[[str], None] = _ignore,
 ) -> BatchResult:
     """Traduce un lotto di alimenti e controlla ogni risposta.
