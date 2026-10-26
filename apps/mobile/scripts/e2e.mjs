@@ -37,6 +37,9 @@ if (devMode) {
     process.exit(1);
   }
   args.push('-e', `DEV_SERVER_URL=http://localhost:${port}`);
+} else {
+  // The component catalog exists only in development builds.
+  args.push('--exclude-tags', 'design');
 }
 
 process.exit(run('maestro', args, env));
