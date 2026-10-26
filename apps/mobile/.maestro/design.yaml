@@ -1,0 +1,57 @@
+# Catalogo dei componenti (solo nella development build): i componenti si vedono con i
+# dati dell'albume di CIQUAL e il foglio dei grammi gestisce peso, tara ed errore.
+appId: com.enricobalbo.tara
+name: Catalogo dei componenti
+tags:
+  - design
+---
+- runFlow: subflows/avvio.yaml
+- extendedWaitUntil:
+    visible: Diario di oggi
+    timeout: 30000
+# Dal menu di sviluppo del profilo, come lo apre una persona.
+- tapOn: Profilo
+- tapOn: Catalogo dei componenti
+- extendedWaitUntil:
+    visible: Componenti
+    timeout: 10000
+- assertVisible: "Albume d'uovo"
+- scrollUntilVisible:
+    element: di cui zuccheri
+- takeScreenshot: screenshots/design-catalogo
+
+- scrollUntilVisible:
+    element: Apri il foglio dei grammi
+- tapOn: Apri il foglio dei grammi
+- tapOn:
+    id: tasto-5
+- tapOn:
+    id: tasto-0
+- tapOn:
+    id: tasto-0
+- assertVisible: Aggiungi 500 g
+
+- tapOn:
+    id: tasto-tare
+- tapOn:
+    id: tasto-3
+- tapOn:
+    id: tasto-8
+- assertVisible: tara 38 g
+- assertVisible: Aggiungi 462 g
+- takeScreenshot: screenshots/design-foglio
+
+# Tornando al peso, il valore è selezionato: tre cancellazioni lo svuotano, poi 30 g.
+- tapOn:
+    id: tasto-tare
+- tapOn:
+    id: tasto-delete
+- tapOn:
+    id: tasto-delete
+- tapOn:
+    id: tasto-delete
+- tapOn:
+    id: tasto-3
+- tapOn:
+    id: tasto-0
+- assertVisible: La tara supera il peso

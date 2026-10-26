@@ -74,9 +74,9 @@ Il tema scuro è il predefinito; il chiaro segue l'impostazione del telefono o l
 | `superficie` | `#1E2328` | `#FFFFFF` | pannelli, foglio di inserimento |
 | `rialzo` | `#283037` | `#E8ECEF` | tasti, selezioni, campi |
 | `bordo` | `#2C343A` | `#D5DBE0` | separatori leggeri |
-| `bordoForte` | `#39424A` | `#B8C1C8` | contorni, binari delle barre |
+| `bordoForte` | `#39424A` | `#B8C1C8` | contorni, linea di base delle barre (decorativa) |
 | `testo` | `#ECEFF1` | `#14191D` | testo principale, numeri |
-| `testoSecondario` | `#A3ADB5` | `#4D5860` | unità, didascalie, valori secondari |
+| `testoSecondario` | `#A3ADB5` | `#4D5860` | unità, didascalie, valori secondari, tacche delle barre |
 | `testoSpento` | `#5E6A73` | `#8A949C` | solo elementi disattivati, mai informazioni |
 | `azione` | `#ECEFF1` | `#14191D` | pulsanti principali (testo `fondo`) |
 | `proteine` | `#FF6B70` | `#D7263D` | |
@@ -144,7 +144,7 @@ Linee da 2 px su una griglia di 24, estremità arrotondate, disegnate come set u
 | --- | --- | --- |
 | **Barra di ricerca** | "Cerca un alimento" e pulsante scanner, sempre in basso sopra le tab | lo scanner è il pulsante principale, quadrato, colore `azione` |
 | **Riga di risultato** | nome, stato (solo "cotto"; il crudo è il predefinito), kcal e proteine per 100 g | tocco → scheda alimento |
-| **Barra graduata** | avanzamento di un macro verso l'obiettivo | parte piena = registrato; tratteggio = previsto dal piano; tacche ogni 10%; segno al traguardo; oltre il 100% la parte in eccesso resta visibile oltre il segno |
+| **Barra graduata** | avanzamento di un macro verso l'obiettivo | parte piena = registrato; tratteggio a colore pieno = previsto dal piano, detto anche dal lettore dello schermo; tacche ogni 10% in `testoSecondario` (≥ 3:1); segno al traguardo; oltre il 100% la parte in eccesso resta visibile oltre il segno |
 | **Voce di diario** | una riga allineata: nome, peso, kcal, proteine | **registrata**: testo pieno; **prevista**: bordo tratteggiato, testo attenuato, pulsante "Conferma" |
 | **Intestazione del pasto** | nome, "2 di 3", totali nelle stesse colonne delle voci | pasto completo → si chiude in una riga ("6 di 6, come da piano"); si riapre con un tocco |
 | **Foglio di inserimento** | alimento, crudo/cotto, lettura dei grammi, macro aggiornati mentre si digita, tastierino | "Ultima volta a cena: 500 g" (RF-42); "Aggiungi e continua" e "Aggiungi 500 g" |

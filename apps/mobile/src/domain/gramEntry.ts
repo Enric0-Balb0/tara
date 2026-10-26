@@ -52,7 +52,8 @@ export function netGrams(entry: GramEntry): number {
 }
 
 export function tareExceedsWeight(entry: GramEntry): boolean {
-  return entry.tare !== '' && grams(entry.tare) >= grams(entry.gross);
+  // Senza peso non è ancora un errore: si può pesare prima il contenitore.
+  return entry.gross !== '' && entry.tare !== '' && grams(entry.tare) >= grams(entry.gross);
 }
 
 export function canAdd(entry: GramEntry): boolean {

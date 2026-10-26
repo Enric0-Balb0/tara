@@ -78,6 +78,18 @@ describe('peso netto', () => {
     expect(canAdd(entry)).toBe(false);
   });
 
+  it('una tara uguale al peso è un errore', () => {
+    const entry = press(startEntry(), '3', '8', 'tare', '3', '8');
+    expect(tareExceedsWeight(entry)).toBe(true);
+    expect(canAdd(entry)).toBe(false);
+  });
+
+  it('scrivere prima la tara del contenitore non è un errore', () => {
+    const entry = press(startEntry(), 'tare', '3', '8');
+    expect(tareExceedsWeight(entry)).toBe(false);
+    expect(canAdd(entry)).toBe(false);
+  });
+
   it('senza peso non si può aggiungere', () => {
     expect(canAdd(startEntry())).toBe(false);
     expect(tareExceedsWeight(startEntry())).toBe(false);
