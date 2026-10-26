@@ -16,6 +16,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "doctor": "npx expo-doctor",
+    "fonts": "node scripts/fonts.mjs",
     "e2e": "node scripts/e2e.mjs",
     "e2e:dev": "node scripts/e2e.mjs --dev"
   },
@@ -23,6 +24,7 @@
     "expo": "~58.0.19",
     "expo-constants": "~58.0.13",
     "expo-dev-client": "~58.0.15",
+    "expo-font": "~58.0.10",
     "expo-linking": "~58.0.14",
     "expo-router": "~58.0.26",
     "expo-status-bar": "~58.0.4",

@@ -14,7 +14,8 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/domain/**/*.ts', 'src/theme/**/*.ts'],
-      exclude: ['src/**/*.test.ts', 'src/theme/useTheme.ts'],
+      // useTheme usa React Native, fonts.ts i require dei .ttf: non girano in Node.
+      exclude: ['src/**/*.test.ts', 'src/theme/useTheme.ts', 'src/theme/fonts.ts'],
       reporter: ['text', 'json-summary'],
       thresholds: { lines: 80, functions: 80, branches: 80, statements: 80 },
     },
