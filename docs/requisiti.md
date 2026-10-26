@@ -34,6 +34,9 @@ L'app sostituisce la versione gratuita di FatSecret per il tracciamento della di
 | Pasto salvato | Gruppo di voci da registrare insieme, es. "colazione solita". |
 | Voce di diario | Un alimento registrato con quantità, data e slot pasto. |
 | Slot pasto | Posizione nella giornata (pasto 1…n), con numero e nomi configurabili. |
+| Piano | Per ogni tipo di giornata, i pasti con alimenti e grammi decisi dall'utente o dal suo coach; il diario del giorno parte da qui. |
+| Voce prevista | Voce del piano non ancora confermata nel diario; diventa registrata con un tocco. |
+| Dispensa | Gli alimenti personali dell'utente, con ricette e pasti salvati. |
 | Tipo di giornata | Profilo di target nutrizionali e di attività: ON, OFF, High o altri definiti dall'utente. |
 | Fase della dieta | Periodo con obiettivo e tasso di variazione del peso: bulk, cut, mantenimento, reverse, mini-cut, diet break. |
 | Stack integratori | Integratori in uso, ciascuno con dose, momento della giornata e giorni di assunzione. |
@@ -77,7 +80,7 @@ Un nuovo prodotto entra nel catalogo da barcode, foto dell'etichetta o inserimen
 | RF-15 | Controllo di coerenza: kcal dichiarate confrontate con 4 kcal/g per proteine e carboidrati, 9 per i grassi, 2 per le fibre; avviso oltre una tolleranza da tarare (proposta 10%). | M | F1 |
 | RF-16 | Conversione del sale in sodio (sodio = sale ÷ 2,5). | M | F1 |
 | RF-17 | Proposta automatica dell'alimento generico di riferimento, da confermare. | S | F1 |
-| RF-18 | Inserimento manuale completo con gli stessi campi e controlli dell'etichetta. | M | F1 |
+| RF-18 | Inserimento manuale completo con gli stessi campi e controlli dell'etichetta, nella forma della tabella nutrizionale; con le voci facoltative dell'etichetta (monoinsaturi, polinsaturi, trans, colesterolo, polioli, amido, lattosio, vitamine e minerali, caffeina, creatina), che richiedono nuovi nutrienti. | M | F1 |
 
 ## Ricette e pasti salvati
 
@@ -118,6 +121,8 @@ Il diario è pensato per chi conosce già le grammature: un alimento noto si reg
 | RF-44 | Preferiti, recenti, copia di un pasto da un altro giorno, copia di una giornata intera. | M | F1 |
 | RF-45 | Riepilogo di kcal e macro consumati, target e residuo, per pasto e per giornata. | M | F1 |
 | RF-46 | Inserimento testuale rapido ("riso 80 pollo 200 olio 10") con parser deterministico sul catalogo personale; voci ambigue risolte con una scelta. | S | F2 |
+| RF-47 | Immagine della giornata come etichetta (totali contro il piano, pasti con voci e grammi, attribuzione delle fonti) da condividere. | S | F1 |
+| RF-130 | Piano alimentare per tipo di giornata: pasti con alimenti e grammi; il diario del giorno parte dal piano con voci previste, confermabili una per una o per pasto, modificabili e sostituibili. | M | F1 |
 
 ### Target, tipi di giornata e fasi della dieta
 
@@ -132,6 +137,7 @@ Il diario è pensato per chi conosce già le grammature: un alimento noto si reg
 | RF-56 | Suggerimento settimanale di aggiustamento del target in base al tasso reale rispetto a quello della fase (usa RF-71). | S | F2 |
 | RF-57 | Proteine mostrate anche in g/kg di peso corporeo (sulla media mobile) e per pasto. | S | F1 |
 | RF-58 | Limiti giornalieri opzionali per sodio, potassio e caffeina; caffeina tracciata come nutriente, anche da integratori e bevande. | S | F2 |
+| RF-59 | Colori dei macro personalizzabili; un colore sotto 4,5:1 di contrasto viene corretto. | C | F1 |
 
 ### Acqua
 
@@ -187,7 +193,6 @@ Peso, misure, attività e sensazioni soggettive stanno insieme perché servono a
 
 | ID | Requisito | Priorità | Fase |
 | --- | --- | --- | --- |
-| RF-130 | Giornata pianificata in anticipo, trasformata in diario con un tap pasto per pasto. | S | F2 |
 | RF-131 | Pianificazione del meal prep: dalle ricette della settimana, quantità totali da cucinare e lista della spesa. | C | F2 |
 | RF-132 | Etichetta di sessione sui giorni ON (es. Upper A, Lower B) per collegare target e allenamento, senza tracciare l'allenamento. | C | F2 |
 
@@ -397,7 +402,7 @@ Fasi in sequenza: ognuna parte solo quando la precedente supera il suo gate. Nes
 
 1. **F0 · Fondamenta** — repo, CI/CD, schema dati, autenticazione, backend online; import di CIQUAL 2025 (e USDA per i generici mancanti) con nomi tradotti in italiano.
    *Gate:* la ricerca di un generico restituisce valori corretti.
-2. **F1 · MVP «disinstallo FatSecret»** — catalogo, barcode con Open Food Facts, lettura etichetta, inserimento manuale; ricette, pasti salvati, diario con copia, preferiti e recenti; target per tipo di giornata, contatore acqua, peso con media mobile.
+2. **F1 · MVP «disinstallo FatSecret»** — catalogo, barcode con Open Food Facts, lettura etichetta, inserimento manuale; ricette, pasti salvati, diario con copia, preferiti e recenti; piano alimentare per tipo di giornata; target per tipo di giornata, contatore acqua, peso con media mobile.
    *Gate (vincolante):* due settimane di uso esclusivo, senza FatSecret.
 3. **F2 · Routine del bodybuilder** — stack integratori con notifiche, cardio e passi, fasi della dieta e TDEE adattivo; misure, foto progressi, biofeedback e check-in settimanale; inserimento testuale rapido e pianificazione dei pasti.
    *Gate:* routine completa gestita senza altre app.

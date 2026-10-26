@@ -42,6 +42,7 @@ Ogni modifica visibile si controlla sull'emulatore, non solo nel codice: screens
 - `src/components/`: componenti riutilizzabili.
 - `src/domain/`: logica di dominio in TypeScript puro, senza React, testata con Vitest.
 - Import con alias `@/` → `src/`.
+- `src/theme/`: token di colore, carattere, spazi e movimento. Lo stile viene solo da qui e dai componenti di `src/components/`, mai da valori scritti a mano; la specifica è `docs/design.md`.
 
 ## Build e distribuzione
 

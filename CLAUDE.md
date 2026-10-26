@@ -8,6 +8,7 @@ Leggi prima:
 - `docs/processo.md`: flusso di sviluppo, quality gate, Definition of Done, CI/CD.
 - `docs/strumenti.md`: plugin, skill, MCP e librerie raccomandati per fase.
 - `docs/valutazioni.md`: valutazioni che giustificano modelli e prompt AI.
+- `docs/design.md`: design system e stile dell'app (identità, token, componenti, linguaggio).
 
 ## Principi non negoziabili
 
