@@ -13,6 +13,7 @@ const ICONS = {
   close: ['M6 6l12 12M18 6L6 18'],
   delete: ['M9 6h11v12H9l-6-6z', 'M12 10l4 4M16 10l-4 4'],
   check: ['M5 12l5 5 9-10'],
+  alert: ['M12 4l9 16H3z', 'M12 10v4M12 17v.01'],
   today: [
     'M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z',
     'M4 10h16M9 3v4M15 3v4',
