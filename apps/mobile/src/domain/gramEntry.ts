@@ -10,7 +10,7 @@ export interface GramEntry {
   gross: string;
   tare: string;
   editing: 'weight' | 'tare';
-  /** La prossima cifra sostituisce il campo: vale per una quantità proposta o appena riselezionata. */
+  /** La prossima cifra sostituisce il campo: quantità proposta o campo appena riselezionato. */
   replaceNext: boolean;
 }
 

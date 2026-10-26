@@ -39,6 +39,8 @@ describe('ensureContrast', () => {
   });
 
   it('rispetta una soglia diversa', () => {
-    expect(contrastRatio(ensureContrast('#777777', '#808080', 3), '#808080')).toBeGreaterThanOrEqual(3);
+    expect(
+      contrastRatio(ensureContrast('#777777', '#808080', 3), '#808080'),
+    ).toBeGreaterThanOrEqual(3);
   });
 });

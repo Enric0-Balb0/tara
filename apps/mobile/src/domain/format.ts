@@ -19,7 +19,9 @@ export function formatNumber(value: number | null, decimals: number): string {
   const rounded = Math.round(Number((value * factor).toPrecision(12))) / factor;
   const [integer = '0', fraction] = rounded.toFixed(decimals).split('.');
   const grouped =
-    integer.replace('-', '').length > 4 ? integer.replace(/\B(?=(\d{3})+(?!\d))/g, THOUSANDS) : integer;
+    integer.replace('-', '').length > 4
+      ? integer.replace(/\B(?=(\d{3})+(?!\d))/g, THOUSANDS)
+      : integer;
   return fraction === undefined ? grouped : `${grouped},${fraction}`;
 }
 

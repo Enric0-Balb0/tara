@@ -17,7 +17,8 @@ function parseHex(hex: string): [number, number, number] {
 }
 
 function toHex([r, g, b]: [number, number, number]): string {
-  return `#${[r, g, b].map((c) => Math.round(c).toString(16).padStart(2, '0')).join('')}`.toUpperCase();
+  const digits = [r, g, b].map((c) => Math.round(c).toString(16).padStart(2, '0'));
+  return `#${digits.join('')}`.toUpperCase();
 }
 
 function channel(value: number): number {

@@ -20,7 +20,12 @@ describe('startEntry', () => {
   });
 
   it("propone l'ultima quantità usata", () => {
-    expect(startEntry(500)).toEqual({ gross: '500', tare: '', editing: 'weight', replaceNext: true });
+    expect(startEntry(500)).toEqual({
+      gross: '500',
+      tare: '',
+      editing: 'weight',
+      replaceNext: true,
+    });
   });
 });
 
