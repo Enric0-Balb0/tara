@@ -9,7 +9,9 @@ tags:
 - extendedWaitUntil:
     visible: Diario di oggi
     timeout: 30000
-- openLink: tara://design
+# Dal menu di sviluppo del profilo, come lo apre una persona.
+- tapOn: Profilo
+- tapOn: Catalogo dei componenti
 - extendedWaitUntil:
     visible: Componenti
     timeout: 10000
