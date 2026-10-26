@@ -1,11 +1,12 @@
 import * as Haptics from 'expo-haptics';
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { BackHandler, Pressable, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
+  FadeIn,
+  FadeOut,
+  SlideInDown,
+  SlideOutDown,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -55,11 +56,28 @@ const PREVIEW: readonly { code: string; label: string; color: ColorToken; kcal?:
   { code: 'energy_kcal', label: 'Energia', color: 'text', kcal: true },
 ];
 
-const OFFSCREEN = 900;
+/**
+ * Foglio dei grammi: lettura del netto, tara, macro per la quantità e tastierino (RF-41, RF-42).
+ * Va messo come ultimo figlio della schermata: si apre sopra di lei e il tasto indietro lo chiude.
+ */
+export function GramSheet(props: Props) {
+  const { visible, onClose } = props;
 
-/** Foglio dei grammi: lettura del netto, tara, macro per la quantità e tastierino (RF-41, RF-42). */
-export function GramSheet({
-  visible,
+  useEffect(() => {
+    if (!visible) return undefined;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      onClose();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [visible, onClose]);
+
+  // Il foglio esiste solo da aperto: ogni apertura riparte dall'ultima quantità usata, e
+  // l'animazione di uscita la fa Reanimated quando il foglio si smonta.
+  return visible ? <OpenSheet {...props} /> : null;
+}
+
+function OpenSheet({
   food,
   mealName,
   lastGrams,
@@ -70,39 +88,16 @@ export function GramSheet({
 }: Props) {
   const { colors, reduceMotion } = useTheme();
   const insets = useSafeAreaInsets();
-  const [mounted, setMounted] = useState(visible);
-  const [wasVisible, setWasVisible] = useState(visible);
   const [entry, setEntry] = useState<GramEntry>(() => startEntry(lastGrams));
-  const progress = useSharedValue(0);
 
-  // A ogni apertura il foglio riparte dall'ultima quantità usata.
-  if (visible !== wasVisible) {
-    setWasVisible(visible);
-    if (visible) {
-      setMounted(true);
-      setEntry(startEntry(lastGrams));
-    }
-  }
-
-  useEffect(() => {
-    if (visible) {
-      const easing = Easing.bezier(...curves.standard);
-      progress.set(withTiming(1, { duration: durations.sheetIn, easing }));
-      return undefined;
-    }
-    const easing = Easing.bezier(...curves.exit);
-    progress.set(withTiming(0, { duration: durations.sheetOut, easing }));
-    // Il Modal si smonta solo a uscita finita, così l'animazione si vede.
-    const timer = setTimeout(() => setMounted(false), durations.sheetOut);
-    return () => clearTimeout(timer);
-  }, [visible, progress]);
-
-  const sheetStyle = useAnimatedStyle(() =>
-    reduceMotion
-      ? { opacity: progress.get() }
-      : { transform: [{ translateY: (1 - progress.get()) * OFFSCREEN }] },
-  );
-  const backdropStyle = useAnimatedStyle(() => ({ opacity: progress.get() * 0.6 }));
+  const fadeIn = FadeIn.duration(durations.quick);
+  const fadeOut = FadeOut.duration(durations.quick);
+  const sheetIn = reduceMotion
+    ? fadeIn
+    : SlideInDown.duration(durations.sheetIn).easing(Easing.bezier(...curves.standard));
+  const sheetOut = reduceMotion
+    ? fadeOut
+    : SlideOutDown.duration(durations.sheetOut).easing(Easing.bezier(...curves.exit));
 
   const net = netGrams(entry);
   const tooMuchTare = tareExceedsWeight(entry);
@@ -120,11 +115,17 @@ export function GramSheet({
   }
 
   return (
-    <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose}>
-      <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, backdropStyle]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Chiudi" />
+    <>
+      <Animated.View entering={fadeIn} exiting={fadeOut} style={StyleSheet.absoluteFill}>
+        <Pressable
+          style={[StyleSheet.absoluteFill, styles.backdrop]}
+          onPress={onClose}
+          accessibilityLabel="Chiudi"
+        />
       </Animated.View>
       <Animated.View
+        entering={sheetIn}
+        exiting={sheetOut}
         accessibilityViewIsModal
         style={[
           styles.sheet,
@@ -133,7 +134,6 @@ export function GramSheet({
             borderColor: colors.borderStrong,
             paddingBottom: space.l + insets.bottom,
           },
-          sheetStyle,
         ]}
       >
         <View style={[styles.handle, { backgroundColor: colors.borderStrong }]} />
@@ -262,25 +262,32 @@ export function GramSheet({
             onPress={() => add(true)}
             style={[styles.action, { borderColor: colors.borderStrong, borderWidth: 1 }]}
           >
-            <TaraText variant="bodyStrong">Aggiungi e continua</TaraText>
+            <TaraText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>
+              Aggiungi e continua
+            </TaraText>
           </PressableScale>
           <PressableScale
             disabled={!addable}
             onPress={() => add(false)}
             style={[styles.action, { backgroundColor: colors.action }]}
           >
-            <TaraText variant="bodyStrong" color="background">
+            <TaraText
+              variant="bodyStrong"
+              color="background"
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
               {addable ? `Aggiungi ${netText} g` : 'Aggiungi'}
             </TaraText>
           </PressableScale>
         </View>
       </Animated.View>
-    </Modal>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  backdrop: { backgroundColor: 'black' },
+  backdrop: { backgroundColor: 'black', opacity: 0.6 },
   sheet: {
     position: 'absolute',
     left: 0,
@@ -340,6 +347,7 @@ const styles = StyleSheet.create({
   actions: { flexDirection: 'row', gap: space.s },
   action: {
     flex: 1,
+    paddingHorizontal: space.s,
     height: touch.primary,
     borderRadius: radius.button,
     alignItems: 'center',

@@ -24,4 +24,8 @@ appId: com.enricobalbo.tara
           visible: Continue
           timeout: 60000
       - tapOn: Continue
+      # Il pulsante flottante degli strumenti copre l'intestazione: si spegne qui.
+      - scrollUntilVisible:
+          element: Tools button
+      - tapOn: Tools button
       - back

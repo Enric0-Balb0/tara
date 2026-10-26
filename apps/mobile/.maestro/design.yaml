@@ -18,6 +18,8 @@ tags:
     element: di cui zuccheri
 - takeScreenshot: screenshots/design-catalogo
 
+- scrollUntilVisible:
+    element: Apri il foglio dei grammi
 - tapOn: Apri il foglio dei grammi
 - tapOn:
     id: tasto-5
