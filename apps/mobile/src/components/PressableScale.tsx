@@ -22,10 +22,12 @@ interface Props extends Omit<PressableProps, 'style' | 'children'> {
 export function PressableScale({ style, children, disabled, ...rest }: Props) {
   const { reduceMotion } = useTheme();
   const pressed = useSharedValue(0);
+  // L'opacità da disattivato sta nello stile animato: uno stile statico verrebbe coperto.
+  const base = disabled ? 0.4 : 1;
   const animated = useAnimatedStyle(() =>
     reduceMotion
-      ? { opacity: 1 - pressed.get() * 0.3 }
-      : { transform: [{ scale: 1 - pressed.get() * (1 - PRESS_SCALE) }] },
+      ? { opacity: base * (1 - pressed.get() * 0.3) }
+      : { opacity: base, transform: [{ scale: 1 - pressed.get() * (1 - PRESS_SCALE) }] },
   );
   return (
     <AnimatedPressable
@@ -35,7 +37,7 @@ export function PressableScale({ style, children, disabled, ...rest }: Props) {
       onPressIn={() => pressed.set(withTiming(1, timing))}
       onPressOut={() => pressed.set(withTiming(0, timing))}
       {...rest}
-      style={[style, animated, disabled ? { opacity: 0.4 } : null]}
+      style={[style, animated]}
     >
       {children}
     </AnimatedPressable>
