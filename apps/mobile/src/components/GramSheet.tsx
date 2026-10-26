@@ -1,6 +1,6 @@
 import * as Haptics from 'expo-haptics';
 import { useEffect, useState } from 'react';
-import { BackHandler, Pressable, StyleSheet, View } from 'react-native';
+import { BackHandler, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import Animated, {
   Easing,
   FadeIn,
@@ -146,110 +146,122 @@ function OpenSheet({
           </PressableScale>
         </View>
 
-        <View style={styles.food}>
-          <TaraText variant="title" numberOfLines={2}>
-            {food.name}
-          </TaraText>
-          <TaraText variant="caption" color="textSecondary">
-            per 100 g: {formatAmount(food.per100.energy_kcal ?? null, 'kcal')} kcal,{' '}
-            {formatAmount(food.per100.protein_g ?? null, 'macro')} g di proteine
-          </TaraText>
-        </View>
-
-        {food.state !== 'not_applicable' ? (
-          <View
-            accessibilityRole="radiogroup"
-            accessibilityLabel="Stato"
-            style={[styles.segmented, { backgroundColor: colors.background }]}
-          >
-            {(['raw', 'cooked'] as const).map((state) => {
-              const selected = food.state === state;
-              return (
-                <PressableScale
-                  key={state}
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: selected }}
-                  onPress={() => onChangeState?.(state)}
-                  style={[styles.segment, selected ? { backgroundColor: colors.action } : null]}
-                >
-                  <TaraText variant="bodyStrong" color={selected ? 'background' : 'textSecondary'}>
-                    {state === 'raw' ? 'Crudo' : 'Cotto'}
-                  </TaraText>
-                </PressableScale>
-              );
-            })}
-          </View>
-        ) : null}
-
-        <View
-          style={[
-            styles.readoutPanel,
-            { backgroundColor: colors.background, borderColor: colors.border },
-          ]}
+        <ScrollView
+          style={styles.middle}
+          contentContainerStyle={styles.middleContent}
+          bounces={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.readoutTop}>
-            <TaraText variant="minimum" color="textSecondary">
-              Netto
+          <View style={styles.food}>
+            <TaraText variant="title" numberOfLines={2}>
+              {food.name}
             </TaraText>
-            {entry.tare !== '' || entry.editing === 'tare' ? (
-              <TaraText
-                variant="minimum"
-                color={entry.editing === 'tare' ? 'text' : 'textSecondary'}
-              >
-                tara {formatAmount(Number(entry.tare || '0'), 'grams')} g
+            <TaraText variant="caption" color="textSecondary">
+              per 100 g: {formatAmount(food.per100.energy_kcal ?? null, 'kcal')} kcal,{' '}
+              {formatAmount(food.per100.protein_g ?? null, 'macro')} g di proteine
+            </TaraText>
+          </View>
+
+          {food.state !== 'not_applicable' ? (
+            <View
+              accessibilityRole="radiogroup"
+              accessibilityLabel="Stato"
+              style={[styles.segmented, { backgroundColor: colors.background }]}
+            >
+              {(['raw', 'cooked'] as const).map((state) => {
+                const selected = food.state === state;
+                return (
+                  <PressableScale
+                    key={state}
+                    accessibilityRole="radio"
+                    accessibilityState={{ checked: selected }}
+                    onPress={() => onChangeState?.(state)}
+                    style={[styles.segment, selected ? { backgroundColor: colors.action } : null]}
+                  >
+                    <TaraText
+                      variant="bodyStrong"
+                      color={selected ? 'background' : 'textSecondary'}
+                    >
+                      {state === 'raw' ? 'Crudo' : 'Cotto'}
+                    </TaraText>
+                  </PressableScale>
+                );
+              })}
+            </View>
+          ) : null}
+
+          <View
+            style={[
+              styles.readoutPanel,
+              { backgroundColor: colors.background, borderColor: colors.border },
+            ]}
+          >
+            <View style={styles.readoutTop}>
+              <TaraText variant="minimum" color="textSecondary">
+                Netto
               </TaraText>
+              {entry.tare !== '' || entry.editing === 'tare' ? (
+                <TaraText
+                  variant="minimum"
+                  color={entry.editing === 'tare' ? 'text' : 'textSecondary'}
+                >
+                  tara {formatAmount(Number(entry.tare || '0'), 'grams')} g
+                </TaraText>
+              ) : null}
+            </View>
+            <View style={styles.readoutRow}>
+              <TaraText
+                variant="readout"
+                color={addable ? 'text' : 'textSecondary'}
+                accessibilityLabel={`${netText} grammi`}
+                accessibilityLiveRegion="polite"
+                adjustsFontSizeToFit
+                numberOfLines={1}
+                maxFontSizeMultiplier={1}
+                style={styles.readout}
+              >
+                {netText}
+              </TaraText>
+              <TaraText variant="section" color="textSecondary">
+                g
+              </TaraText>
+            </View>
+            {tooMuchTare ? (
+              <View style={styles.error}>
+                <Icon name="alert" color="error" size={18} />
+                <TaraText variant="caption" color="error">
+                  La tara supera il peso
+                </TaraText>
+              </View>
+            ) : lastGrams !== undefined ? (
+              <PressableScale
+                onPress={() => setEntry(startEntry(lastGrams))}
+                style={[styles.lastUsed, { borderColor: colors.borderStrong }]}
+              >
+                <TaraText variant="caption">
+                  Ultima volta a {mealName.toLowerCase()}: {formatAmount(lastGrams, 'grams')} g
+                </TaraText>
+              </PressableScale>
             ) : null}
           </View>
-          <View style={styles.readoutRow}>
-            <TaraText
-              variant="readout"
-              color={addable ? 'text' : 'textSecondary'}
-              accessibilityLabel={`${netText} grammi`}
-              accessibilityLiveRegion="polite"
-              adjustsFontSizeToFit
-              numberOfLines={1}
-            >
-              {netText}
-            </TaraText>
-            <TaraText variant="section" color="textSecondary">
-              g
-            </TaraText>
-          </View>
-          {tooMuchTare ? (
-            <View style={styles.error}>
-              <Icon name="alert" color="error" size={18} />
-              <TaraText variant="caption" color="error">
-                La tara supera il peso
-              </TaraText>
-            </View>
-          ) : lastGrams !== undefined ? (
-            <PressableScale
-              onPress={() => setEntry(startEntry(lastGrams))}
-              style={[styles.lastUsed, { borderColor: colors.borderStrong }]}
-            >
-              <TaraText variant="caption">
-                Ultima volta a {mealName.toLowerCase()}: {formatAmount(lastGrams, 'grams')} g
-              </TaraText>
-            </PressableScale>
-          ) : null}
-        </View>
 
-        <View style={styles.preview}>
-          {PREVIEW.map((item) => (
-            <View key={item.code} style={styles.previewCell}>
-              <TaraText variant="minimum" color={item.color}>
-                {item.label}
-              </TaraText>
-              <TaraText variant="number">
-                {formatAmount(
-                  amountFor(food.per100[item.code] ?? null, net),
-                  item.kcal ? 'kcal' : 'macro',
-                )}
-                {item.kcal ? ' kcal' : ' g'}
-              </TaraText>
-            </View>
-          ))}
-        </View>
+          <View style={styles.preview}>
+            {PREVIEW.map((item) => (
+              <View key={item.code} style={styles.previewCell}>
+                <TaraText variant="minimum" color={item.color}>
+                  {item.label}
+                </TaraText>
+                <TaraText variant="number" numberOfLines={1} adjustsFontSizeToFit>
+                  {formatAmount(
+                    amountFor(food.per100[item.code] ?? null, net),
+                    item.kcal ? 'kcal' : 'macro',
+                  )}
+                  {item.kcal ? ' kcal' : ' g'}
+                </TaraText>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
 
         <Keypad
           tareActive={entry.editing === 'tare'}
@@ -262,7 +274,12 @@ function OpenSheet({
             onPress={() => add(true)}
             style={[styles.action, { borderColor: colors.borderStrong, borderWidth: 1 }]}
           >
-            <TaraText variant="bodyStrong" numberOfLines={1} adjustsFontSizeToFit>
+            <TaraText
+              variant="bodyStrong"
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              style={styles.actionLabel}
+            >
               Aggiungi e continua
             </TaraText>
           </PressableScale>
@@ -276,6 +293,7 @@ function OpenSheet({
               color="background"
               numberOfLines={1}
               adjustsFontSizeToFit
+              style={styles.actionLabel}
             >
               {addable ? `Aggiungi ${netText} g` : 'Aggiungi'}
             </TaraText>
@@ -293,6 +311,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    // Mai più alto dello spazio della schermata: in caso scorre la parte centrale.
+    maxHeight: '100%',
     borderTopLeftRadius: radius.sheet,
     borderTopRightRadius: radius.sheet,
     borderTopWidth: 1,
@@ -309,11 +329,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  middle: { flexShrink: 1 },
+  middleContent: { gap: space.m },
+  readout: { flexShrink: 1 },
   food: { gap: space.xs },
   segmented: { flexDirection: 'row', borderRadius: radius.key, padding: space.xs, gap: space.xs },
   segment: {
     flex: 1,
-    minHeight: 36,
+    minHeight: touch.min,
     borderRadius: radius.field,
     alignItems: 'center',
     justifyContent: 'center',
@@ -335,7 +358,7 @@ const styles = StyleSheet.create({
   error: { flexDirection: 'row', alignItems: 'center', gap: space.s, minHeight: 32 },
   lastUsed: {
     alignSelf: 'flex-start',
-    minHeight: 32,
+    minHeight: touch.min,
     justifyContent: 'center',
     borderRadius: 16,
     borderWidth: 1,
@@ -345,6 +368,8 @@ const styles = StyleSheet.create({
   preview: { flexDirection: 'row', gap: space.s },
   previewCell: { flex: 1, gap: 2 },
   actions: { flexDirection: 'row', gap: space.s },
+  // Larghezza vincolata, così il testo si rimpicciolisce invece di perdere la fine.
+  actionLabel: { alignSelf: 'stretch', textAlign: 'center' },
   action: {
     flex: 1,
     paddingHorizontal: space.s,
