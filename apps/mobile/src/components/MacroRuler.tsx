@@ -13,12 +13,11 @@ import { rulerGeometry } from '@/domain/ruler';
 import type { MacroToken } from '@/theme/colors';
 import { space } from '@/theme/layout';
 import { curves, durations } from '@/theme/motion';
+import { ruler } from '@/theme/ruler';
 import { useTheme } from '@/theme/useTheme';
 
 import { TaraText } from './TaraText';
 
-const TRACK = 12;
-const FILL = 5;
 const TICKS = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
 interface Props {
@@ -53,11 +52,12 @@ export function MacroRuler({ macro, label, logged, planned = 0, target }: Props)
   const color = colors[macro];
   const pattern = `tratteggio-${macro}`;
   const targetText = target === null ? '–' : formatAmount(target, 'grams');
+  const plannedText = planned > 0 ? `, ${formatAmount(planned, 'grams')} previsti dal piano` : '';
 
   return (
     <View
       accessible
-      accessibilityLabel={`${label} ${formatAmount(logged, 'grams')} di ${targetText} grammi`}
+      accessibilityLabel={`${label} ${formatAmount(logged, 'grams')} di ${targetText} grammi${plannedText}`}
       style={styles.ruler}
     >
       <View style={styles.header}>
@@ -70,12 +70,12 @@ export function MacroRuler({ macro, label, logged, planned = 0, target }: Props)
       </View>
       <View style={styles.track} onLayout={(event) => setWidth(event.nativeEvent.layout.width)}>
         {width > 0 ? (
-          <Svg width={width} height={TRACK}>
+          <Svg width={width} height={ruler.track}>
             <Defs>
               <Pattern
                 id={pattern}
-                width={5}
-                height={5}
+                width={ruler.hatchSpacing}
+                height={ruler.hatchSpacing}
                 patternUnits="userSpaceOnUse"
                 patternTransform="rotate(45)"
               >
@@ -83,10 +83,10 @@ export function MacroRuler({ macro, label, logged, planned = 0, target }: Props)
                   x1={0}
                   y1={0}
                   x2={0}
-                  y2={5}
+                  y2={ruler.hatchSpacing}
                   stroke={color}
-                  strokeWidth={2}
-                  strokeOpacity={0.5}
+                  strokeWidth={ruler.hatchWidth}
+                  strokeOpacity={ruler.hatchOpacity}
                 />
               </Pattern>
             </Defs>
@@ -95,28 +95,34 @@ export function MacroRuler({ macro, label, logged, planned = 0, target }: Props)
                 key={tick}
                 x1={(width * tick) / 10}
                 x2={(width * tick) / 10}
-                y1={2}
-                y2={TRACK - 2}
-                stroke={colors.borderStrong}
+                y1={ruler.tickInset}
+                y2={ruler.track - ruler.tickInset}
+                stroke={colors[ruler.tickColor]}
                 strokeWidth={1}
               />
             ))}
-            <Rect x={0} y={TRACK - 2} width={width} height={2} fill={colors.borderStrong} />
+            <Rect
+              x={0}
+              y={ruler.track - ruler.tickInset}
+              width={width}
+              height={ruler.tickInset}
+              fill={colors[ruler.baseColor]}
+            />
             {geometry.planned > 0 ? (
               <Rect
                 x={geometry.logged * width}
-                y={TRACK - FILL}
+                y={ruler.track - ruler.fill}
                 width={geometry.planned * width}
-                height={FILL}
+                height={ruler.fill}
                 fill={`url(#${pattern})`}
               />
             ) : null}
             {geometry.target !== null ? (
               <Rect
-                x={Math.max(geometry.target * width - 2, 0)}
+                x={Math.max(geometry.target * width - ruler.markWidth, 0)}
                 y={0}
-                width={2}
-                height={TRACK}
+                width={ruler.markWidth}
+                height={ruler.track}
                 fill={colors.text}
               />
             ) : null}
@@ -131,13 +137,13 @@ export function MacroRuler({ macro, label, logged, planned = 0, target }: Props)
 const styles = StyleSheet.create({
   ruler: { gap: space.s },
   header: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
-  track: { height: TRACK, justifyContent: 'flex-end' },
+  track: { height: ruler.track, justifyContent: 'flex-end' },
   fill: {
     position: 'absolute',
     left: 0,
     bottom: 0,
-    height: FILL,
-    borderTopRightRadius: 3,
-    borderBottomRightRadius: 3,
+    height: ruler.fill,
+    borderTopRightRadius: ruler.fillRadius,
+    borderBottomRightRadius: ruler.fillRadius,
   },
 });
