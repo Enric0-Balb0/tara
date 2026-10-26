@@ -61,6 +61,7 @@ export const colors: Record<Scheme, Record<ColorToken, string>> = {
 
 /** L'etichetta nutrizionale è un foglio: uguale in entrambi i temi. */
 export const labelColors = { paper: '#FFFFFF', ink: '#000000', secondary: '#4D545A' } as const;
+export type LabelColorToken = keyof typeof labelColors;
 
 export const MACRO_TOKENS = ['protein', 'carbs', 'fat', 'fiber'] as const;
 export type MacroToken = (typeof MACRO_TOKENS)[number];
