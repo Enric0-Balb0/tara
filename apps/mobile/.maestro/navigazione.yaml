@@ -1,4 +1,5 @@
-# Smoke test: l'app si avvia sul diario di oggi e le quattro tab aprono la schermata giusta.
+# Smoke test: l'app si avvia su Oggi, le quattro tab aprono la schermata giusta e il
+# profilo si apre dall'intestazione di Oggi.
 appId: com.enricobalbo.tara
 name: Navigazione tra le tab
 tags:
@@ -10,14 +11,19 @@ tags:
     timeout: 30000
 - takeScreenshot: screenshots/oggi
 
-- tapOn: Alimenti
-- assertVisible: Catalogo personale, barcode, lettura etichetta, ricette e pasti salvati.
+- tapOn: Piano
+- assertVisible: Pasti, alimenti e grammi per ogni tipo di giornata.
 
-- tapOn: Progressi
-- assertVisible: Peso con media mobile, misure, foto, cardio, passi e check-in settimanale.
+- tapOn: Dispensa
+- assertVisible: I tuoi alimenti, le ricette e i pasti salvati.
+
+- tapOn: Andamento
+- assertVisible: Peso con media mobile, misure, foto e check-in settimanale.
+
+- tapOn: Oggi
+- assertVisible: Diario di oggi
 
 - tapOn: Profilo
 - assertVisible: Tipi di giornata e target, fase della dieta, stack integratori e notifiche.
-
-- tapOn: Oggi
+- back
 - assertVisible: Diario di oggi
