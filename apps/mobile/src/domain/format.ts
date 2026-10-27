@@ -28,3 +28,15 @@ export function formatNumber(value: number | null, decimals: number): string {
 export function formatAmount(value: number | null, kind: AmountKind): string {
   return formatNumber(value, DECIMALS[kind]);
 }
+
+const twoDigits = (value: number) => String(value).padStart(2, '0');
+
+/** Data locale come 27/10/2026. */
+export function formatDate(date: Date): string {
+  return `${twoDigits(date.getDate())}/${twoDigits(date.getMonth() + 1)}/${date.getFullYear()}`;
+}
+
+/** Ora locale a 24 ore come 15:42. */
+export function formatTime(date: Date): string {
+  return `${twoDigits(date.getHours())}:${twoDigits(date.getMinutes())}`;
+}
