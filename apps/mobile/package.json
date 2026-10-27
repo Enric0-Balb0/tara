@@ -21,6 +21,7 @@
     "e2e:dev": "node scripts/e2e.mjs --dev"
   },
   "dependencies": {
+    "@types/node": "^22.20.5",
     "expo": "~58.0.19",
     "expo-constants": "~58.0.13",
     "expo-dev-client": "~58.0.15",
