@@ -4,6 +4,7 @@
  * ricerca e scheda leggono solo da SQLite, anche senza rete.
  */
 
+import type { BaseUnit, FoodState } from '@/domain/food';
 import { searchKey } from '@/domain/search';
 
 import type { SqlDatabase } from './sql';
@@ -175,4 +176,107 @@ export async function catalogInfo(db: SqlDatabase): Promise<CatalogInfo> {
 /** Il server ha confermato che il catalogo sul telefono è quello attuale. */
 export async function markChecked(db: SqlDatabase, checkedAt: string): Promise<void> {
   await setState(db, STATE_KEYS.checkedAt, checkedAt);
+}
+
+export interface FoodHit {
+  id: string;
+  name: string;
+  state: FoodState;
+  baseUnit: BaseUnit;
+  /** Un macro sconosciuto è null, non zero (principio 2). */
+  per100: {
+    energy_kcal: number | null;
+    protein_g: number | null;
+    carbs_g: number | null;
+    fat_g: number | null;
+  };
+}
+
+export interface FoodNutrient {
+  code: string;
+  name: string;
+  unit: string;
+  amountPer100: number;
+  provenance: string;
+  confidence: number;
+}
+
+export interface FoodDetail {
+  id: string;
+  name: string;
+  state: FoodState;
+  baseUnit: BaseUnit;
+  /** Solo i nutrienti noti, nell'ordine di visualizzazione. */
+  nutrients: FoodNutrient[];
+}
+
+interface FoodRow {
+  id: string;
+  name: string;
+  state: FoodState;
+  base_unit: BaseUnit;
+}
+
+const MIN_QUERY_LENGTH = 2;
+
+function escapeLike(text: string): string {
+  return text.replace(/[\\%_]/g, (char) => `\\${char}`);
+}
+
+// Codici fissi del codice, mai testo dell'utente: si possono scrivere nell'SQL.
+function macroColumn(code: keyof FoodHit['per100']): string {
+  return `(SELECT amount_per_100 FROM nutrient_value WHERE food_id = f.id AND nutrient_code = '${code}') AS ${code}`;
+}
+
+/**
+ * Le regole di `search_foods` del backend, senza la somiglianza a trigrammi: ogni parola
+ * deve comparire in un nome; prima i nomi che iniziano con la ricerca, poi il crudo (si
+ * pesa a crudo, principio 4), poi i nomi più corti.
+ */
+export async function searchFoods(db: SqlDatabase, query: string, limit = 20): Promise<FoodHit[]> {
+  const key = searchKey(query);
+  if (key.length < MIN_QUERY_LENGTH) return [];
+  const words = key.split(' ');
+  const rows = await db.getAllAsync<FoodRow & FoodHit['per100']>(
+    `SELECT f.id, f.name, f.state, f.base_unit,
+            ${macroColumn('energy_kcal')}, ${macroColumn('protein_g')},
+            ${macroColumn('carbs_g')}, ${macroColumn('fat_g')}
+     FROM food AS f
+     WHERE ${words.map(() => "f.search_text LIKE ? ESCAPE '\\'").join(' AND ')}
+     ORDER BY (char(10) || f.search_text) LIKE ? ESCAPE '\\' DESC,
+              f.state = 'raw' DESC, length(f.name), f.name
+     LIMIT ?`,
+    ...words.map((word) => `%${escapeLike(word)}%`),
+    `%\n${escapeLike(key)}%`,
+    limit,
+  );
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    state: row.state,
+    baseUnit: row.base_unit,
+    per100: {
+      energy_kcal: row.energy_kcal,
+      protein_g: row.protein_g,
+      carbs_g: row.carbs_g,
+      fat_g: row.fat_g,
+    },
+  }));
+}
+
+export async function getFood(db: SqlDatabase, id: string): Promise<FoodDetail | null> {
+  const food = await db.getFirstAsync<FoodRow>(
+    'SELECT id, name, state, base_unit FROM food WHERE id = ?',
+    id,
+  );
+  if (food === null) return null;
+  const nutrients = await db.getAllAsync<FoodNutrient>(
+    `SELECT v.nutrient_code AS code, n.name, n.unit, v.amount_per_100 AS amountPer100,
+            v.provenance, v.confidence
+     FROM nutrient_value AS v JOIN nutrient AS n ON n.code = v.nutrient_code
+     WHERE v.food_id = ?
+     ORDER BY n.display_order`,
+    id,
+  );
+  return { id: food.id, name: food.name, state: food.state, baseUnit: food.base_unit, nutrients };
 }
