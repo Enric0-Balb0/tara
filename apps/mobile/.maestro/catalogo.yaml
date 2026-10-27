@@ -1,0 +1,24 @@
+# Catalogo sul telefono (solo development build, con il backend acceso su questo PC):
+# all'avvio l'app scarica il catalogo dei generici e il menu di sviluppo del profilo ne
+# mostra lo stato; un secondo controllo trova il catalogo già aggiornato (ETag).
+appId: com.enricobalbo.tara
+name: Catalogo sul telefono
+tags:
+  - api
+---
+- runFlow: subflows/avvio.yaml
+- extendedWaitUntil:
+    visible: Diario di oggi
+    timeout: 30000
+- tapOn: Profilo
+# Il primo download comprende circa 3500 alimenti: si aspetta con calma.
+- extendedWaitUntil:
+    visible: 'Scaricato il .*'
+    timeout: 90000
+- assertVisible: '\d+ alimenti'
+- takeScreenshot: screenshots/catalogo-scaricato
+- tapOn: Aggiorna catalogo
+- extendedWaitUntil:
+    visible: 'Già aggiornato, controllato il .*'
+    timeout: 30000
+- assertVisible: '\d+ alimenti'

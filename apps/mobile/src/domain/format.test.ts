@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatAmount, formatNumber, MISSING } from './format';
+import { formatAmount, formatDate, formatNumber, formatTime, MISSING } from './format';
 
 describe('formatNumber', () => {
   it('usa la virgola decimale', () => {
@@ -41,5 +41,17 @@ describe('formatAmount', () => {
 
   it('mostra un dato mancante come trattino', () => {
     expect(formatAmount(null, 'kcal')).toBe('–');
+  });
+});
+
+describe('formatDate e formatTime', () => {
+  it("scrivono data e ora all'italiana, con gli zeri", () => {
+    const date = new Date(2026, 0, 5, 9, 3);
+    expect(formatDate(date)).toBe('05/01/2026');
+    expect(formatTime(date)).toBe('09:03');
+  });
+
+  it('usano le 24 ore', () => {
+    expect(formatTime(new Date(2026, 9, 27, 15, 42))).toBe('15:42');
   });
 });
