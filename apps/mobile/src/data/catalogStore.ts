@@ -65,6 +65,9 @@ function parseSnapshot(text: string): { version: string; foods: SnapshotFoodName
   ) {
     throw new SnapshotError('Il catalogo ricevuto non ha la forma attesa');
   }
+  // Il catalogo condiviso non è mai vuoto: uno vuoto viene da un backend senza catalogo
+  // caricato e cancellerebbe quello che il telefono usa offline.
+  if (data.foods.length === 0) throw new SnapshotError('Il catalogo ricevuto è vuoto');
   const foods = data.foods.map((food: unknown) => {
     if (
       !isRecord(food) ||
@@ -150,6 +153,11 @@ export async function replaceCatalog(
        FROM json_each(?, '$.foods') AS food, json_each(food.value, '$.values') AS entry`,
       snapshotText,
     );
+    // Con foreign_keys spento i riferimenti si controllano qui, prima del commit: un valore
+    // di un nutriente o di un alimento che non esiste rifiuta lo snapshot.
+    if ((await txn.getFirstAsync('PRAGMA foreign_key_check')) !== null) {
+      throw new SnapshotError('Il catalogo ricevuto ha valori di nutrienti sconosciuti');
+    }
     await setState(txn, STATE_KEYS.version, snapshot.version);
     await setState(txn, STATE_KEYS.etag, meta.etag);
     await setState(txn, STATE_KEYS.syncedAt, meta.syncedAt);

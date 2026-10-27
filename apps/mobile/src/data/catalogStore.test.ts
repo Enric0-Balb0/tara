@@ -81,6 +81,29 @@ describe('replaceCatalog', () => {
     expect(await valueCount('albume-crudo')).toBe(4);
   });
 
+  it('un valore di un nutriente sconosciuto rifiuta lo snapshot', async () => {
+    await replaceV1();
+    const before = await catalogInfo(db);
+    const [eggWhite, ...rest] = TEST_FOODS;
+    const ghost = {
+      ...eggWhite!,
+      values: { ...eggWhite!.values, ghost_g: { amount: 1, provenance: 'reference', confidence: 1 } },
+    };
+    await expect(
+      replaceCatalog(db, snapshotText([ghost, ...rest], 'v2'), { etag: '"v2"', syncedAt: SYNCED_AT }),
+    ).rejects.toBeInstanceOf(SnapshotError);
+    expect(await catalogInfo(db)).toEqual(before);
+  });
+
+  it('un catalogo senza alimenti non cancella quello di prima', async () => {
+    await replaceV1();
+    const before = await catalogInfo(db);
+    await expect(
+      replaceCatalog(db, snapshotText([], 'v2'), { etag: '"v2"', syncedAt: SYNCED_AT }),
+    ).rejects.toBeInstanceOf(SnapshotError);
+    expect(await catalogInfo(db)).toEqual(before);
+  });
+
   it('testo non JSON o senza foods dà SnapshotError', async () => {
     const meta = { etag: null, syncedAt: SYNCED_AT };
     await expect(replaceCatalog(db, '<html>', meta)).rejects.toBeInstanceOf(SnapshotError);
