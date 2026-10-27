@@ -18,8 +18,8 @@ npx expo install <package> -- --save-dev  # strumenti di sviluppo
 npx expo start              # dev server
 npm run typecheck           # tsc --noEmit
 npm run lint                # expo lint, zero warning
-npm test                    # vitest (solo src/domain)
-npm run test:coverage       # vitest con soglia 80% su src/domain, come in CI
+npm test                    # vitest (src/domain, src/theme, src/data)
+npm run test:coverage       # vitest con soglia 80%, come in CI
 npm run doctor              # expo-doctor: dipendenze e configurazione
 npx expo install --fix      # allinea versioni incompatibili
 
@@ -29,6 +29,10 @@ npx eas-cli@latest build -p android --profile development  # nuova development b
 npx eas-cli@latest build:run -p android --latest        # installa l'ultima build sull'emulatore
 npm run e2e:dev                                         # flussi Maestro sulla development build
 ```
+
+## Backend e catalogo
+
+All'avvio l'app scarica il catalogo dei generici da `GET /v1/catalog` e lo tiene in SQLite; da lì ricerca e scheda funzionano anche offline. L'indirizzo è `EXPO_PUBLIC_API_URL`, di default `http://10.0.2.2:8000`, cioè il PC visto dall'emulatore Android: per il primo download serve il backend acceso (`services/api`, `uv run uvicorn tara_api.main:app`, con il catalogo caricato). Per un telefono vero vedi `.env.example`. Stato del catalogo e "Aggiorna catalogo" nel menu Sviluppo del profilo. `npm run e2e:dev` salta i flussi con il tag `api` se il backend non risponde.
 
 Typecheck, lint, test con coverage e doctor devono passare prima di dichiarare finito un lavoro: sono i controlli del job "App mobile" in CI.
 
@@ -41,6 +45,7 @@ Ogni modifica visibile si controlla sull'emulatore, non solo nel codice: screens
 - `src/app/`: route di Expo Router. Ogni file è una schermata, `_layout.tsx` definisce i navigatori. Niente codice non-route qui.
 - `src/components/`: componenti riutilizzabili.
 - `src/domain/`: logica di dominio in TypeScript puro, senza React, testata con Vitest.
+- `src/data/`: database sul telefono (expo-sqlite) e sincronizzazione con il backend, in TypeScript puro dietro l'interfaccia `SqlDatabase`. I test usano SQLite vero in memoria con `node:sqlite`; nelle transazioni di expo-sqlite la connessione è nuova, quindi l'SQL non deve dipendere da pragma come `foreign_keys`.
 - Import con alias `@/` → `src/`.
 - `src/theme/`: token di colore, carattere, spazi e movimento. Lo stile viene solo da qui e dai componenti di `src/components/`, mai da valori scritti a mano; la specifica è `docs/design.md`.
 
