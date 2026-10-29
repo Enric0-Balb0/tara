@@ -200,6 +200,8 @@
                   "pm.test('risponde 200', () => pm.response.to.have.status(200));",
                   "pm.test('tutti i generici CIQUAL', () => pm.expect(body.foods.length).to.be.above(3000));",
                   "pm.test('ogni alimento ha la sua fonte', () => pm.expect(body.foods.every((food) => food.source === 'ciqual')).to.be.true);",
+                  "pm.test('la cottura c\\'è solo sui cotti', () => pm.expect(body.foods.every((food) => 'cooking' in food && (food.cooking === null || food.state === 'cooked'))).to.be.true);",
+                  "pm.test('nessun alimento sembra uguale a un altro', () => pm.expect(new Set(body.foods.map((food) => [food.name.toLowerCase(), food.state, food.cooking ?? ''].join('|'))).size).to.eql(body.foods.length));",
                   "pm.test('ETag uguale alla versione', () => pm.expect(pm.response.headers.get('ETag')).to.eql(`\"${body.version}\"`));",
                   "pm.collectionVariables.set('catalogEtag', pm.response.headers.get('ETag'));"
                 ]

@@ -66,6 +66,7 @@ class CatalogEntry(BaseModel):
     source_code: Text
     name: Text
     state: FoodState
+    cooking: Text | None = None
     names: list[CatalogName]
     nutrients: dict[str, CatalogValue]
 
@@ -117,7 +118,7 @@ def load_catalog(session: Session, entries: Iterable[CatalogEntry]) -> LoadSumma
     for entry in entries:
         key = (entry.source.value, entry.source_code)
         food_id = existing.pop(key, None)
-        row = {"name": entry.name, "state": entry.state}
+        row = {"name": entry.name, "state": entry.state, "cooking": entry.cooking}
         if food_id is None:
             food_id = new_id()
             new_foods.append(

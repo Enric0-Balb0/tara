@@ -33,7 +33,7 @@ router = APIRouter(prefix="/v1", tags=["catalogo"])
 SessionDep = Annotated[Session, Depends(get_session)]
 
 MACROS = ("energy_kcal", "protein_g", "carbs_g", "fat_g")
-SNAPSHOT_FORMAT = 2
+SNAPSHOT_FORMAT = 3
 """Da incrementare quando cambia la forma dello snapshot: cambia anche la sua versione."""
 
 search_text = func.tara_search_text
@@ -50,6 +50,7 @@ class FoodHit(BaseModel):
     id: uuid.UUID
     name: str
     state: FoodState
+    cooking: str | None
     base_unit: BaseUnit
     per_100: Per100
 
@@ -78,6 +79,7 @@ class FoodDetail(BaseModel):
     id: uuid.UUID
     name: str
     state: FoodState
+    cooking: str | None
     base_unit: BaseUnit
     source: FoodSource
     source_code: str | None
@@ -101,6 +103,8 @@ class SnapshotFood(BaseModel):
     id: uuid.UUID
     name: str
     state: FoodState
+    cooking: str | None
+    """Metodo di cottura dei cotti, in secondo piano accanto allo stato."""
     base_unit: BaseUnit
     source: FoodSource
     """Da dove vengono i valori: l'app la mostra nella scheda (RNF-10)."""
@@ -124,7 +128,7 @@ def search_foods(session: Session, query: str, limit: int) -> list[FoodHit]:
     """Ogni parola della ricerca deve comparire in un nome italiano dell'alimento.
 
     In testa i nomi che iniziano con la ricerca, poi il crudo (si pesa a crudo, principio 4),
-    poi i nomi più simili e i più corti.
+    poi i nomi più simili e i più corti; a parità di nome il cotto senza cottura precisata.
     """
     name = search_text(FoodName.name)
     words = [
@@ -152,6 +156,7 @@ def search_foods(session: Session, query: str, limit: int) -> list[FoodHit]:
             ranked.c.score.desc(),
             func.length(Food.name),
             Food.name,
+            Food.cooking.asc().nulls_first(),
         )
         .limit(limit)
     ).all()
@@ -168,6 +173,7 @@ def search_foods(session: Session, query: str, limit: int) -> list[FoodHit]:
             id=food.id,
             name=food.name,
             state=food.state,
+            cooking=food.cooking,
             base_unit=food.base_unit,
             per_100=Per100(**per_100[food.id]),
         )
@@ -207,6 +213,7 @@ def food_detail(food_id: uuid.UUID, session: SessionDep) -> FoodDetail:
         id=food.id,
         name=food.name,
         state=food.state,
+        cooking=food.cooking,
         base_unit=food.base_unit,
         source=food.source,
         source_code=food.source_code,
@@ -266,6 +273,7 @@ def build_snapshot(session: Session, version: str) -> CatalogSnapshot:
                 id=food.id,
                 name=food.name,
                 state=food.state,
+                cooking=food.cooking,
                 base_unit=food.base_unit,
                 source=food.source,
                 names=names[food.id],
