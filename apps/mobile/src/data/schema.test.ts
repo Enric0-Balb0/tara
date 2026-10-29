@@ -30,7 +30,7 @@ describe('initDatabase', () => {
     expect(tables.map((t) => t.name)).toEqual(['food', 'nutrient', 'nutrient_value', 'sync_state']);
     const version = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
     expect(version?.user_version).toBe(SCHEMA_VERSION);
-    expect(SCHEMA_VERSION).toBe(2);
+    expect(SCHEMA_VERSION).toBe(3);
   });
 
   it('rieseguita non tocca i dati', async () => {
@@ -103,7 +103,7 @@ describe('migrazione alla versione 2', () => {
     );
     await initDatabase(old);
     const version = await old.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
-    expect(version?.user_version).toBe(2);
+    expect(version?.user_version).toBe(SCHEMA_VERSION);
     expect(await old.getFirstAsync("SELECT name, source FROM food WHERE id = 'f1'")).toEqual({
       name: "Albume d'uovo",
       source: null,
@@ -116,5 +116,40 @@ describe('migrazione alla versione 2', () => {
         "INSERT INTO food (id, name, state, base_unit, search_text, source) VALUES ('f2', 'Pane', 'not_applicable', 'g', 'pane', 'wiki')",
       ),
     ).rejects.toThrow(/food_source_valid/);
+  });
+});
+
+describe('migrazione alla versione 3', () => {
+  it('migra un database della versione 2 senza perdere il catalogo', async () => {
+    const old = openTestDatabase();
+    await old.execAsync(MIGRATIONS[0] ?? '');
+    await old.execAsync(MIGRATIONS[1] ?? '');
+    await old.execAsync('PRAGMA user_version = 2');
+    await old.runAsync(
+      "INSERT INTO food (id, name, state, base_unit, search_text, source) VALUES ('f1', 'Broccoli', 'cooked', 'g', 'broccoli', 'ciqual')",
+    );
+    await initDatabase(old);
+    const version = await old.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
+    expect(version?.user_version).toBe(3);
+    expect(await old.getFirstAsync("SELECT name, cooking FROM food WHERE id = 'f1'")).toEqual({
+      name: 'Broccoli',
+      cooking: null,
+    });
+  });
+
+  it('la cottura vale solo per i cotti', async () => {
+    await expect(
+      db.runAsync(
+        "INSERT INTO food (id, name, state, base_unit, search_text, cooking) VALUES ('f2', 'Broccoli', 'raw', 'g', 'broccoli', 'al vapore')",
+      ),
+    ).rejects.toThrow(/food_cooking_valid/);
+  });
+
+  it('rifiuta una cottura vuota', async () => {
+    await expect(
+      db.runAsync(
+        "INSERT INTO food (id, name, state, base_unit, search_text, cooking) VALUES ('f3', 'Broccoli', 'cooked', 'g', 'broccoli', ' ')",
+      ),
+    ).rejects.toThrow(/food_cooking_valid/);
   });
 });

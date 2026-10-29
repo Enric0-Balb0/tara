@@ -71,6 +71,7 @@ export default function SearchScreen() {
           <ResultRow
             name={item.name}
             state={item.state}
+            cooking={item.cooking}
             kcalPer100={item.per100.energy_kcal}
             proteinPer100={item.per100.protein_g}
             onPress={() => router.push({ pathname: '/alimento/[id]', params: { id: item.id } })}

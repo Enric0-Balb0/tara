@@ -60,6 +60,14 @@ export default function DesignScreen() {
             onPress={() => setSheetOpen(true)}
           />
           <ResultRow
+            name="Broccoli"
+            state="cooked"
+            cooking="alla griglia, in padella, fritto"
+            kcalPer100={35.3}
+            proteinPer100={2.6}
+            onPress={() => undefined}
+          />
+          <ResultRow
             name={LONG_NAME}
             state="not_applicable"
             kcalPer100={null}

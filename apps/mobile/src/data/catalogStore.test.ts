@@ -59,6 +59,20 @@ describe('replaceCatalog', () => {
     expect(sources).toEqual([{ source: null }]);
   });
 
+  it('salva la cottura dei cotti e la mette nel testo di ricerca', async () => {
+    const foods = TEST_FOODS.map((food) =>
+      food.id === 'albume-cotto' ? { ...food, cooking: 'al vapore' } : food,
+    );
+    await replaceCatalog(db, snapshotText(foods), { etag: null, syncedAt: SYNCED_AT });
+    expect(
+      await db.getAllAsync('SELECT id, cooking, search_text FROM food ORDER BY id'),
+    ).toEqual([
+      { id: 'albume-cotto', cooking: 'al vapore', search_text: "albume d'uovo\nal vapore" },
+      { id: 'albume-crudo', cooking: null, search_text: "albume d'uovo" },
+      { id: 'caffe-espresso', cooking: null, search_text: 'caffe espresso\nespresso' },
+    ]);
+  });
+
   it('un nutriente assente non diventa zero', async () => {
     await replaceV1();
     const sugars = await db.getFirstAsync<{ n: number }>(

@@ -40,6 +40,8 @@ interface SnapshotFoodNames {
   base_unit: unknown;
   /** Assente negli snapshot del formato 1. */
   source?: unknown;
+  /** Assente negli snapshot fino al formato 2. */
+  cooking?: unknown;
   names: string[];
 }
 
@@ -85,8 +87,10 @@ function parseSnapshot(text: string): { version: string; foods: SnapshotFoodName
   return { version: data.version, foods };
 }
 
+/** Nomi e cottura, così "patata forno" trova la patata al forno. */
 function searchText(food: SnapshotFoodNames): string {
-  return [...new Set([food.name, ...food.names].map(searchKey))].join('\n');
+  const cooking = typeof food.cooking === 'string' ? [food.cooking] : [];
+  return [...new Set([food.name, ...food.names, ...cooking].map(searchKey))].join('\n');
 }
 
 async function setState(db: SqlDatabase, key: string, value: string | null): Promise<void> {
@@ -127,6 +131,7 @@ export async function replaceCatalog(
       food.base_unit,
       searchText(food),
       food.source ?? null,
+      food.cooking ?? null,
     ]),
   );
   let foodCount = 0;
@@ -147,10 +152,10 @@ export async function replaceCatalog(
       snapshotText,
     );
     await txn.runAsync(
-      `INSERT INTO food (id, user_id, name, state, base_unit, search_text, source)
+      `INSERT INTO food (id, user_id, name, state, base_unit, search_text, source, cooking)
        SELECT json_extract(value, '$[0]'), NULL, json_extract(value, '$[1]'),
               json_extract(value, '$[2]'), json_extract(value, '$[3]'), json_extract(value, '$[4]'),
-              json_extract(value, '$[5]')
+              json_extract(value, '$[5]'), json_extract(value, '$[6]')
        FROM json_each(?)`,
       foodRows,
     );
@@ -200,6 +205,8 @@ export interface FoodHit {
   id: string;
   name: string;
   state: FoodState;
+  /** Metodo di cottura dei cotti, se la fonte lo precisa ("al vapore"). */
+  cooking: string | null;
   baseUnit: BaseUnit;
   /** Un macro sconosciuto è null, non zero (principio 2). */
   per100: {
@@ -223,6 +230,7 @@ export interface FoodDetail {
   id: string;
   name: string;
   state: FoodState;
+  cooking: string | null;
   baseUnit: BaseUnit;
   /** Da dove vengono i valori; null per un catalogo scaricato prima del formato 2. */
   source: FoodSource | null;
@@ -234,6 +242,7 @@ interface FoodRow {
   id: string;
   name: string;
   state: FoodState;
+  cooking: string | null;
   base_unit: BaseUnit;
 }
 
@@ -249,20 +258,21 @@ function macroColumn(code: keyof FoodHit['per100']): string {
 /**
  * Le regole di `search_foods` del backend, senza la somiglianza a trigrammi: ogni parola
  * deve comparire in un nome; prima i nomi che iniziano con la ricerca, poi il crudo (si
- * pesa a crudo, principio 4), poi i nomi più corti.
+ * pesa a crudo, principio 4), poi i nomi più corti; a parità di nome il cotto senza cottura
+ * precisata.
  */
 export async function searchFoods(db: SqlDatabase, query: string, limit = 20): Promise<FoodHit[]> {
   const words = searchWords(query);
   const key = words.join(' ');
   if (key.length < MIN_QUERY_LENGTH) return [];
   const rows = await db.getAllAsync<FoodRow & FoodHit['per100']>(
-    `SELECT f.id, f.name, f.state, f.base_unit,
+    `SELECT f.id, f.name, f.state, f.cooking, f.base_unit,
             ${macroColumn('energy_kcal')}, ${macroColumn('protein_g')},
             ${macroColumn('carbs_g')}, ${macroColumn('fat_g')}
      FROM food AS f
      WHERE ${words.map(() => "f.search_text LIKE ? ESCAPE '\\'").join(' AND ')}
      ORDER BY (char(10) || f.search_text) LIKE ? ESCAPE '\\' DESC,
-              f.state = 'raw' DESC, length(f.name), f.name
+              f.state = 'raw' DESC, length(f.name), f.name, f.cooking IS NOT NULL, f.cooking
      LIMIT ?`,
     ...words.map((word) => `%${escapeLike(word)}%`),
     `%\n${escapeLike(key)}%`,
@@ -272,6 +282,7 @@ export async function searchFoods(db: SqlDatabase, query: string, limit = 20): P
     id: row.id,
     name: row.name,
     state: row.state,
+    cooking: row.cooking,
     baseUnit: row.base_unit,
     per100: {
       energy_kcal: row.energy_kcal,
@@ -284,7 +295,7 @@ export async function searchFoods(db: SqlDatabase, query: string, limit = 20): P
 
 export async function getFood(db: SqlDatabase, id: string): Promise<FoodDetail | null> {
   const food = await db.getFirstAsync<FoodRow & { source: FoodSource | null }>(
-    'SELECT id, name, state, base_unit, source FROM food WHERE id = ?',
+    'SELECT id, name, state, cooking, base_unit, source FROM food WHERE id = ?',
     id,
   );
   if (food === null) return null;
@@ -300,6 +311,7 @@ export async function getFood(db: SqlDatabase, id: string): Promise<FoodDetail |
     id: food.id,
     name: food.name,
     state: food.state,
+    cooking: food.cooking,
     baseUnit: food.base_unit,
     source: food.source,
     nutrients,

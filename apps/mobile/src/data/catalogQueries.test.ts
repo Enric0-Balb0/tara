@@ -36,6 +36,7 @@ describe('searchFoods', () => {
         id: 'albume-crudo',
         name: "Albume d'uovo",
         state: 'raw',
+        cooking: null,
         baseUnit: 'g',
         per100: { energy_kcal: 48.1, protein_g: 10.9, carbs_g: 0.73, fat_g: 0.17 },
       },
@@ -43,6 +44,7 @@ describe('searchFoods', () => {
         id: 'albume-cotto',
         name: "Albume d'uovo",
         state: 'cooked',
+        cooking: null,
         baseUnit: 'g',
         per100: { energy_kcal: 47.3, protein_g: 10.3, carbs_g: 1.12, fat_g: 0.17 },
       },
@@ -104,6 +106,7 @@ describe('getFood', () => {
       id: 'albume-crudo',
       name: "Albume d'uovo",
       state: 'raw',
+      cooking: null,
       baseUnit: 'g',
       source: 'ciqual',
       nutrients: [
@@ -168,5 +171,52 @@ describe('getVariant', () => {
     );
     expect(await getVariant(db, 'Agnello, costoletta', 'cooked')).toBeNull();
     expect(await getVariant(db, 'Agnello, costoletta', 'raw')).toBeNull();
+  });
+});
+
+describe('cottura', () => {
+  const broccoli = (id: string, state: string, cooking: string | null): TestFood => ({
+    id,
+    name: 'Broccoli',
+    state,
+    base_unit: 'g',
+    source: 'ciqual',
+    cooking,
+    names: ['Broccoli'],
+    values: {},
+  });
+
+  beforeEach(async () => {
+    await replaceCatalog(
+      db,
+      snapshotText([
+        ...TEST_FOODS,
+        broccoli('broccoli-lessati', 'cooked', 'lessato'),
+        broccoli('broccoli-vapore', 'cooked', 'al vapore'),
+        broccoli('broccoli-cotti', 'cooked', null),
+        broccoli('broccoli-crudi', 'raw', null),
+      ]),
+      { etag: null, syncedAt: '2026-10-29T10:00:00.000Z' },
+    );
+  });
+
+  it('a parità di nome il cotto senza cottura precisata viene prima', async () => {
+    const hits = await searchFoods(db, 'broccoli');
+    expect(hits.map((hit) => [hit.id, hit.cooking])).toEqual([
+      ['broccoli-crudi', null],
+      ['broccoli-cotti', null],
+      ['broccoli-vapore', 'al vapore'],
+      ['broccoli-lessati', 'lessato'],
+    ]);
+  });
+
+  it('si cerca anche per cottura', async () => {
+    expect((await searchFoods(db, 'broccoli vapore')).map((hit) => hit.id)).toEqual([
+      'broccoli-vapore',
+    ]);
+  });
+
+  it('la scheda ha la cottura', async () => {
+    expect((await getFood(db, 'broccoli-vapore'))?.cooking).toBe('al vapore');
   });
 });

@@ -13,6 +13,8 @@ export interface TestFood {
   base_unit: string;
   /** Assente negli snapshot del formato 1. */
   source?: string;
+  /** Assente negli snapshot fino al formato 2. */
+  cooking?: string | null;
   /** Nomi italiani per la ricerca, il canonico per primo. */
   names: string[];
   values: Record<string, TestValue>;

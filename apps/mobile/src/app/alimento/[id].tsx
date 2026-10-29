@@ -98,9 +98,16 @@ export default function FoodScreen() {
       >
         {back}
         <ScrollView contentContainerStyle={styles.content}>
-          <View style={styles.title}>
-            <TaraText variant="title">{food.name}</TaraText>
-            <StateTag state={food.state} />
+          <View style={styles.heading}>
+            <View style={styles.title}>
+              <TaraText variant="title">{food.name}</TaraText>
+              <StateTag state={food.state} />
+            </View>
+            {food.cooking !== null ? (
+              <TaraText variant="caption" color="textSecondary">
+                {food.cooking}
+              </TaraText>
+            ) : null}
           </View>
           <NutritionLabel per100={per100} grams={grams} />
           {usedGrams !== null ? (
@@ -167,6 +174,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   content: { padding: space.l, gap: space.l },
+  heading: { gap: space.xs },
   title: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: space.s },
   missing: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.l },
   secondary: {
