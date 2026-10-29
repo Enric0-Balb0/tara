@@ -11,6 +11,8 @@ export interface TestFood {
   name: string;
   state: string;
   base_unit: string;
+  /** Assente negli snapshot del formato 1. */
+  source?: string;
   /** Nomi italiani per la ricerca, il canonico per primo. */
   names: string[];
   values: Record<string, TestValue>;
@@ -35,6 +37,7 @@ export const TEST_FOODS: TestFood[] = [
     name: "Albume d'uovo",
     state: 'raw',
     base_unit: 'g',
+    source: 'ciqual',
     names: ["Albume d'uovo"],
     values: {
       energy_kcal: reference(48.1),
@@ -48,6 +51,7 @@ export const TEST_FOODS: TestFood[] = [
     name: "Albume d'uovo",
     state: 'cooked',
     base_unit: 'g',
+    source: 'ciqual',
     names: ["Albume d'uovo"],
     values: {
       energy_kcal: reference(47.3),
@@ -61,6 +65,7 @@ export const TEST_FOODS: TestFood[] = [
     name: 'Caffè espresso',
     state: 'not_applicable',
     base_unit: 'ml',
+    source: 'ciqual',
     names: ['Caffè espresso', 'Espresso'],
     values: { energy_kcal: reference(2), protein_g: reference(0.1) },
   },

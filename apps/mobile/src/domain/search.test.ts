@@ -20,6 +20,20 @@ describe('searchKey', () => {
   });
 });
 
+describe('searchKey come unaccent del backend', () => {
+  it("porta l'apostrofo tipografico a quello dritto", () => {
+    expect(searchKey('d’uovo')).toBe("d'uovo");
+    expect(searchKey('‘aʼ')).toBe("'a'");
+  });
+
+  it('scioglie le legature', () => {
+    expect(searchKey('Œuf')).toBe('oeuf');
+    expect(searchKey('Straße')).toBe('strasse');
+    expect(searchKey('Æbleskiver')).toBe('aebleskiver');
+    expect(searchKey('Smør')).toBe('smor');
+  });
+});
+
 describe('searchWords', () => {
   it('divide la ricerca in parole normalizzate', () => {
     expect(searchWords(' albume  crudo ')).toEqual(['albume', 'crudo']);

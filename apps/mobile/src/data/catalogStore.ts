@@ -4,8 +4,8 @@
  * ricerca e scheda leggono solo da SQLite, anche senza rete.
  */
 
-import type { BaseUnit, FoodState } from '@/domain/food';
-import { searchKey } from '@/domain/search';
+import type { BaseUnit, FoodSource, FoodState } from '@/domain/food';
+import { searchKey, searchWords } from '@/domain/search';
 
 import type { SqlDatabase } from './sql';
 
@@ -38,6 +38,8 @@ interface SnapshotFoodNames {
   name: string;
   state: unknown;
   base_unit: unknown;
+  /** Assente negli snapshot del formato 1. */
+  source?: unknown;
   names: string[];
 }
 
@@ -118,7 +120,14 @@ export async function replaceCatalog(
 ): Promise<{ version: string; foodCount: number }> {
   const snapshot = parseSnapshot(snapshotText);
   const foodRows = JSON.stringify(
-    snapshot.foods.map((food) => [food.id, food.name, food.state, food.base_unit, searchText(food)]),
+    snapshot.foods.map((food) => [
+      food.id,
+      food.name,
+      food.state,
+      food.base_unit,
+      searchText(food),
+      food.source ?? null,
+    ]),
   );
   let foodCount = 0;
   await db.withExclusiveTransactionAsync(async (txn) => {
@@ -138,13 +147,14 @@ export async function replaceCatalog(
       snapshotText,
     );
     await txn.runAsync(
-      `INSERT INTO food (id, user_id, name, state, base_unit, search_text)
+      `INSERT INTO food (id, user_id, name, state, base_unit, search_text, source)
        SELECT json_extract(value, '$[0]'), NULL, json_extract(value, '$[1]'),
-              json_extract(value, '$[2]'), json_extract(value, '$[3]'), json_extract(value, '$[4]')
+              json_extract(value, '$[2]'), json_extract(value, '$[3]'), json_extract(value, '$[4]'),
+              json_extract(value, '$[5]')
        FROM json_each(?)`,
       foodRows,
     );
-    // Circa 90 000 valori in una sola istruzione, letti direttamente dal testo ricevuto.
+    // Circa 69 000 valori in una sola istruzione, letti direttamente dal testo ricevuto.
     await txn.runAsync(
       `INSERT INTO nutrient_value (food_id, nutrient_code, amount_per_100, provenance, confidence)
        SELECT json_extract(food.value, '$.id'), entry.key,
@@ -214,6 +224,8 @@ export interface FoodDetail {
   name: string;
   state: FoodState;
   baseUnit: BaseUnit;
+  /** Da dove vengono i valori; null per un catalogo scaricato prima del formato 2. */
+  source: FoodSource | null;
   /** Solo i nutrienti noti, nell'ordine di visualizzazione. */
   nutrients: FoodNutrient[];
 }
@@ -242,9 +254,9 @@ function macroColumn(code: keyof FoodHit['per100']): string {
  * pesa a crudo, principio 4), poi i nomi più corti.
  */
 export async function searchFoods(db: SqlDatabase, query: string, limit = 20): Promise<FoodHit[]> {
-  const key = searchKey(query);
+  const words = searchWords(query);
+  const key = words.join(' ');
   if (key.length < MIN_QUERY_LENGTH) return [];
-  const words = key.split(' ');
   const rows = await db.getAllAsync<FoodRow & FoodHit['per100']>(
     `SELECT f.id, f.name, f.state, f.base_unit,
             ${macroColumn('energy_kcal')}, ${macroColumn('protein_g')},
@@ -273,8 +285,8 @@ export async function searchFoods(db: SqlDatabase, query: string, limit = 20): P
 }
 
 export async function getFood(db: SqlDatabase, id: string): Promise<FoodDetail | null> {
-  const food = await db.getFirstAsync<FoodRow>(
-    'SELECT id, name, state, base_unit FROM food WHERE id = ?',
+  const food = await db.getFirstAsync<FoodRow & { source: FoodSource | null }>(
+    'SELECT id, name, state, base_unit, source FROM food WHERE id = ?',
     id,
   );
   if (food === null) return null;
@@ -286,5 +298,29 @@ export async function getFood(db: SqlDatabase, id: string): Promise<FoodDetail |
      ORDER BY n.display_order`,
     id,
   );
-  return { id: food.id, name: food.name, state: food.state, baseUnit: food.base_unit, nutrients };
+  return {
+    id: food.id,
+    name: food.name,
+    state: food.state,
+    baseUnit: food.base_unit,
+    source: food.source,
+    nutrients,
+  };
+}
+
+/**
+ * L'altra variante dello stesso alimento, cruda o cotta: nel catalogo hanno lo stesso nome
+ * e lo stato è un campo (principio 4). null se il catalogo non ce l'ha.
+ */
+export async function getVariant(
+  db: SqlDatabase,
+  food: { name: string; state: FoodState },
+  state: 'raw' | 'cooked',
+): Promise<string | null> {
+  const row = await db.getFirstAsync<{ id: string }>(
+    'SELECT id FROM food WHERE user_id IS NULL AND name = ? AND state = ? ORDER BY id LIMIT 1',
+    food.name,
+    state,
+  );
+  return row?.id ?? null;
 }

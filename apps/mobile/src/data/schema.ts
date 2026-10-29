@@ -6,8 +6,8 @@
 
 import type { SqlDatabase } from './sql';
 
-/** La migrazione `i` porta il database dalla versione `i` alla `i + 1`. */
-const MIGRATIONS: readonly string[] = [
+/** La migrazione `i` porta il database dalla versione `i` alla `i + 1`. Esportate per i test. */
+export const MIGRATIONS: readonly string[] = [
   `
   CREATE TABLE nutrient (
     code TEXT PRIMARY KEY NOT NULL,
@@ -47,6 +47,13 @@ const MIGRATIONS: readonly string[] = [
     key TEXT PRIMARY KEY NOT NULL,
     value TEXT NOT NULL
   ) STRICT;
+  `,
+  // v2: da dove vengono i valori (snapshot del formato 2). NULL per il catalogo scaricato
+  // prima: la fonte arriva con il download successivo.
+  `
+  ALTER TABLE food ADD COLUMN source TEXT
+    CONSTRAINT food_source_valid
+    CHECK (source IN ('ciqual', 'usda', 'open_food_facts', 'label', 'manual', 'recipe'));
   `,
 ];
 

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { getFood, replaceCatalog, searchFoods } from './catalogStore';
+import { getFood, getVariant, replaceCatalog, searchFoods } from './catalogStore';
 import { initDatabase } from './schema';
 import type { SqlDatabase } from './sql';
 import { openTestDatabase } from './testing/nodeDatabase';
@@ -88,6 +88,10 @@ describe('searchFoods', () => {
     expect(await searchFoods(db, '  ')).toEqual([]);
   });
 
+  it("l'apostrofo tipografico trova l'albume", async () => {
+    expect(names(await searchFoods(db, 'albume d’uovo'))).toEqual(["Albume d'uovo", "Albume d'uovo"]);
+  });
+
   it('rispetta il limite', async () => {
     expect(await searchFoods(db, 'albume', 1)).toHaveLength(1);
   });
@@ -101,6 +105,7 @@ describe('getFood', () => {
       name: "Albume d'uovo",
       state: 'raw',
       baseUnit: 'g',
+      source: 'ciqual',
       nutrients: [
         { code: 'energy_kcal', name: 'Energia', unit: 'kcal', amountPer100: 48.1, provenance: 'reference', confidence: 1 },
         { code: 'fat_g', name: 'Grassi', unit: 'g', amountPer100: 0.17, provenance: 'reference', confidence: 1 },
@@ -112,5 +117,18 @@ describe('getFood', () => {
 
   it('un alimento inesistente non ha scheda', async () => {
     expect(await getFood(db, 'inesistente')).toBeNull();
+  });
+});
+
+describe('getVariant', () => {
+  it('trova la variante cotta e quella cruda', async () => {
+    const eggWhite = { name: "Albume d'uovo", state: 'raw' } as const;
+    expect(await getVariant(db, eggWhite, 'cooked')).toBe('albume-cotto');
+    expect(await getVariant(db, { ...eggWhite, state: 'cooked' }, 'raw')).toBe('albume-crudo');
+  });
+
+  it("senza variante non c'è niente da cambiare", async () => {
+    expect(await getVariant(db, { name: 'Caffè espresso', state: 'not_applicable' }, 'cooked')).toBeNull();
+    expect(await getVariant(db, { name: 'Uovo intero', state: 'raw' }, 'cooked')).toBeNull();
   });
 });
