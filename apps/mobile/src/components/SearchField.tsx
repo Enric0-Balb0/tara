@@ -1,3 +1,4 @@
+import { type ComponentRef, useRef } from 'react';
 import { StyleSheet, TextInput, View } from 'react-native';
 
 import { radius, space, touch } from '@/theme/layout';
@@ -16,12 +17,14 @@ interface Props {
 /** Campo "Cerca un alimento": stessa forma della barra in basso, con il tasto per svuotarlo. */
 export function SearchField({ value, onChangeText, autoFocus = false }: Props) {
   const { colors } = useTheme();
+  const input = useRef<ComponentRef<typeof TextInput>>(null);
   return (
     <View
       style={[styles.field, { backgroundColor: colors.surface, borderColor: colors.borderStrong }]}
     >
       <Icon name="search" color="text" size={20} />
       <TextInput
+        ref={input}
         value={value}
         onChangeText={onChangeText}
         autoFocus={autoFocus}
@@ -37,7 +40,11 @@ export function SearchField({ value, onChangeText, autoFocus = false }: Props) {
       />
       {value !== '' ? (
         <PressableScale
-          onPress={() => onChangeText('')}
+          onPress={() => {
+            // Chi svuota la ricerca vuole riscrivere subito: il campo resta pronto.
+            onChangeText('');
+            input.current?.focus();
+          }}
           accessibilityLabel="Cancella la ricerca"
           style={styles.clear}
         >

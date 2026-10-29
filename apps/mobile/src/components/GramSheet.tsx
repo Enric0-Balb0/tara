@@ -122,10 +122,13 @@ function OpenSheet({
   return (
     <>
       <Animated.View entering={fadeIn} exiting={fadeOut} style={StyleSheet.absoluteFill}>
+        {/* Lo sfondo chiude al tocco ma non è un controllo per il lettore dello schermo: c'è
+            già il pulsante "Chiudi", e due controlli con lo stesso nome confonderebbero. */}
         <Pressable
           style={[StyleSheet.absoluteFill, styles.backdrop]}
           onPress={onClose}
-          accessibilityLabel="Chiudi"
+          accessible={false}
+          importantForAccessibility="no"
         />
       </Animated.View>
       <Animated.View

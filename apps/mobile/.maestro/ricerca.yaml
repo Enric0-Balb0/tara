@@ -11,6 +11,14 @@ tags:
     timeout: 30000
 - tapOn: Cerca un alimento
 - inputText: albume
+# Sull'emulatore Gboard propone a volte la prova della penna e si prende il testo.
+- runFlow:
+    when:
+      visible: Try out your stylus
+    commands:
+      - tapOn: Cancel
+      - eraseText: 20
+      - inputText: albume
 # Il primo download comprende circa 3500 alimenti: la ricerca riparte quando arrivano.
 - extendedWaitUntil:
     visible: "Albume d'uovo in polvere"
@@ -56,6 +64,14 @@ tags:
 - tapOn: Indietro
 - tapOn: Cancella la ricerca
 - inputText: baba
+# Sull'emulatore Gboard propone a volte la prova della penna e si prende il testo.
+- runFlow:
+    when:
+      visible: Try out your stylus
+    commands:
+      - tapOn: Cancel
+      - eraseText: 20
+      - inputText: baba
 - extendedWaitUntil:
     visible: 'Babà al rum'
     timeout: 10000
