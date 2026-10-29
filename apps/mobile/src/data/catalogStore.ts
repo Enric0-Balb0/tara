@@ -5,7 +5,7 @@
  */
 
 import type { BaseUnit, FoodSource, FoodState } from '@/domain/food';
-import { searchKey, searchWords } from '@/domain/search';
+import { MIN_QUERY_LENGTH, searchKey, searchWords } from '@/domain/search';
 
 import type { SqlDatabase } from './sql';
 
@@ -236,8 +236,6 @@ interface FoodRow {
   state: FoodState;
   base_unit: BaseUnit;
 }
-
-const MIN_QUERY_LENGTH = 2;
 
 function escapeLike(text: string): string {
   return text.replace(/[\\%_]/g, (char) => `\\${char}`);

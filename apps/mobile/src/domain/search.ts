@@ -18,6 +18,9 @@ const REPLACEMENTS: readonly (readonly [RegExp, string])[] = [
   [/\u00f8/g, 'o'],
 ];
 
+/** Più corta di così, dopo searchKey, una ricerca troverebbe quasi tutto. */
+export const MIN_QUERY_LENGTH = 2;
+
 export function searchKey(text: string): string {
   let key = text.normalize('NFD').replace(COMBINING_MARKS, '').toLowerCase();
   for (const [pattern, replacement] of REPLACEMENTS) key = key.replace(pattern, replacement);
