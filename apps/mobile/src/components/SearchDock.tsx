@@ -9,7 +9,8 @@ import { TaraText } from './TaraText';
 
 interface Props {
   onSearch: () => void;
-  onScan: () => void;
+  /** Senza, lo scanner non c'è: arriva con i prodotti di marca (RF-10, F1). */
+  onScan?: () => void;
 }
 
 /** Ricerca e scanner, sempre in basso sopra le tab: a un tocco da ogni schermata. */
@@ -30,13 +31,15 @@ export function SearchDock({ onSearch, onScan }: Props) {
         <Icon name="search" color="text" size={20} />
         <TaraText color="textSecondary">Cerca un alimento</TaraText>
       </PressableScale>
-      <PressableScale
-        onPress={onScan}
-        accessibilityLabel="Scansiona un codice a barre"
-        style={[styles.scan, { backgroundColor: colors.action }]}
-      >
-        <Icon name="scan" color="background" />
-      </PressableScale>
+      {onScan ? (
+        <PressableScale
+          onPress={onScan}
+          accessibilityLabel="Scansiona un codice a barre"
+          style={[styles.scan, { backgroundColor: colors.action }]}
+        >
+          <Icon name="scan" color="background" />
+        </PressableScale>
+      ) : null}
     </View>
   );
 }

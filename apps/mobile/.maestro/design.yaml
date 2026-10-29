@@ -55,3 +55,19 @@ tags:
 - tapOn:
     id: tasto-0
 - assertVisible: La tara supera il peso
+
+# Foglio solo calcolo (F0): nessun pasto, nessun "Aggiungi e continua", verbo "Usa".
+- tapOn: Chiudi
+- scrollUntilVisible:
+    element: Foglio solo calcolo
+- tapOn: Foglio solo calcolo
+- tapOn:
+    id: tasto-2
+- tapOn:
+    id: tasto-0
+- tapOn:
+    id: tasto-0
+- assertVisible: Usa 200 g
+- assertNotVisible: Aggiungi e continua
+- assertNotVisible: Crudo
+- takeScreenshot: screenshots/design-foglio-calcolo
