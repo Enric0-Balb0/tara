@@ -121,14 +121,52 @@ describe('getFood', () => {
 });
 
 describe('getVariant', () => {
+  const food = (id: string, name: string, state: string): TestFood => ({
+    id,
+    name,
+    state,
+    base_unit: 'g',
+    source: 'ciqual',
+    names: [name],
+    values: {},
+  });
+
   it('trova la variante cotta e quella cruda', async () => {
-    const eggWhite = { name: "Albume d'uovo", state: 'raw' } as const;
-    expect(await getVariant(db, eggWhite, 'cooked')).toBe('albume-cotto');
-    expect(await getVariant(db, { ...eggWhite, state: 'cooked' }, 'raw')).toBe('albume-crudo');
+    expect(await getVariant(db, "Albume d'uovo", 'cooked')).toBe('albume-cotto');
+    expect(await getVariant(db, "Albume d'uovo", 'raw')).toBe('albume-crudo');
   });
 
   it("senza variante non c'è niente da cambiare", async () => {
-    expect(await getVariant(db, { name: 'Caffè espresso', state: 'not_applicable' }, 'cooked')).toBeNull();
-    expect(await getVariant(db, { name: 'Uovo intero', state: 'raw' }, 'cooked')).toBeNull();
+    expect(await getVariant(db, 'Caffè espresso', 'cooked')).toBeNull();
+    expect(await getVariant(db, 'Uovo intero', 'cooked')).toBeNull();
+  });
+
+  it('con più varianti cotte non sceglie a caso', async () => {
+    await replaceCatalog(
+      db,
+      snapshotText([
+        ...TEST_FOODS,
+        food('broccoli-crudi', 'Broccoli', 'raw'),
+        food('broccoli-vapore', 'Broccoli', 'cooked'),
+        food('broccoli-bolliti', 'Broccoli', 'cooked'),
+      ]),
+      { etag: null, syncedAt: '2026-10-29T10:00:00.000Z' },
+    );
+    expect(await getVariant(db, 'Broccoli', 'cooked')).toBeNull();
+  });
+
+  it('con due crude e una cotta non cambia, così il ritorno porta sempre al punto di partenza', async () => {
+    await replaceCatalog(
+      db,
+      snapshotText([
+        ...TEST_FOODS,
+        food('agnello-a', 'Agnello, costoletta', 'raw'),
+        food('agnello-b', 'Agnello, costoletta', 'raw'),
+        food('agnello-cotto', 'Agnello, costoletta', 'cooked'),
+      ]),
+      { etag: null, syncedAt: '2026-10-29T10:00:00.000Z' },
+    );
+    expect(await getVariant(db, 'Agnello, costoletta', 'cooked')).toBeNull();
+    expect(await getVariant(db, 'Agnello, costoletta', 'raw')).toBeNull();
   });
 });

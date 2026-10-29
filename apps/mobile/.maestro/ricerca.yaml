@@ -44,12 +44,18 @@ tags:
 - tapOn:
     id: tasto-0
 - assertVisible: Usa 200 g
+# Il lettore dello schermo legge i grammi per esteso.
+- assertVisible: Usa 200 grammi
 - assertNotVisible: Aggiungi e continua
 - takeScreenshot: screenshots/foglio-calcolo
 - tapOn: Usa 200 g
 - assertVisible: per 200 g
 - assertVisible: '21,8 g'
 - takeScreenshot: screenshots/scheda-200g
+- tapOn: Calcola per i tuoi grammi
+- assertVisible: 'Ultima volta: 200 g'
+- tapOn: Chiudi
+- assertVisible: Torna a 100 grammi
 - tapOn: Torna a 100 g
 - assertVisible: per 100 g
 

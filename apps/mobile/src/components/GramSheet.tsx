@@ -108,6 +108,7 @@ function OpenSheet({
   const tooMuchTare = tareExceedsWeight(entry);
   const addable = canAdd(entry);
   const netText = formatAmount(net, 'grams');
+  const lastLabel = mealName ? `Ultima volta a ${mealName.toLowerCase()}:` : 'Ultima volta:';
 
   function confirm(andContinue: boolean) {
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -248,12 +249,11 @@ function OpenSheet({
             ) : lastGrams !== undefined ? (
               <PressableScale
                 onPress={() => setEntry(startEntry(lastGrams))}
+                accessibilityLabel={`${lastLabel} ${formatAmount(lastGrams, 'grams')} grammi`}
                 style={[styles.lastUsed, { borderColor: colors.borderStrong }]}
               >
                 <TaraText variant="caption">
-                  {mealName
-                    ? `Ultima volta a ${mealName.toLowerCase()}: ${formatAmount(lastGrams, 'grams')} g`
-                    : `Ultima quantità: ${formatAmount(lastGrams, 'grams')} g`}
+                  {lastLabel} {formatAmount(lastGrams, 'grams')} g
                 </TaraText>
               </PressableScale>
             ) : null}
@@ -302,6 +302,7 @@ function OpenSheet({
           <PressableScale
             disabled={!addable}
             onPress={() => confirm(false)}
+            accessibilityLabel={addable ? `${confirmVerb} ${netText} grammi` : confirmVerb}
             style={[styles.action, { backgroundColor: colors.action }]}
           >
             <TaraText

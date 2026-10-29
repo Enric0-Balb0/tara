@@ -39,7 +39,7 @@ export default function FoodScreen() {
       const found = await getFood(db, id);
       const other =
         found && found.state !== 'not_applicable'
-          ? await getVariant(db, found, found.state === 'raw' ? 'cooked' : 'raw')
+          ? await getVariant(db, found.name, found.state === 'raw' ? 'cooked' : 'raw')
           : null;
       if (current) {
         setFood(found);
@@ -89,36 +89,45 @@ export default function FoodScreen() {
 
   return (
     <View style={screenStyle}>
-      {back}
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.title}>
-          <TaraText variant="title">{food.name}</TaraText>
-          <StateTag state={food.state} />
-        </View>
-        <NutritionLabel per100={per100} grams={grams} />
-        {usedGrams !== null ? (
+      {/* Con il foglio aperto la scheda dietro non esiste per il lettore dello schermo:
+          su Android accessibilityViewIsModal del foglio non basta. */}
+      <View
+        style={styles.body}
+        importantForAccessibility={sheetOpen ? 'no-hide-descendants' : 'auto'}
+        accessibilityElementsHidden={sheetOpen}
+      >
+        {back}
+        <ScrollView contentContainerStyle={styles.content}>
+          <View style={styles.title}>
+            <TaraText variant="title">{food.name}</TaraText>
+            <StateTag state={food.state} />
+          </View>
+          <NutritionLabel per100={per100} grams={grams} />
+          {usedGrams !== null ? (
+            <PressableScale
+              onPress={() => setUsedGrams(null)}
+              accessibilityLabel="Torna a 100 grammi"
+              style={[styles.secondary, { borderColor: colors.borderStrong }]}
+            >
+              <TaraText variant="bodyStrong">Torna a 100 g</TaraText>
+            </PressableScale>
+          ) : null}
+          {source !== null ? (
+            <TaraText variant="caption" color="textSecondary">
+              Fonte: {source}
+            </TaraText>
+          ) : null}
+        </ScrollView>
+        <View style={[styles.actions, { paddingBottom: space.l + insets.bottom }]}>
           <PressableScale
-            onPress={() => setUsedGrams(null)}
-            style={[styles.secondary, { borderColor: colors.borderStrong }]}
+            onPress={() => setSheetOpen(true)}
+            style={[styles.primary, { backgroundColor: colors.action }]}
           >
-            <TaraText variant="bodyStrong">Torna a 100 g</TaraText>
+            <TaraText variant="bodyStrong" color="background">
+              Calcola per i tuoi grammi
+            </TaraText>
           </PressableScale>
-        ) : null}
-        {source !== null ? (
-          <TaraText variant="caption" color="textSecondary">
-            Fonte: {source}
-          </TaraText>
-        ) : null}
-      </ScrollView>
-      <View style={[styles.actions, { paddingBottom: space.l + insets.bottom }]}>
-        <PressableScale
-          onPress={() => setSheetOpen(true)}
-          style={[styles.primary, { backgroundColor: colors.action }]}
-        >
-          <TaraText variant="bodyStrong" color="background">
-            Calcola per i tuoi grammi
-          </TaraText>
-        </PressableScale>
+        </View>
       </View>
 
       <GramSheet
@@ -135,7 +144,11 @@ export default function FoodScreen() {
           variantId === null
             ? undefined
             : (state) => {
-                if (state !== food.state) router.setParams({ id: variantId });
+                if (state === food.state) return;
+                // Le coppie sono uniche (getVariant): la variante della variante è l'alimento
+                // di partenza, già noto prima che la nuova scheda finisca di caricarsi.
+                setVariantId(food.id);
+                router.setParams({ id: variantId });
               }
         }
       />
@@ -145,6 +158,7 @@ export default function FoodScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
+  body: { flex: 1 },
   back: {
     width: touch.min,
     height: touch.min,

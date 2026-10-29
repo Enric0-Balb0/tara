@@ -307,18 +307,22 @@ export async function getFood(db: SqlDatabase, id: string): Promise<FoodDetail |
 }
 
 /**
- * L'altra variante dello stesso alimento, cruda o cotta: nel catalogo hanno lo stesso nome
- * e lo stato è un campo (principio 4). null se il catalogo non ce l'ha.
+ * La variante cruda o cotta di un alimento: nel catalogo hanno lo stesso nome e lo stato è
+ * un campo (principio 4). Solo se il nome ha esattamente un crudo e un cotto: con più
+ * preparazioni dello stesso nome (es. broccoli al vapore e bolliti) si sceglierebbe a caso,
+ * e il ritorno non porterebbe sempre all'alimento di partenza.
  */
 export async function getVariant(
   db: SqlDatabase,
-  food: { name: string; state: FoodState },
+  name: string,
   state: 'raw' | 'cooked',
 ): Promise<string | null> {
-  const row = await db.getFirstAsync<{ id: string }>(
-    'SELECT id FROM food WHERE user_id IS NULL AND name = ? AND state = ? ORDER BY id LIMIT 1',
-    food.name,
-    state,
+  const rows = await db.getAllAsync<{ id: string; state: FoodState }>(
+    "SELECT id, state FROM food WHERE user_id IS NULL AND name = ? AND state IN ('raw', 'cooked')",
+    name,
   );
-  return row?.id ?? null;
+  const raw = rows.filter((row) => row.state === 'raw');
+  const cooked = rows.filter((row) => row.state === 'cooked');
+  if (raw.length !== 1 || cooked.length !== 1) return null;
+  return (state === 'raw' ? raw[0]?.id : cooked[0]?.id) ?? null;
 }
