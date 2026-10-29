@@ -1,8 +1,10 @@
-import { Link, Tabs } from 'expo-router';
-import { StyleSheet } from 'react-native';
+import { Link, Tabs, useRouter } from 'expo-router';
+import { BottomTabBar } from 'expo-router/tabs';
+import { StyleSheet, View } from 'react-native';
 
 import { Icon, type IconName } from '@/components/Icon';
 import { PressableScale } from '@/components/PressableScale';
+import { SearchDock } from '@/components/SearchDock';
 import { touch } from '@/theme/layout';
 import { textStyles } from '@/theme/typography';
 import { useTheme } from '@/theme/useTheme';
@@ -24,11 +26,21 @@ function ProfileButton() {
   );
 }
 
-/** Le quattro tab di docs/design.md; il profilo si apre dall'intestazione di Oggi. */
+/**
+ * Le quattro tab di docs/design.md; il profilo si apre dall'intestazione di Oggi. La ricerca
+ * sta sopra le tab, a un tocco da ogni schermata; lo scanner arriva in F1 (RF-10).
+ */
 export default function TabsLayout() {
   const { colors } = useTheme();
+  const router = useRouter();
   return (
     <Tabs
+      tabBar={(props) => (
+        <View>
+          <SearchDock onSearch={() => router.push('/cerca')} />
+          <BottomTabBar {...props} />
+        </View>
+      )}
       screenOptions={{
         headerStyle: { backgroundColor: colors.background },
         headerTintColor: colors.text,

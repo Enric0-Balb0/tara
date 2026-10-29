@@ -6,6 +6,7 @@ import { PressableScale } from '@/components/PressableScale';
 import { TaraText } from '@/components/TaraText';
 import { useCatalog } from '@/data/CatalogProvider';
 import { describeCatalog } from '@/data/catalogStatus';
+import { CIQUAL_ATTRIBUTION } from '@/domain/sources';
 import { radius, space, touch } from '@/theme/layout';
 import { useTheme } from '@/theme/useTheme';
 
@@ -21,6 +22,15 @@ export default function ProfileScreen() {
         <TaraText variant="section">Profilo</TaraText>
         <TaraText color="textSecondary" style={styles.center}>
           Tipi di giornata e target, fase della dieta, stack integratori e notifiche.
+        </TaraText>
+      </View>
+
+      <View style={styles.section}>
+        <TaraText variant="minimum" color="textSecondary">
+          Fonti dei dati
+        </TaraText>
+        <TaraText variant="caption" color="textSecondary">
+          Valori nutrizionali dei generici: {CIQUAL_ATTRIBUTION}
         </TaraText>
       </View>
 
@@ -53,7 +63,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, padding: space.l },
   placeholder: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.s },
   center: { textAlign: 'center' },
-  section: { gap: space.s },
+  section: { gap: space.s, marginTop: space.l },
   catalog: {
     borderRadius: radius.button,
     borderWidth: 1,

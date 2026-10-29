@@ -1,0 +1,61 @@
+# Ricerca e scheda alimento (development build, con il backend acceso per il primo download):
+# cerco albume, vedo i valori giusti e la fonte, calcolo i grammi. Il crudo viene prima del cotto.
+appId: com.enricobalbo.tara
+name: Ricerca e scheda alimento
+tags:
+  - api
+---
+- runFlow: subflows/avvio.yaml
+- extendedWaitUntil:
+    visible: Diario di oggi
+    timeout: 30000
+- tapOn: Cerca un alimento
+- inputText: albume
+# Il primo download comprende circa 3500 alimenti: la ricerca riparte quando arrivano.
+- extendedWaitUntil:
+    visible: "Albume d'uovo in polvere"
+    timeout: 90000
+- assertVisible: cotto
+- takeScreenshot: screenshots/ricerca-albume
+- tapOn:
+    text: "Albume d'uovo"
+    index: 0
+- extendedWaitUntil:
+    visible: per 100 g
+    timeout: 10000
+- assertVisible: '10,9 g'
+- assertVisible: 'Fonte: CIQUAL 2025 \(Anses\)'
+- assertNotVisible: cotto
+- takeScreenshot: screenshots/scheda-albume
+
+- tapOn: Calcola per i tuoi grammi
+- tapOn:
+    id: tasto-2
+- tapOn:
+    id: tasto-0
+- tapOn:
+    id: tasto-0
+- assertVisible: Usa 200 g
+- assertNotVisible: Aggiungi e continua
+- takeScreenshot: screenshots/foglio-calcolo
+- tapOn: Usa 200 g
+- assertVisible: per 200 g
+- assertVisible: '21,8 g'
+- takeScreenshot: screenshots/scheda-200g
+- tapOn: Torna a 100 g
+- assertVisible: per 100 g
+
+# Il foglio passa alla variante cotta dello stesso alimento.
+- tapOn: Calcola per i tuoi grammi
+- tapOn: Cotto
+- tapOn: Chiudi
+- assertVisible: '10,3 g'
+- assertVisible: cotto
+
+# Senza accenti si trova lo stesso.
+- tapOn: Indietro
+- tapOn: Cancella la ricerca
+- inputText: baba
+- extendedWaitUntil:
+    visible: 'Babà al rum'
+    timeout: 10000
