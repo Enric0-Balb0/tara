@@ -50,6 +50,13 @@ NAME_COMPOUNDS = (
     "pressata non cotta",
 )
 _STATE_SUFFIX = {"raw": r"crud[oaie]", "cooked": r"cott[oaie]"}
+# Field names of the structured answer that sometimes leak into a name ("Mandorle,state:").
+_LEAKED_FIELD = re.compile(
+    r"\b(?:state|cooking|part)\s*:|\b(?:name_it|aliases_it)\b", re.IGNORECASE
+)
+
+NameKey = tuple[str, str, State, str | None]
+"""Codice, nome, stato e cottura: quello che distingue un alimento nell'app."""
 
 
 class FoodTranslation(BaseModel):
@@ -146,6 +153,8 @@ def review_issues(item: FoodTranslation, food: SourceFood, glossary: Glossary) -
     issues = check_state(glossary, {"fr": food.name_fr, "en": food.name_en}, item.state)
     if has_state_words(item.name_it):
         issues.append(f"stato nel nome: {item.name_it!r} (va solo nel campo state)")
+    if _LEAKED_FIELD.search(item.name_it):
+        issues.append(f"frammento della risposta nel nome: {item.name_it!r}")
     return issues
 
 
@@ -183,10 +192,30 @@ def finalize(record: TranslationRecord, food: SourceFood, glossary: Glossary) ->
         **record,
         "name_it": name,
         "aliases_it": clean_aliases(name, record["aliases_it"]),
-        # La cottura è un dettaglio secondario e vale solo per i cotti.
-        "cooking": record["cooking"] if record["state"] == "cooked" else None,
+        "cooking": normalize_cooking(record["cooking"], record["state"]),
         "issues": review_issues(item, food, glossary),
     }
+
+
+def normalize_cooking(cooking: str | None, state: State) -> str | None:
+    """La cottura è un dettaglio secondario e vale solo per i cotti; "cotto" come cottura
+    ripete lo stato e non dice niente."""
+    text = (cooking or "").strip()
+    if state != "cooked" or not text or _normalized(text) in STATE_WORDS:
+        return None
+    return text
+
+
+def same_name_groups(keys: Iterable[NameKey]) -> list[list[str]]:
+    """Gruppi di alimenti che nell'app sembrerebbero uguali: stesso nome senza distinguere
+    maiuscole (come `lower()` del database), stesso stato e stessa cottura.
+
+    Ogni gruppo ha almeno due codici, nell'ordine d'ingresso.
+    """
+    groups: dict[tuple[str, State, str | None], list[str]] = {}
+    for code, name, state, cooking in keys:
+        groups.setdefault((name.lower(), state, cooking), []).append(code)
+    return [codes for codes in groups.values() if len(codes) > 1]
 
 
 def clean_aliases(name: str, aliases: list[str]) -> list[str]:

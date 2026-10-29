@@ -21,7 +21,9 @@ from tara_catalog.translation import (
     format_request,
     has_state_words,
     load_eval_cases,
+    normalize_cooking,
     review_issues,
+    same_name_groups,
     score_eval,
     strip_repeated_state,
     translate_batch,
@@ -203,6 +205,59 @@ def test_cooking_is_dropped_when_the_state_is_not_cooked(glossary: Glossary) -> 
 
     assert result.records[0]["cooking"] is None
     assert result.records[0]["issues"] == []
+
+
+def test_cooking_that_only_repeats_the_state_is_dropped() -> None:
+    """La cottura "cotto" non dice niente: lo stato lo dice già."""
+    assert normalize_cooking(" cotto ", "cooked") is None
+    assert normalize_cooking("Cotta", "cooked") is None
+    assert normalize_cooking("  ", "cooked") is None
+    assert normalize_cooking("al vapore ", "cooked") == "al vapore"
+    assert normalize_cooking("al vapore", "raw") is None
+
+
+def test_saved_cooking_that_repeats_the_state_is_dropped(glossary: Glossary) -> None:
+    saved: TranslationRecord = {
+        "source_code": "9104",
+        "name_it": "Riso bianco",
+        "aliases_it": [],
+        "state": "cooked",
+        "cooking": "cotto",
+        "part": None,
+        "issues": [],
+        "model": "test:fake",
+        "prompt_version": PROMPT_VERSION,
+    }
+
+    assert finalize(saved, RICE_COOKED, glossary)["cooking"] is None
+
+
+@pytest.mark.parametrize(
+    "name", ["Mandorle,state:", "Pistacchi, cooking: null", "name_it Noci", "Noci, part: guscio"]
+)
+def test_leaked_response_fragments_in_the_name_are_flagged(glossary: Glossary, name: str) -> None:
+    issues = review_issues(answer(name_it=name), RICE_COOKED, glossary)
+
+    assert any("frammento della risposta" in issue for issue in issues)
+
+
+def test_words_that_only_contain_a_field_name_are_fine(glossary: Glossary) -> None:
+    issues = review_issues(answer(name_it="Nocciole tostate, salate"), RICE_COOKED, glossary)
+
+    assert not any("frammento della risposta" in issue for issue in issues)
+
+
+def test_same_name_groups_ignore_case_and_split_on_state_and_cooking() -> None:
+    keys: list[translation.NameKey] = [
+        ("20304", "Broccoli", "cooked", "al vapore"),
+        ("20350", "Broccoli", "cooked", "lessato"),
+        ("20351", "broccoli", "cooked", None),
+        ("20352", "Broccoli", "cooked", None),
+        ("20000", "Broccoli", "raw", None),
+        ("20305", "BROCCOLI", "cooked", "al vapore"),
+    ]
+
+    assert same_name_groups(keys) == [["20304", "20305"], ["20351", "20352"]]
 
 
 def test_aliases_repeating_the_name_are_dropped_without_review(glossary: Glossary) -> None:

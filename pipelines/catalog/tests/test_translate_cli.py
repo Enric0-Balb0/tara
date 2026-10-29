@@ -195,3 +195,25 @@ def test_review_applies_the_current_rules_to_saved_translations(
         rows = {row["codice"]: row for row in csv.DictReader(f, delimiter=";")}
     assert rows[old["source_code"]]["nome_proposto"] == GOOD[old["source_code"]]["name_it"]
     assert rows[old["source_code"]]["problemi"] == ""
+
+
+def test_review_file_flags_foods_with_the_same_name(
+    snapshot: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("TARA_AI_MODEL", "test:fake")
+    monkeypatch.setenv("TARA_AI_MIN_INTERVAL_S", "0")
+    monkeypatch.setattr(translate, "SNAPSHOT", snapshot)
+    monkeypatch.setattr(translate, "TRANSLATIONS", tmp_path / "traduzioni.jsonl")
+    monkeypatch.setattr(translate, "USAGE_LOG", tmp_path / "uso-ai.jsonl")
+    monkeypatch.setattr(translate, "REVIEW", tmp_path / "revisione.csv")
+    monkeypatch.setattr(translate, "REVIEWED", tmp_path / "revisioni.csv")
+    answers = {**GOOD, "36017": {"name_it": "Albume d'uovo", "state": "raw"}}
+    translate.main(["ciqual"], model=echo_model(answers))
+
+    translate.main(["revisione"])
+
+    with (tmp_path / "revisione.csv").open(encoding="utf-8-sig", newline="") as f:
+        rows = {row["codice"]: row for row in csv.DictReader(f, delimiter=";")}
+    assert rows["22001"]["problemi"].startswith("stesso nome di 36017 (")
+    assert rows["36017"]["problemi"].startswith("stesso nome di 22001 (Oeuf, blanc")
+    assert rows["9104"]["problemi"] == ""
