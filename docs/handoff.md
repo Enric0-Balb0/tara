@@ -85,13 +85,20 @@ Non si possono fare dal repository; dettagli in `docs/processo.md`:
    - Dopo il primo download chiede solo se il catalogo è cambiato (ETag); senza server usa la copia sul telefono.
    - Ricerca e scheda leggono da SQLite con le regole del backend (senza accenti, ogni parola deve comparire, crudo prima), tranne la somiglianza a trigrammi.
    - Stato e "Aggiorna catalogo" nel menu Sviluppo del profilo; flusso Maestro `catalogo.yaml` (tag `api`, serve il backend acceso).
-   - Da fare: la schermata di ricerca.
    - Compromesso: le build preview bloccano l'HTTP in chiaro, quindi per provarle con il backend locale serve `expo-build-properties` (`usesCleartextTraffic`) oppure il backend online.
-8. **Gate F0**: la ricerca di un generico restituisce valori corretti.
+   - Fatte anche ricerca e scheda alimento:
+     - la barra "Cerca un alimento" sta sopra le tab; lo scanner è nascosto fino alla F1;
+     - la ricerca cerca a ogni lettera sul telefono (circa 1 ms per query sul catalogo reale) e tratta l'apostrofo tipografico e le legature come `unaccent`;
+     - la scheda mostra l'etichetta per 100 g e la fonte (lo snapshot è al formato 2, con `source`; sul telefono è la migrazione v2);
+     - il foglio dei grammi, per decisione di Enrico, in F0 **calcola soltanto**: "Usa 200 g" riporta l'etichetta a 200 g, e dallo stesso foglio si passa alla variante cruda o cotta. Il diario arriva in F1.
+   - Attribuzione di CIQUAL (RNF-10) nel profilo, sezione "Fonti dei dati".
+   - Da sistemare nel catalogo prima del gate: la traduzione ha perso il metodo di cottura in 70 coppie nome-stato (151 alimenti). Per esempio ci sono tre "Broccoli" cotti, al vapore, bolliti e "alimento medio", con valori diversi e nomi identici. Il metodo di cottura fa parte del nome, non dello stato. Finché non è sistemato, il selettore crudo/cotto compare solo per le coppie univoche.
+   - Flusso Maestro `ricerca.yaml` (tag `api`). Sull'emulatore Gboard propone a volte la prova della penna e si prende il testo digitato: i flussi la chiudono e riscrivono.
+8. **Gate F0**: la ricerca di un generico restituisce valori corretti. Percorso della demo: "cerco albume, vedo i valori giusti, inserisco i grammi, funziona offline", da provare dall'inizio su un telefono con il catalogo scaricato e poi senza rete. Dopo il gate restano in F0 l'autenticazione e il backend online.
 
 Prima di toccare API di Expo, leggere `apps/mobile/CLAUDE.md`: Expo cambia a ogni SDK.
 
 ## Riferimenti
 
 - Documento vivo dei requisiti: https://claude.ai/artifact/Ks8ELqYdsPiqUY8gtM2tGg
-- Fonti dati e licenze: `docs/requisiti.md`, sezione "Fonti dati e licenze". L'attribuzione di CIQUAL (Etalab 2.0) dovrà comparire nell'app, in una schermata di informazioni (RNF-10).
+- Fonti dati e licenze: `docs/requisiti.md`, sezione "Fonti dati e licenze". L'attribuzione di CIQUAL (Etalab 2.0) è nel profilo, sezione "Fonti dei dati" (RNF-10).

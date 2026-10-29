@@ -216,6 +216,14 @@ Il gate F0 è "cerco albume, vedo i valori giusti, inserisco i grammi, funziona 
 4. **Tab** rinominate: Oggi, Piano, Dispensa, Andamento.
 5. Test: la logica (contrasto, formattazione dei numeri, calcolo dei macro per quantità, tara) in `src/domain` con Vitest; le schermate verificate sull'emulatore e con Maestro.
 
+### Step 7: ricerca, scheda e grammi in F0
+
+- La barra di ricerca sta sopra le tab in tutte le schermate. Il pulsante scanner compare solo quando c'è lo scanner (F1): nessun pulsante finto.
+- Il foglio di inserimento ha due modi. Nel **diario** (F1) ha il pasto, "Aggiungi e continua" e "Aggiungi 500 g". **Solo calcolo** (F0, decisione di Enrico) non ha il pasto né il pulsante secondario: "Usa 200 g" riporta l'etichetta della scheda a 200 g, e la scorciatoia dice "Ultima volta: 200 g" (nel diario "Ultima volta a cena: 500 g").
+- Il selettore crudo/cotto compare solo se il nome ha esattamente un crudo e un cotto: con più preparazioni dello stesso nome si sceglierebbe a caso.
+- Con il foglio aperto la scheda dietro è nascosta al lettore dello schermo; pulsanti e scorciatoie si leggono in grammi ("Usa 200 grammi").
+- La scheda alimento nasconde l'intestazione nativa, così il foglio copre tutta la schermata; in alto c'è un pulsante "Indietro".
+
 ### Dopo
 
 Piano, voci previste, immagine della giornata, etichetta da compilare con le voci facoltative, grafico del peso, colori personalizzati: entrano con i loro requisiti in F1, usando i componenti e i token di questo documento.

@@ -2,10 +2,11 @@ import { StyleSheet, View } from 'react-native';
 
 import type { FoodState } from '@/domain/food';
 import { formatAmount } from '@/domain/format';
-import { columns, radius, space, touch } from '@/theme/layout';
+import { columns, space, touch } from '@/theme/layout';
 import { useTheme } from '@/theme/useTheme';
 
 import { PressableScale } from './PressableScale';
+import { StateTag } from './StateTag';
 import { TaraText } from './TaraText';
 
 interface Props {
@@ -31,13 +32,7 @@ export function ResultRow({ name, state, kcalPer100, proteinPer100, onPress }: P
         <TaraText numberOfLines={1} style={styles.shrink}>
           {name}
         </TaraText>
-        {state === 'cooked' ? (
-          <View style={[styles.tag, { borderColor: colors.borderStrong }]}>
-            <TaraText variant="minimum" color="textSecondary">
-              cotto
-            </TaraText>
-          </View>
-        ) : null}
+        <StateTag state={state} />
       </View>
       <View style={styles.value}>
         <TaraText variant="number">{kcal}</TaraText>
@@ -68,6 +63,5 @@ const styles = StyleSheet.create({
   },
   name: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.s },
   shrink: { flexShrink: 1 },
-  tag: { borderWidth: 1, borderRadius: radius.label, paddingHorizontal: space.xs },
   value: { width: columns.weight, alignItems: 'flex-end' },
 });

@@ -40,12 +40,16 @@ export interface SheetFood {
 interface Props {
   visible: boolean;
   food: SheetFood;
-  mealName: string;
+  /** Pasto a cui va la voce; senza, il foglio calcola soltanto (in F0 il diario non c'è). */
+  mealName?: string;
   lastGrams?: number;
-  onAdd: (grams: number) => void;
-  onAddAndContinue: (grams: number) => void;
+  /** Verbo del pulsante principale: "Aggiungi" nel diario, "Usa" quando si calcola. */
+  confirmVerb?: string;
+  onConfirm: (grams: number) => void;
+  /** Senza, il pulsante "Aggiungi e continua" non c'è. */
+  onConfirmAndContinue?: (grams: number) => void;
   onClose: () => void;
-  /** Passa alla variante cruda o cotta dello stesso alimento (RF-04). */
+  /** Passa alla variante cruda o cotta dello stesso alimento (RF-04); senza, il selettore non c'è. */
   onChangeState?: (state: 'raw' | 'cooked') => void;
 }
 
@@ -81,8 +85,9 @@ function OpenSheet({
   food,
   mealName,
   lastGrams,
-  onAdd,
-  onAddAndContinue,
+  confirmVerb = 'Aggiungi',
+  onConfirm,
+  onConfirmAndContinue,
   onClose,
   onChangeState,
 }: Props) {
@@ -103,24 +108,28 @@ function OpenSheet({
   const tooMuchTare = tareExceedsWeight(entry);
   const addable = canAdd(entry);
   const netText = formatAmount(net, 'grams');
+  const lastLabel = mealName ? `Ultima volta a ${mealName.toLowerCase()}:` : 'Ultima volta:';
 
-  function add(andContinue: boolean) {
+  function confirm(andContinue: boolean) {
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    if (andContinue) {
-      onAddAndContinue(net);
+    if (andContinue && onConfirmAndContinue) {
+      onConfirmAndContinue(net);
       setEntry(startEntry());
     } else {
-      onAdd(net);
+      onConfirm(net);
     }
   }
 
   return (
     <>
       <Animated.View entering={fadeIn} exiting={fadeOut} style={StyleSheet.absoluteFill}>
+        {/* Lo sfondo chiude al tocco ma non è un controllo per il lettore dello schermo: c'è
+            già il pulsante "Chiudi", e due controlli con lo stesso nome confonderebbero. */}
         <Pressable
           style={[StyleSheet.absoluteFill, styles.backdrop]}
           onPress={onClose}
-          accessibilityLabel="Chiudi"
+          accessible={false}
+          importantForAccessibility="no"
         />
       </Animated.View>
       <Animated.View
@@ -138,9 +147,13 @@ function OpenSheet({
       >
         <View style={[styles.handle, { backgroundColor: colors.borderStrong }]} />
         <View style={styles.headerRow}>
-          <View style={[styles.meal, { backgroundColor: colors.raised }]}>
-            <TaraText variant="bodyStrong">{mealName}</TaraText>
-          </View>
+          {mealName ? (
+            <View style={[styles.meal, { backgroundColor: colors.raised }]}>
+              <TaraText variant="bodyStrong">{mealName}</TaraText>
+            </View>
+          ) : (
+            <View />
+          )}
           <PressableScale onPress={onClose} accessibilityLabel="Chiudi" style={styles.close}>
             <Icon name="close" color="textSecondary" />
           </PressableScale>
@@ -162,7 +175,7 @@ function OpenSheet({
             </TaraText>
           </View>
 
-          {food.state !== 'not_applicable' ? (
+          {food.state !== 'not_applicable' && onChangeState ? (
             <View
               accessibilityRole="radiogroup"
               accessibilityLabel="Stato"
@@ -175,7 +188,7 @@ function OpenSheet({
                     key={state}
                     accessibilityRole="radio"
                     accessibilityState={{ checked: selected }}
-                    onPress={() => onChangeState?.(state)}
+                    onPress={() => onChangeState(state)}
                     style={[styles.segment, selected ? { backgroundColor: colors.action } : null]}
                   >
                     <TaraText
@@ -236,10 +249,11 @@ function OpenSheet({
             ) : lastGrams !== undefined ? (
               <PressableScale
                 onPress={() => setEntry(startEntry(lastGrams))}
+                accessibilityLabel={`${lastLabel} ${formatAmount(lastGrams, 'grams')} grammi`}
                 style={[styles.lastUsed, { borderColor: colors.borderStrong }]}
               >
                 <TaraText variant="caption">
-                  Ultima volta a {mealName.toLowerCase()}: {formatAmount(lastGrams, 'grams')} g
+                  {lastLabel} {formatAmount(lastGrams, 'grams')} g
                 </TaraText>
               </PressableScale>
             ) : null}
@@ -269,23 +283,26 @@ function OpenSheet({
         />
 
         <View style={styles.actions}>
-          <PressableScale
-            disabled={!addable}
-            onPress={() => add(true)}
-            style={[styles.action, { borderColor: colors.borderStrong, borderWidth: 1 }]}
-          >
-            <TaraText
-              variant="bodyStrong"
-              numberOfLines={1}
-              adjustsFontSizeToFit
-              style={styles.actionLabel}
+          {onConfirmAndContinue ? (
+            <PressableScale
+              disabled={!addable}
+              onPress={() => confirm(true)}
+              style={[styles.action, { borderColor: colors.borderStrong, borderWidth: 1 }]}
             >
-              Aggiungi e continua
-            </TaraText>
-          </PressableScale>
+              <TaraText
+                variant="bodyStrong"
+                numberOfLines={1}
+                adjustsFontSizeToFit
+                style={styles.actionLabel}
+              >
+                {confirmVerb} e continua
+              </TaraText>
+            </PressableScale>
+          ) : null}
           <PressableScale
             disabled={!addable}
-            onPress={() => add(false)}
+            onPress={() => confirm(false)}
+            accessibilityLabel={addable ? `${confirmVerb} ${netText} grammi` : confirmVerb}
             style={[styles.action, { backgroundColor: colors.action }]}
           >
             <TaraText
@@ -295,7 +312,7 @@ function OpenSheet({
               adjustsFontSizeToFit
               style={styles.actionLabel}
             >
-              {addable ? `Aggiungi ${netText} g` : 'Aggiungi'}
+              {addable ? `${confirmVerb} ${netText} g` : confirmVerb}
             </TaraText>
           </PressableScale>
         </View>

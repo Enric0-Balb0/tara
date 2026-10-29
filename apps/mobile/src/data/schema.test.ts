@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { initDatabase, SCHEMA_VERSION } from './schema';
+import { initDatabase, MIGRATIONS, SCHEMA_VERSION } from './schema';
 import type { SqlDatabase } from './sql';
 import { openTestDatabase } from './testing/nodeDatabase';
 
@@ -30,7 +30,7 @@ describe('initDatabase', () => {
     expect(tables.map((t) => t.name)).toEqual(['food', 'nutrient', 'nutrient_value', 'sync_state']);
     const version = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
     expect(version?.user_version).toBe(SCHEMA_VERSION);
-    expect(SCHEMA_VERSION).toBe(1);
+    expect(SCHEMA_VERSION).toBe(2);
   });
 
   it('rieseguita non tocca i dati', async () => {
@@ -90,5 +90,31 @@ describe('initDatabase', () => {
         1.5,
       ),
     ).rejects.toThrow(/nutrient_value_confidence_range/);
+  });
+});
+
+describe('migrazione alla versione 2', () => {
+  it('migra un database della versione 1 senza perdere il catalogo', async () => {
+    const old = openTestDatabase();
+    await old.execAsync(MIGRATIONS[0] ?? '');
+    await old.execAsync('PRAGMA user_version = 1');
+    await old.runAsync(
+      "INSERT INTO food (id, name, state, base_unit, search_text) VALUES ('f1', 'Albume d''uovo', 'raw', 'g', 'albume d''uovo')",
+    );
+    await initDatabase(old);
+    const version = await old.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
+    expect(version?.user_version).toBe(2);
+    expect(await old.getFirstAsync("SELECT name, source FROM food WHERE id = 'f1'")).toEqual({
+      name: "Albume d'uovo",
+      source: null,
+    });
+  });
+
+  it('rifiuta una fonte sconosciuta', async () => {
+    await expect(
+      db.runAsync(
+        "INSERT INTO food (id, name, state, base_unit, search_text, source) VALUES ('f2', 'Pane', 'not_applicable', 'g', 'pane', 'wiki')",
+      ),
+    ).rejects.toThrow(/food_source_valid/);
   });
 });

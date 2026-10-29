@@ -46,6 +46,19 @@ describe('replaceCatalog', () => {
     expect(protein).toEqual({ amount_per_100: 10.9, provenance: 'reference', confidence: 0.9 });
   });
 
+  it('salva la fonte di ogni alimento', async () => {
+    await replaceV1();
+    const sources = await db.getAllAsync<{ source: string | null }>('SELECT DISTINCT source FROM food');
+    expect(sources).toEqual([{ source: 'ciqual' }]);
+  });
+
+  it('uno snapshot senza fonte lascia la fonte vuota', async () => {
+    const formatOne = TEST_FOODS.map(({ source: _source, ...food }) => food);
+    await replaceCatalog(db, snapshotText(formatOne), { etag: null, syncedAt: SYNCED_AT });
+    const sources = await db.getAllAsync<{ source: string | null }>('SELECT DISTINCT source FROM food');
+    expect(sources).toEqual([{ source: null }]);
+  });
+
   it('un nutriente assente non diventa zero', async () => {
     await replaceV1();
     const sugars = await db.getFirstAsync<{ n: number }>(

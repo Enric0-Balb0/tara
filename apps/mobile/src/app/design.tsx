@@ -33,6 +33,7 @@ const LONG_NAME =
 export default function DesignScreen() {
   const { colors } = useTheme();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [calcOpen, setCalcOpen] = useState(false);
   const [state, setState] = useState<'raw' | 'cooked'>('raw');
 
   if (!__DEV__) return <Redirect href="/" />;
@@ -85,6 +86,13 @@ export default function DesignScreen() {
             Apri il foglio dei grammi
           </TaraText>
         </PressableScale>
+
+        <PressableScale
+          onPress={() => setCalcOpen(true)}
+          style={[styles.button, { borderColor: colors.borderStrong, borderWidth: 1 }]}
+        >
+          <TaraText variant="bodyStrong">Foglio solo calcolo</TaraText>
+        </PressableScale>
       </ScrollView>
 
       <SearchDock onSearch={() => setSheetOpen(true)} onScan={() => undefined} />
@@ -94,10 +102,19 @@ export default function DesignScreen() {
         food={food}
         mealName="Cena"
         lastGrams={500}
-        onAdd={() => setSheetOpen(false)}
-        onAddAndContinue={() => undefined}
+        onConfirm={() => setSheetOpen(false)}
+        onConfirmAndContinue={() => undefined}
         onClose={() => setSheetOpen(false)}
         onChangeState={setState}
+      />
+
+      {/* In F0 la scheda alimento calcola soltanto: niente pasto né "Aggiungi e continua". */}
+      <GramSheet
+        visible={calcOpen}
+        food={EGG_WHITE.raw}
+        confirmVerb="Usa"
+        onConfirm={() => setCalcOpen(false)}
+        onClose={() => setCalcOpen(false)}
       />
     </View>
   );

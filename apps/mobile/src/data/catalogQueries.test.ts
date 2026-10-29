@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { getFood, replaceCatalog, searchFoods } from './catalogStore';
+import { getFood, getVariant, replaceCatalog, searchFoods } from './catalogStore';
 import { initDatabase } from './schema';
 import type { SqlDatabase } from './sql';
 import { openTestDatabase } from './testing/nodeDatabase';
@@ -88,6 +88,10 @@ describe('searchFoods', () => {
     expect(await searchFoods(db, '  ')).toEqual([]);
   });
 
+  it("l'apostrofo tipografico trova l'albume", async () => {
+    expect(names(await searchFoods(db, 'albume d’uovo'))).toEqual(["Albume d'uovo", "Albume d'uovo"]);
+  });
+
   it('rispetta il limite', async () => {
     expect(await searchFoods(db, 'albume', 1)).toHaveLength(1);
   });
@@ -101,6 +105,7 @@ describe('getFood', () => {
       name: "Albume d'uovo",
       state: 'raw',
       baseUnit: 'g',
+      source: 'ciqual',
       nutrients: [
         { code: 'energy_kcal', name: 'Energia', unit: 'kcal', amountPer100: 48.1, provenance: 'reference', confidence: 1 },
         { code: 'fat_g', name: 'Grassi', unit: 'g', amountPer100: 0.17, provenance: 'reference', confidence: 1 },
@@ -112,5 +117,56 @@ describe('getFood', () => {
 
   it('un alimento inesistente non ha scheda', async () => {
     expect(await getFood(db, 'inesistente')).toBeNull();
+  });
+});
+
+describe('getVariant', () => {
+  const food = (id: string, name: string, state: string): TestFood => ({
+    id,
+    name,
+    state,
+    base_unit: 'g',
+    source: 'ciqual',
+    names: [name],
+    values: {},
+  });
+
+  it('trova la variante cotta e quella cruda', async () => {
+    expect(await getVariant(db, "Albume d'uovo", 'cooked')).toBe('albume-cotto');
+    expect(await getVariant(db, "Albume d'uovo", 'raw')).toBe('albume-crudo');
+  });
+
+  it("senza variante non c'è niente da cambiare", async () => {
+    expect(await getVariant(db, 'Caffè espresso', 'cooked')).toBeNull();
+    expect(await getVariant(db, 'Uovo intero', 'cooked')).toBeNull();
+  });
+
+  it('con più varianti cotte non sceglie a caso', async () => {
+    await replaceCatalog(
+      db,
+      snapshotText([
+        ...TEST_FOODS,
+        food('broccoli-crudi', 'Broccoli', 'raw'),
+        food('broccoli-vapore', 'Broccoli', 'cooked'),
+        food('broccoli-bolliti', 'Broccoli', 'cooked'),
+      ]),
+      { etag: null, syncedAt: '2026-10-29T10:00:00.000Z' },
+    );
+    expect(await getVariant(db, 'Broccoli', 'cooked')).toBeNull();
+  });
+
+  it('con due crude e una cotta non cambia, così il ritorno porta sempre al punto di partenza', async () => {
+    await replaceCatalog(
+      db,
+      snapshotText([
+        ...TEST_FOODS,
+        food('agnello-a', 'Agnello, costoletta', 'raw'),
+        food('agnello-b', 'Agnello, costoletta', 'raw'),
+        food('agnello-cotto', 'Agnello, costoletta', 'cooked'),
+      ]),
+      { etag: null, syncedAt: '2026-10-29T10:00:00.000Z' },
+    );
+    expect(await getVariant(db, 'Agnello, costoletta', 'cooked')).toBeNull();
+    expect(await getVariant(db, 'Agnello, costoletta', 'raw')).toBeNull();
   });
 });

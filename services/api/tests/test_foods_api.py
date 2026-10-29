@@ -221,6 +221,13 @@ def test_snapshot_contains_every_shared_food_with_its_values(client: TestClient)
 
 
 @pytest.mark.usefixtures("catalog")
+def test_snapshot_says_where_each_food_comes_from(client: TestClient) -> None:
+    body = client.get("/v1/catalog").json()
+
+    assert {food["source"] for food in body["foods"]} == {"ciqual"}
+
+
+@pytest.mark.usefixtures("catalog")
 def test_snapshot_is_not_sent_again_when_the_app_is_up_to_date(client: TestClient) -> None:
     etag = client.get("/v1/catalog").headers["etag"]
 

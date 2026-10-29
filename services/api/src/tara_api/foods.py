@@ -33,7 +33,7 @@ router = APIRouter(prefix="/v1", tags=["catalogo"])
 SessionDep = Annotated[Session, Depends(get_session)]
 
 MACROS = ("energy_kcal", "protein_g", "carbs_g", "fat_g")
-SNAPSHOT_FORMAT = 1
+SNAPSHOT_FORMAT = 2
 """Da incrementare quando cambia la forma dello snapshot: cambia anche la sua versione."""
 
 search_text = func.tara_search_text
@@ -102,6 +102,8 @@ class SnapshotFood(BaseModel):
     name: str
     state: FoodState
     base_unit: BaseUnit
+    source: FoodSource
+    """Da dove vengono i valori: l'app la mostra nella scheda (RNF-10)."""
     names: list[str]
     """Nomi italiani per la ricerca nell'app, il canonico per primo."""
     values: dict[str, SnapshotValue]
@@ -265,6 +267,7 @@ def build_snapshot(session: Session, version: str) -> CatalogSnapshot:
                 name=food.name,
                 state=food.state,
                 base_unit=food.base_unit,
+                source=food.source,
                 names=names[food.id],
                 values=values[food.id],
             )
