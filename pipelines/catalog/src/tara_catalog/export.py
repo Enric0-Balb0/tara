@@ -144,7 +144,7 @@ def _refuse_duplicates(entries: list[dict[str, Any]]) -> None:
         detail = ", ".join(filter(None, (first["state"], first["cooking"])))
         lines.append(f"«{first['name']}» ({detail}): {', '.join(codes)}")
     raise DuplicateNamesError(
-        f"gruppi di alimenti con lo stesso nome, stato e cottura: {len(groups)}; "
+        f"gruppi di alimenti che nell'app sembrerebbero uguali: {len(groups)}; "
         "distinguili con `translate revisione` e `translate applica`.\n" + "\n".join(lines)
     )
 

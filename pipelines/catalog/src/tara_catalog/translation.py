@@ -208,13 +208,14 @@ def normalize_cooking(cooking: str | None, state: State) -> str | None:
 
 def same_name_groups(keys: Iterable[NameKey]) -> list[list[str]]:
     """Gruppi di alimenti che nell'app sembrerebbero uguali: stesso nome senza distinguere
-    maiuscole (come `lower()` del database), stesso stato e stessa cottura.
+    maiuscole (come `lower()` del database), stessa cottura, ed entrambi cotti o entrambi no.
+    Crudo e n.a. contano come uguali perché nell'app non hanno etichetta.
 
     Ogni gruppo ha almeno due codici, nell'ordine d'ingresso.
     """
-    groups: dict[tuple[str, State, str | None], list[str]] = {}
+    groups: dict[tuple[str, bool, str | None], list[str]] = {}
     for code, name, state, cooking in keys:
-        groups.setdefault((name.lower(), state, cooking), []).append(code)
+        groups.setdefault((name.lower(), state == "cooked", cooking), []).append(code)
     return [codes for codes in groups.values() if len(codes) > 1]
 
 

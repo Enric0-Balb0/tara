@@ -247,6 +247,6 @@ def test_cli_explains_why_it_stops_on_foods_that_look_the_same(
     )
 
     with pytest.raises(
-        SystemExit, match=r"(?s)catalogo non scritto: .* stato e cottura: 1;.*22001, 9104"
+        SystemExit, match=r"(?s)catalogo non scritto: .*sembrerebbero uguali: 1;.*22001, 9104"
     ):
         export.main(["ciqual"])

@@ -260,6 +260,16 @@ def test_same_name_groups_ignore_case_and_split_on_state_and_cooking() -> None:
     assert same_name_groups(keys) == [["20304", "20305"], ["20351", "20352"]]
 
 
+def test_raw_and_not_applicable_foods_look_the_same_in_the_app() -> None:
+    """Crudo e n.a. non hanno etichetta: con lo stesso nome sarebbero due righe uguali."""
+    keys: list[translation.NameKey] = [
+        ("19010", "Latte intero", "raw", None),
+        ("19016", "Latte intero", "not_applicable", None),
+    ]
+
+    assert same_name_groups(keys) == [["19010", "19016"]]
+
+
 def test_aliases_repeating_the_name_are_dropped_without_review(glossary: Glossary) -> None:
     def respond(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
         item = {
