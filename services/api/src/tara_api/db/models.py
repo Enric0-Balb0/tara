@@ -103,11 +103,12 @@ class Food(Base):
         CheckConstraint("length(btrim(source_code)) > 0", name="source_code_not_blank"),
         CheckConstraint("length(btrim(cooking)) > 0", name="cooking_not_blank"),
         CheckConstraint("cooking IS NULL OR state = 'cooked'", name="cooking_only_cooked"),
-        # Nell'app due generici con stesso nome, stato e cottura sembrerebbero uguali, con
-        # valori diversi. Si controlla al commit: un ricaricamento può scambiare due nomi.
+        # Nell'app due generici con stessi nome e cottura, entrambi cotti o entrambi no,
+        # sembrerebbero uguali con valori diversi: crudo e n.a. non hanno etichetta. Si
+        # controlla al commit: un ricaricamento può scambiare due nomi.
         ExcludeConstraint(
             (text("lower(name)"), "="),
-            (text("state"), "="),
+            (text("(state = 'cooked')"), "="),
             (text("coalesce(cooking, '')"), "="),
             name="ex_food_shared_name_state_cooking",
             using="btree",

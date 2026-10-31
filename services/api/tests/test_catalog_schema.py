@@ -430,6 +430,15 @@ def test_shared_foods_without_cooking_cannot_look_the_same(session: Session) -> 
         check_deferred(session)
 
 
+def test_raw_and_not_applicable_shared_foods_cannot_look_the_same(session: Session) -> None:
+    """Crudo e n.a. non hanno etichetta nell'app: sarebbero due righe uguali."""
+    add_food(session, name="Latte intero", state=FoodState.RAW)
+
+    with violates("ex_food_shared_name_state_cooking"):
+        add_food(session, name="Latte intero", state=FoodState.NOT_APPLICABLE)
+        check_deferred(session)
+
+
 def test_state_or_cooking_tells_shared_foods_apart(session: Session) -> None:
     add_food(session, name="Broccoli", state=FoodState.RAW)
     add_food(session, name="Broccoli", state=FoodState.COOKED)
