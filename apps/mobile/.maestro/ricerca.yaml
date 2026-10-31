@@ -66,8 +66,24 @@ tags:
 - assertVisible: '10,3 g'
 - assertVisible: cotto
 
-# Senza accenti si trova lo stesso.
+# I cotti con lo stesso nome si distinguono per la cottura.
 - tapOn: Indietro
+- tapOn: Cancella la ricerca
+- inputText: broccoli
+- runFlow:
+    when:
+      visible: Try out your stylus
+    commands:
+      - tapOn: Cancel
+      - eraseText: 20
+      - inputText: broccoli
+- extendedWaitUntil:
+    visible: al vapore
+    timeout: 10000
+- assertVisible: lessato
+- takeScreenshot: screenshots/ricerca-broccoli
+
+# Senza accenti si trova lo stesso.
 - tapOn: Cancella la ricerca
 - inputText: baba
 # Sull'emulatore Gboard propone a volte la prova della penna e si prende il testo.

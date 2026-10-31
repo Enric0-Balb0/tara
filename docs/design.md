@@ -143,7 +143,7 @@ Linee da 2 px su una griglia di 24, estremità arrotondate, disegnate come set u
 | Componente | Cosa fa | Stati e regole |
 | --- | --- | --- |
 | **Barra di ricerca** | "Cerca un alimento" e pulsante scanner, sempre in basso sopra le tab | lo scanner è il pulsante principale, quadrato, colore `azione` |
-| **Riga di risultato** | nome, stato (solo "cotto"; il crudo è il predefinito), kcal e proteine per 100 g | tocco → scheda alimento |
+| **Riga di risultato** | nome su due righe al massimo, stato (solo "cotto"; il crudo è il predefinito) con sotto la cottura in secondo piano se c'è ("al vapore"), kcal e proteine per 100 g | tocco → scheda alimento |
 | **Barra graduata** | avanzamento di un macro verso l'obiettivo | parte piena = registrato; tratteggio a colore pieno = previsto dal piano, detto anche dal lettore dello schermo; tacche ogni 10% in `testoSecondario` (≥ 3:1); segno al traguardo; oltre il 100% la parte in eccesso resta visibile oltre il segno |
 | **Voce di diario** | una riga allineata: nome, peso, kcal, proteine | **registrata**: testo pieno; **prevista**: bordo tratteggiato, testo attenuato, pulsante "Conferma" |
 | **Intestazione del pasto** | nome, "2 di 3", totali nelle stesse colonne delle voci | pasto completo → si chiude in una riga ("6 di 6, come da piano"); si riapre con un tocco |
@@ -170,7 +170,7 @@ Idea di Enrico: quando si inserisce un alimento a mano, il modulo ha la forma de
 - **Piano**: per ogni tipo di giornata, i pasti (numero e nomi liberi) con alimenti e grammi, e gli obiettivi.
 - **Dispensa**: gli alimenti personali, le ricette e i pasti salvati. È il nome scelto da Enrico per il catalogo personale.
 - **Andamento**: grafico del peso con l'asse zoomato sull'intervallo reale, punti delle pesate, linea della media mobile a 7 giorni e variazione settimanale (RF-70); niente riempimenti sotto la linea.
-- **Scheda alimento**: nome, stato, etichetta con i valori per 100 g e la loro fonte; da qui il foglio di inserimento.
+- **Scheda alimento**: nome, stato e cottura in secondo piano, etichetta con i valori per 100 g e la loro fonte; da qui il foglio di inserimento.
 
 ## Linguaggio
 

@@ -23,6 +23,7 @@ from sqlalchemy import (
     literal_column,
     text,
 )
+from sqlalchemy.dialects.postgresql import ExcludeConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from tara_api.db.base import Base, new_id, str_enum
@@ -100,6 +101,21 @@ class Food(Base):
             "user_id IS NOT NULL OR source_code IS NOT NULL", name="shared_has_source_code"
         ),
         CheckConstraint("length(btrim(source_code)) > 0", name="source_code_not_blank"),
+        CheckConstraint("length(btrim(cooking)) > 0", name="cooking_not_blank"),
+        CheckConstraint("cooking IS NULL OR state = 'cooked'", name="cooking_only_cooked"),
+        # Nell'app due generici con stessi nome e cottura, entrambi cotti o entrambi no,
+        # sembrerebbero uguali con valori diversi: crudo e n.a. non hanno etichetta. Si
+        # controlla al commit: un ricaricamento può scambiare due nomi.
+        ExcludeConstraint(
+            (text("lower(name)"), "="),
+            (text("(state = 'cooked')"), "="),
+            (text("coalesce(cooking, '')"), "="),
+            name="ex_food_shared_name_state_cooking",
+            using="btree",
+            where=text("user_id IS NULL"),
+            deferrable=True,
+            initially="DEFERRED",
+        ),
         Index(
             "uq_food_user_id_source_source_code",
             "user_id",
@@ -141,6 +157,8 @@ class Food(Base):
     state: Mapped[FoodState] = mapped_column(
         str_enum(FoodState, "state"), default=FoodState.RAW, server_default=FoodState.RAW.value
     )
+    cooking: Mapped[str | None] = mapped_column(Text)
+    """Metodo di cottura dei cotti ("al vapore", "lessato"): dettaglio secondario."""
     parent_food_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("food.id", ondelete="SET NULL"), index=True
     )

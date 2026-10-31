@@ -26,6 +26,7 @@ export default function SearchScreen() {
   const latest = useRef(0);
   const retried = useRef(false);
   const catalogSize = info?.foodCount;
+  const catalogVersion = info?.version;
 
   useEffect(() => {
     const request = ++latest.current;
@@ -35,8 +36,8 @@ export default function SearchScreen() {
         if (request === latest.current) setResults({ query, hits });
       })
       .catch((error: unknown) => console.error('Ricerca non riuscita', error));
-    // catalogSize: se il catalogo arriva mentre la schermata è aperta, si cerca di nuovo.
-  }, [db, query, catalogSize]);
+    // catalogVersion: se arriva un catalogo mentre la schermata è aperta, si cerca di nuovo.
+  }, [db, query, catalogVersion]);
 
   // Senza catalogo sul telefono si riprova una volta da soli: forse la connessione è tornata.
   useEffect(() => {
@@ -71,6 +72,7 @@ export default function SearchScreen() {
           <ResultRow
             name={item.name}
             state={item.state}
+            cooking={item.cooking}
             kcalPer100={item.per100.energy_kcal}
             proteinPer100={item.per100.protein_g}
             onPress={() => router.push({ pathname: '/alimento/[id]', params: { id: item.id } })}

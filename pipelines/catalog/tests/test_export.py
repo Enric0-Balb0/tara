@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 
 from tara_catalog import export
-from tara_catalog.export import export_catalog
+from tara_catalog.export import DuplicateNamesError, export_catalog
 from tara_catalog.translation import PROMPT_VERSION
 
 MODEL = "test:fake"
@@ -140,6 +140,65 @@ def test_manual_review_wins_over_the_model(files: dict[str, Path]) -> None:
     assert summary["reviewed"] == 1
 
 
+def test_catalog_entry_carries_the_cooking_method(files: dict[str, Path]) -> None:
+    write_jsonl(
+        files["translations"],
+        [
+            translation("22001", "Albume d'uovo", "raw"),
+            translation("9104", "Riso bianco", "cooked", cooking="lessato"),
+        ],
+    )
+
+    _, catalog = run(files)
+
+    assert catalog["9104"]["cooking"] == "lessato"
+    assert catalog["22001"]["cooking"] is None
+
+
+def test_reviewed_cooking_wins_over_the_model(files: dict[str, Path]) -> None:
+    files["reviewed"].write_text(
+        "codice,nome,stato,cottura,alias,note\n9104,Riso bianco,cooked,al vapore,,\n",
+        encoding="utf-8",
+    )
+
+    _, catalog = run(files)
+
+    assert catalog["9104"]["cooking"] == "al vapore"
+
+
+def test_export_refuses_foods_that_look_the_same(files: dict[str, Path]) -> None:
+    """Due alimenti con stesso nome, stato e cottura non si distinguono nell'app."""
+    write_jsonl(
+        files["translations"],
+        [
+            translation("22001", "Albume d'uovo", "raw"),
+            translation("9104", "albume d'uovo", "raw"),
+        ],
+    )
+
+    with pytest.raises(DuplicateNamesError, match=r"«Albume d'uovo» \(raw\): 22001, 9104"):
+        run(files)
+    assert not files["out"].exists()
+
+
+def test_review_can_resolve_foods_that_look_the_same(files: dict[str, Path]) -> None:
+    write_jsonl(
+        files["translations"],
+        [
+            translation("22001", "Albume d'uovo", "raw"),
+            translation("9104", "Albume d'uovo", "raw"),
+        ],
+    )
+    files["reviewed"].write_text(
+        "codice,nome,stato,cottura,alias,note\n9104,Riso bianco,cooked,,,\n",
+        encoding="utf-8",
+    )
+
+    _, catalog = run(files)
+
+    assert catalog["9104"]["name"] == "Riso bianco"
+
+
 def test_cli_exports_with_the_configured_model(
     files: dict[str, Path], monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -162,3 +221,32 @@ def test_cli_exports_with_the_configured_model(
     out = capsys.readouterr().out
     assert "alimenti nel catalogo: 2" in out
     assert files["out"].exists()
+
+
+def test_cli_explains_why_it_stops_on_foods_that_look_the_same(
+    files: dict[str, Path], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_jsonl(
+        files["translations"],
+        [
+            translation("22001", "Albume d'uovo", "raw"),
+            translation("9104", "Albume d'uovo", "raw"),
+        ],
+    )
+    monkeypatch.setenv("TARA_AI_MODEL", MODEL)
+    monkeypatch.setattr(
+        export,
+        "export_catalog",
+        lambda model_id, out: export_catalog(
+            model_id,
+            out,
+            snapshot=files["snapshot"],
+            translations=files["translations"],
+            reviewed_path=files["reviewed"],
+        ),
+    )
+
+    with pytest.raises(
+        SystemExit, match=r"(?s)catalogo non scritto: .*sembrerebbero uguali: 1;.*22001, 9104"
+    ):
+        export.main(["ciqual"])

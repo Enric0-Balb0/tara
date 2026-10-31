@@ -55,6 +55,13 @@ export const MIGRATIONS: readonly string[] = [
     CONSTRAINT food_source_valid
     CHECK (source IN ('ciqual', 'usda', 'open_food_facts', 'label', 'manual', 'recipe'));
   `,
+  // v3: metodo di cottura dei cotti (snapshot del formato 3), dettaglio in secondo piano.
+  // NULL per il catalogo scaricato prima: la cottura arriva con il download successivo.
+  `
+  ALTER TABLE food ADD COLUMN cooking TEXT
+    CONSTRAINT food_cooking_valid
+    CHECK (cooking IS NULL OR (length(trim(cooking)) > 0 AND state = 'cooked'));
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

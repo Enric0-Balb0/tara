@@ -18,13 +18,21 @@ def value(amount: str, confidence: float = 1.0) -> dict[str, Any]:
     return {"amount": amount, "provenance": "reference", "confidence": confidence}
 
 
-def food(code: str, name: str, state: str = "raw", *aliases: str, **values: str) -> CatalogEntry:
+def food(
+    code: str,
+    name: str,
+    state: str = "raw",
+    *aliases: str,
+    cooking: str | None = None,
+    **values: str,
+) -> CatalogEntry:
     return CatalogEntry.model_validate(
         {
             "source": "ciqual",
             "source_code": code,
             "name": name,
             "state": state,
+            "cooking": cooking,
             "names": [{"lang": "it", "name": n, "origin": "llm"} for n in (name, *aliases)]
             + [{"lang": "fr", "name": f"{name} (fr)", "origin": "source"}],
             "nutrients": {nutrient: value(amount) for nutrient, amount in values.items()},
@@ -40,6 +48,10 @@ CATALOG = [
     food("18003", "Caffè espresso", "not_applicable", energy_kcal="2"),
     food("9104", "Riso bianco", "cooked", protein_g="2.7"),
     food("9100", "Riso bianco", "raw", protein_g="7.1"),
+    food("20304", "Broccoli", "cooked", cooking="al vapore", protein_g="2.4"),
+    food("20350", "Broccoli", "cooked", cooking="lessato", protein_g="2.3"),
+    food("20351", "Broccoli", "cooked", protein_g="2.2"),
+    food("20057", "Broccoli", "raw", protein_g="2.8"),
 ]
 
 
@@ -253,3 +265,36 @@ def test_snapshot_is_compressed(client: TestClient) -> None:
     response = client.get("/v1/catalog", headers={"Accept-Encoding": "gzip"})
 
     assert response.headers["content-encoding"] == "gzip"
+
+
+@pytest.mark.usefixtures("catalog")
+def test_search_shows_the_cooking_and_puts_plain_cooked_first(client: TestClient) -> None:
+    items = client.get("/v1/foods/search", params={"q": "broccoli"}).json()["items"]
+
+    assert [(item["name"], item["state"], item["cooking"]) for item in items] == [
+        ("Broccoli", "raw", None),
+        ("Broccoli", "cooked", None),
+        ("Broccoli", "cooked", "al vapore"),
+        ("Broccoli", "cooked", "lessato"),
+    ]
+
+
+@pytest.mark.usefixtures("catalog")
+def test_food_detail_has_the_cooking(client: TestClient) -> None:
+    items = client.get("/v1/foods/search", params={"q": "broccoli"}).json()["items"]
+    steamed = next(item for item in items if item["cooking"] == "al vapore")
+
+    assert client.get(f"/v1/foods/{steamed['id']}").json()["cooking"] == "al vapore"
+
+
+@pytest.mark.usefixtures("catalog")
+def test_snapshot_carries_the_cooking_of_every_food(client: TestClient) -> None:
+    foods = client.get("/v1/catalog").json()["foods"]
+
+    assert all("cooking" in food for food in foods)
+    assert sorted(food["cooking"] or "" for food in foods if food["names"][0] == "Broccoli") == [
+        "",
+        "",
+        "al vapore",
+        "lessato",
+    ]

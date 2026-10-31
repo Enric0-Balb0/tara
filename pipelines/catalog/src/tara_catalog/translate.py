@@ -27,15 +27,24 @@ from pydantic_ai.models import Model
 from tara_catalog import ai
 from tara_catalog.build import BUILD_DIR
 from tara_catalog.glossary import load_glossary
-from tara_catalog.review import REVIEWED_PATH, apply_review, export_review, load_reviewed
+from tara_catalog.review import (
+    REVIEWED_PATH,
+    ReviewedTranslation,
+    apply_review,
+    export_review,
+    load_reviewed,
+)
 from tara_catalog.translation import (
     PROMPT_VERSION,
     EvalReport,
+    NameKey,
     RunSummary,
     SourceFood,
     TranslationRecord,
     finalize,
     load_eval_cases,
+    normalize_cooking,
+    same_name_groups,
     score_eval,
     translate_batch,
     translate_pending,
@@ -125,13 +134,35 @@ def write_review(model_id: str) -> int:
         for record in current_records(model_id)
         if record["source_code"] in foods
     ]
+    reviewed = load_reviewed(REVIEWED)
+    _flag_same_names(records, reviewed, foods)
     return export_review(
         records,
         list(foods.values()),
         REVIEW,
         diet_codes=diet,
-        reviewed_codes=set(load_reviewed(REVIEWED)),
+        reviewed_codes=set(reviewed),
     )
+
+
+def _flag_same_names(
+    records: list[TranslationRecord],
+    reviewed: dict[str, ReviewedTranslation],
+    foods: dict[str, SourceFood],
+) -> None:
+    """Segnala gli alimenti che nell'app sembrerebbero uguali; i nomi rivisti prevalgono."""
+
+    def key(record: TranslationRecord) -> NameKey:
+        code = record["source_code"]
+        if (review := reviewed.get(code)) is not None:
+            return code, review.name, review.state, normalize_cooking(review.cooking, review.state)
+        return code, record["name_it"], record["state"], record["cooking"]
+
+    by_code = {record["source_code"]: record for record in records}
+    for codes in same_name_groups(map(key, records)):
+        for code in codes:
+            others = [f"stesso nome di {c} ({foods[c].name_fr})" for c in codes if c != code]
+            by_code[code]["issues"] = [*others, *by_code[code]["issues"]]
 
 
 def format_eval(report: EvalReport, model_id: str) -> str:

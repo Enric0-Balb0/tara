@@ -382,3 +382,76 @@ def test_name_language_and_origin_are_checked(session: Session) -> None:
         id=uuid.uuid4(),
         food_id=food.id,
     )
+
+
+# --- Cottura e nomi distinti ----------------------------------------------------------------
+
+
+def check_deferred(session: Session) -> None:
+    """Il vincolo sui nomi si controlla al commit: qui lo si anticipa."""
+    session.execute(text("SET CONSTRAINTS ALL IMMEDIATE"))
+
+
+def test_cooking_cannot_be_blank(session: Session) -> None:
+    food = add_food(session, state=FoodState.COOKED)
+
+    expect_violation(
+        session,
+        "ck_food_cooking_not_blank",
+        "UPDATE food SET cooking = ' ' WHERE id = :id",
+        id=food.id,
+    )
+
+
+def test_cooking_is_only_for_cooked_foods(session: Session) -> None:
+    food = add_food(session, state=FoodState.RAW)
+
+    expect_violation(
+        session,
+        "ck_food_cooking_only_cooked",
+        "UPDATE food SET cooking = 'al vapore' WHERE id = :id",
+        id=food.id,
+    )
+
+
+def test_shared_foods_cannot_look_the_same(session: Session) -> None:
+    add_food(session, name="Broccoli", state=FoodState.COOKED, cooking="al vapore")
+
+    with violates("ex_food_shared_name_state_cooking"):
+        add_food(session, name="BROCCOLI", state=FoodState.COOKED, cooking="al vapore")
+        check_deferred(session)
+
+
+def test_shared_foods_without_cooking_cannot_look_the_same(session: Session) -> None:
+    add_food(session, name="Broccoli", state=FoodState.COOKED)
+
+    with violates("ex_food_shared_name_state_cooking"):
+        add_food(session, name="Broccoli", state=FoodState.COOKED)
+        check_deferred(session)
+
+
+def test_raw_and_not_applicable_shared_foods_cannot_look_the_same(session: Session) -> None:
+    """Crudo e n.a. non hanno etichetta nell'app: sarebbero due righe uguali."""
+    add_food(session, name="Latte intero", state=FoodState.RAW)
+
+    with violates("ex_food_shared_name_state_cooking"):
+        add_food(session, name="Latte intero", state=FoodState.NOT_APPLICABLE)
+        check_deferred(session)
+
+
+def test_state_or_cooking_tells_shared_foods_apart(session: Session) -> None:
+    add_food(session, name="Broccoli", state=FoodState.RAW)
+    add_food(session, name="Broccoli", state=FoodState.COOKED)
+    add_food(session, name="Broccoli", state=FoodState.COOKED, cooking="al vapore")
+    add_food(session, name="Broccoli", state=FoodState.COOKED, cooking="lessato")
+
+    check_deferred(session)
+
+
+def test_personal_foods_may_repeat_a_name(session: Session) -> None:
+    user = add_user(session)
+    add_food(session, name="Pane")
+    add_food(session, name="Pane", user_id=user.id)
+    add_food(session, name="Pane", user_id=user.id)
+
+    check_deferred(session)

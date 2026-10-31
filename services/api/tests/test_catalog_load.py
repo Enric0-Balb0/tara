@@ -9,7 +9,7 @@ from typing import Any
 
 import pytest
 from alembic import command
-from sqlalchemy import create_engine, func, select
+from sqlalchemy import create_engine, func, select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -91,12 +91,12 @@ def test_reload_updates_in_place_without_duplicates(session: Session) -> None:
 
 
 def test_foods_no_longer_in_the_file_stay_and_are_counted(session: Session) -> None:
-    load_catalog(session, parse(entry(), entry("9104")))
+    load_catalog(session, parse(entry(), entry("9104", name="Riso bianco")))
 
     summary = load_catalog(session, parse(entry()))
 
     assert summary["missing_from_file"] == 1
-    assert shared_food(session, "9104").name == "Albume d'uovo"
+    assert shared_food(session, "9104").name == "Riso bianco"
 
 
 def test_unknown_nutrient_is_rejected_by_the_database(session: Session) -> None:
@@ -114,7 +114,7 @@ def test_unknown_nutrient_is_rejected_by_the_database(session: Session) -> None:
         ({"source": "label"}, "catalogo condiviso"),
         ({"name": "  "}, "name"),
         ({"state": "crudo"}, "state"),
-        ({"cooking": "lessato"}, "cooking"),
+        ({"cooking": "  "}, "cooking"),
     ],
 )
 def test_invalid_lines_name_the_file_line(
@@ -147,3 +147,31 @@ def test_cli_loads_the_file_and_commits(tmp_path: Path, capsys: pytest.CaptureFi
     out = capsys.readouterr().out
     assert "alimenti inseriti 1, aggiornati 0" in out
     assert "alimenti inseriti 0, aggiornati 1" in out
+
+
+def test_cooking_is_loaded_and_updated(session: Session) -> None:
+    load_catalog(
+        session, parse(entry("20304", name="Broccoli", state="cooked", cooking="al vapore"))
+    )
+    assert shared_food(session, "20304").cooking == "al vapore"
+
+    load_catalog(session, parse(entry("20304", name="Broccoli", state="cooked")))
+    session.expire_all()
+
+    assert shared_food(session, "20304").cooking is None
+
+
+def test_reload_can_swap_two_names(session: Session) -> None:
+    """Un nome corretto può passare da un alimento all'altro nello stesso caricamento."""
+    load_catalog(
+        session, parse(entry("7099", name="Pane"), entry("7100", name="Pane, confezionato"))
+    )
+
+    load_catalog(
+        session, parse(entry("7099", name="Pane, confezionato"), entry("7100", name="Pane"))
+    )
+    session.execute(text("SET CONSTRAINTS ALL IMMEDIATE"))
+    session.expire_all()
+
+    assert shared_food(session, "7099").name == "Pane, confezionato"
+    assert shared_food(session, "7100").name == "Pane"
