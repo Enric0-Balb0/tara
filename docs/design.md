@@ -143,7 +143,7 @@ Linee da 2 px su una griglia di 24, estremità arrotondate, disegnate come set u
 | Componente | Cosa fa | Stati e regole |
 | --- | --- | --- |
 | **Barra di ricerca** | "Cerca un alimento" e pulsante scanner, sempre in basso sopra le tab | lo scanner è il pulsante principale, quadrato, colore `azione` |
-| **Riga di risultato** | nome, stato (solo "cotto"; il crudo è il predefinito) con sotto la cottura in secondo piano se c'è ("al vapore"), kcal e proteine per 100 g | tocco → scheda alimento |
+| **Riga di risultato** | nome su due righe al massimo, stato (solo "cotto"; il crudo è il predefinito) con sotto la cottura in secondo piano se c'è ("al vapore"), kcal e proteine per 100 g | tocco → scheda alimento |
 | **Barra graduata** | avanzamento di un macro verso l'obiettivo | parte piena = registrato; tratteggio a colore pieno = previsto dal piano, detto anche dal lettore dello schermo; tacche ogni 10% in `testoSecondario` (≥ 3:1); segno al traguardo; oltre il 100% la parte in eccesso resta visibile oltre il segno |
 | **Voce di diario** | una riga allineata: nome, peso, kcal, proteine | **registrata**: testo pieno; **prevista**: bordo tratteggiato, testo attenuato, pulsante "Conferma" |
 | **Intestazione del pasto** | nome, "2 di 3", totali nelle stesse colonne delle voci | pasto completo → si chiude in una riga ("6 di 6, come da piano"); si riapre con un tocco |

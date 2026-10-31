@@ -87,10 +87,14 @@ function parseSnapshot(text: string): { version: string; foods: SnapshotFoodName
   return { version: data.version, foods };
 }
 
-/** Nomi e cottura, così "patata forno" trova la patata al forno. */
+/**
+ * Un nome per riga. La cottura segue il nome canonico sulla stessa riga: "patata forno" trova
+ * la patata al forno, ma "arrosto" non conta come un nome che inizia così.
+ */
 function searchText(food: SnapshotFoodNames): string {
-  const cooking = typeof food.cooking === 'string' ? [food.cooking] : [];
-  return [...new Set([food.name, ...food.names, ...cooking].map(searchKey))].join('\n');
+  const [canonical = '', ...others] = new Set([food.name, ...food.names].map(searchKey));
+  const cooking = typeof food.cooking === 'string' ? ` ${searchKey(food.cooking)}` : '';
+  return [`${canonical}${cooking}`, ...others].join('\n');
 }
 
 async function setState(db: SqlDatabase, key: string, value: string | null): Promise<void> {
@@ -257,9 +261,9 @@ function macroColumn(code: keyof FoodHit['per100']): string {
 
 /**
  * Le regole di `search_foods` del backend, senza la somiglianza a trigrammi: ogni parola
- * deve comparire in un nome; prima i nomi che iniziano con la ricerca, poi il crudo (si
- * pesa a crudo, principio 4), poi i nomi più corti; a parità di nome il cotto senza cottura
- * precisata.
+ * deve comparire in un nome o, solo qui, nella cottura; prima i nomi che iniziano con la
+ * ricerca, poi il crudo (si pesa a crudo, principio 4), poi i nomi più corti; a parità di
+ * nome il cotto senza cottura precisata.
  */
 export async function searchFoods(db: SqlDatabase, query: string, limit = 20): Promise<FoodHit[]> {
   const words = searchWords(query);

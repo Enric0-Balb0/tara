@@ -67,7 +67,7 @@ describe('replaceCatalog', () => {
     expect(
       await db.getAllAsync('SELECT id, cooking, search_text FROM food ORDER BY id'),
     ).toEqual([
-      { id: 'albume-cotto', cooking: 'al vapore', search_text: "albume d'uovo\nal vapore" },
+      { id: 'albume-cotto', cooking: 'al vapore', search_text: "albume d'uovo al vapore" },
       { id: 'albume-crudo', cooking: null, search_text: "albume d'uovo" },
       { id: 'caffe-espresso', cooking: null, search_text: 'caffe espresso\nespresso' },
     ]);

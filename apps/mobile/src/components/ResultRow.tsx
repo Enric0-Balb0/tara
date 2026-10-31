@@ -36,7 +36,8 @@ export function ResultRow({ name, state, cooking = null, kcalPer100, proteinPer1
     >
       <View style={styles.text}>
         <View style={styles.name}>
-          <TaraText numberOfLines={1} style={styles.shrink}>
+          {/* Due righe: molti nomi del catalogo si distinguono solo in fondo. */}
+          <TaraText numberOfLines={2} style={styles.shrink}>
             {name}
           </TaraText>
           <StateTag state={state} />

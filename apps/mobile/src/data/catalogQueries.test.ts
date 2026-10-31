@@ -216,6 +216,26 @@ describe('cottura', () => {
     ]);
   });
 
+  it('una cottura non conta come un nome che inizia con la ricerca', async () => {
+    const roast = (id: string, name: string, cooking: string | null): TestFood => ({
+      ...broccoli(id, 'cooked', cooking),
+      name,
+      names: [name],
+    });
+    await replaceCatalog(
+      db,
+      snapshotText([
+        roast('aglio-arrosto', 'Aglio', 'arrosto, al forno'),
+        roast('arrosto-manzo', 'Arrosto di manzo', null),
+      ]),
+      { etag: null, syncedAt: '2026-10-31T10:00:00.000Z' },
+    );
+    expect((await searchFoods(db, 'arrosto')).map((hit) => hit.id)).toEqual([
+      'arrosto-manzo',
+      'aglio-arrosto',
+    ]);
+  });
+
   it('la scheda ha la cottura', async () => {
     expect((await getFood(db, 'broccoli-vapore'))?.cooking).toBe('al vapore');
   });
