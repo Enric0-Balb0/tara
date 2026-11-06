@@ -54,7 +54,7 @@ Un nuovo prodotto entra nel catalogo da barcode, foto dell'etichetta o inserimen
 
 | ID | Requisito | Priorità | Fase |
 | --- | --- | --- | --- |
-| RF-01 | Catalogo di alimenti generici importato da CIQUAL 2025 (e USDA FoodData Central per i generici mancanti), con nomi in italiano. | M | F0 |
+| RF-01 | Catalogo di alimenti generici importato da CIQUAL 2025 con nomi in italiano; USDA FoodData Central si aggiunge quando manca un generico usato davvero. | M | F0 |
 | RF-02 | Prodotti di marca con nome, marca, categoria, barcode, unità base (g o ml), porzione dichiarata e alimento generico di riferimento. | M | F1 |
 | RF-03 | Valori nutrizionali salvati per 100 g o 100 ml, un record per nutriente con provenienza e confidenza. | M | F0 |
 | RF-04 | Varianti crudo e cotto come alimenti distinti, etichettate nella ricerca; il crudo è la variante predefinita. | M | F1 |
@@ -400,8 +400,8 @@ Per la fase personale bastano fonti gratuite; la BDA dell'IEO ha condizioni da r
 
 Fasi in sequenza: ognuna parte solo quando la precedente supera il suo gate. Nessuna funzione AI extra prima di due settimane di uso reale dell'MVP.
 
-1. **F0 · Fondamenta** — repo, CI/CD, schema dati, autenticazione, backend online; import di CIQUAL 2025 (e USDA per i generici mancanti) con nomi tradotti in italiano.
-   *Gate:* la ricerca di un generico restituisce valori corretti.
+1. **F0 · Fondamenta** — repo, CI/CD, schema dati, autenticazione, backend online; import di CIQUAL 2025 con nomi tradotti in italiano. USDA è rimandato a quando manca un generico della dieta reale.
+   *Gate:* la ricerca di un generico restituisce valori corretti. Il backend va online prima del gate, così la prova si fa su un telefono vero senza il PC; l'autenticazione arriva dopo il gate.
 2. **F1 · MVP «disinstallo FatSecret»** — catalogo, barcode con Open Food Facts, lettura etichetta, inserimento manuale; ricette, pasti salvati, diario con copia, preferiti e recenti; piano alimentare per tipo di giornata; target per tipo di giornata, contatore acqua, peso con media mobile.
    *Gate (vincolante):* due settimane di uso esclusivo, senza FatSecret.
 3. **F2 · Routine del bodybuilder** — stack integratori con notifiche, cardio e passi, fasi della dieta e TDEE adattivo; misure, foto progressi, biofeedback e check-in settimanale; inserimento testuale rapido e pianificazione dei pasti.
@@ -422,7 +422,12 @@ L'hosting del backend va scelto entro la fine della fase F0, perché da lui dipe
 
 - [ ] Verifica della disponibilità del nome Tara su Google Play, App Store e dominio prima della pubblicazione.
 - [ ] Modello AI per l'estrazione etichette, da scegliere con un confronto su 30–50 etichette reali.
-- [x] Provider di hosting del backend: Supabase Free (Postgres + pgvector, Auth, regione UE) e Render Free (Francoforte) per il container dell'API, finché l'uso è personale; upgrade ai piani a pagamento senza cambiare codice.
+- [x] Provider di hosting del backend: Supabase Free (Postgres + pgvector, Auth, regione `eu-central-1`) e Render Free (Francoforte) per il container dell'API, finché l'uso è personale; upgrade ai piani a pagamento senza cambiare codice. Vincoli verificati il 01/11/2026:
+  - Render Free ha 0,1 CPU e 512 MB, si addormenta dopo 15 minuti senza richieste e si risveglia in circa un minuto; non esegue comandi prima del deploy, quindi le migrazioni partono dal CD.
+  - Render e GitHub Actions non hanno IPv6: verso Supabase si usa il *session pooler* sulla porta 5432, con `sslmode=require`.
+  - Supabase concede ogni tabella nuova di `public` alla chiave pubblica tramite la Data API: tutte le tabelle hanno la sicurezza per riga attiva senza policy (lo impone un test) e la Data API è spenta, perché l'app parla solo con FastAPI.
+  - Un progetto Supabase Free senza attività per 7 giorni va in pausa e non ha backup automatici: un ping a `/ready` lo tiene attivo; prima di salvare diari reali (F1) servono backup pianificati.
+  - Gli alimenti condivisi hanno ID derivati da fonte e codice, uguali in ogni database: un database ricreato da zero non rompe i riferimenti.
 - [ ] Piano GitHub per proteggere `main` sul repository privato (GitHub Pro, anche tramite Student Developer Pack) oppure repository pubblico.
 - [x] Account Expo per attivare EAS Build, EAS Update e il server MCP di Expo: progetto `@enricobalbo/tara`, prima development build Android il 22/10/2026.
 - [ ] Acquisto della BDA dell'IEO per gli alimenti tipici italiani.
@@ -441,3 +446,4 @@ L'hosting del backend va scelto entro la fine della fase F0, perché da lui dipe
 | Errore alto nella stima da foto | Perdita di fiducia nell'app | Range invece di valore puntuale, correzione manuale, funzione nell'ultima fase |
 | Costi AI con più utenti | Spesa fuori controllo | Tetto per utente, riuso delle estrazioni già fatte per lo stesso barcode |
 | Ambito che cresce prima dell'MVP | MVP mai concluso | Gate di F1 vincolante prima di qualsiasi funzione AI extra |
+| Backend gratuito che si addormenta, database in pausa | Primo download lento, API ferma fino al ripristino | Catalogo sul telefono, attesa e nuovi tentativi al primo download, ping a `/ready`, upgrade ai piani a pagamento senza cambiare codice |
