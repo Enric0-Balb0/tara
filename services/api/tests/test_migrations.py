@@ -31,6 +31,21 @@ def test_upgrade_downgrade_roundtrip() -> None:
             engine.dispose()
 
 
+def test_every_table_has_row_level_security(engine: Engine) -> None:
+    """Su Supabase la chiave pubblica dell'app arriva alle tabelle di `public` tramite la
+    Data API: con la sicurezza per riga attiva e nessuna policy non vede né scrive nulla.
+    L'API resta proprietaria delle tabelle e non ne è limitata."""
+    with engine.connect() as conn:
+        unprotected = conn.scalars(
+            text(
+                "SELECT relname FROM pg_class WHERE relnamespace = 'public'::regnamespace "
+                "AND relkind = 'r' AND NOT relrowsecurity ORDER BY relname"
+            )
+        ).all()
+
+    assert unprotected == []
+
+
 def test_models_match_migrations(engine: Engine) -> None:
     with engine.connect() as conn:
         context = MigrationContext.configure(conn, opts={"compare_type": True})
