@@ -286,6 +286,14 @@ def build_snapshot(session: Session, version: str) -> CatalogSnapshot:
     )
 
 
+def _matches(if_none_match: str | None, etag: str) -> bool:
+    """Confronto debole (RFC 9110): un proxy che comprime può aggiungere W/ all'ETag."""
+    if if_none_match is None:
+        return False
+    tags = {tag.strip().removeprefix("W/") for tag in if_none_match.split(",")}
+    return "*" in tags or etag in tags
+
+
 @router.get(
     "/catalog",
     summary="Catalogo condiviso completo, per l'uso offline nell'app",
@@ -297,7 +305,7 @@ def catalog(
 ) -> CatalogSnapshot | Response:
     version = catalog_version(session)
     etag = f'"{version}"'
-    if request.headers.get("if-none-match") == etag:
+    if _matches(request.headers.get("if-none-match"), etag):
         return Response(status_code=304, headers={"ETag": etag})
     response.headers["ETag"] = etag
     # L'app può tenere la copia, ma deve chiedere conferma al server prima di usarla.

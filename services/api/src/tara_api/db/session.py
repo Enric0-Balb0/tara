@@ -11,8 +11,17 @@ from tara_api.config import get_settings
 
 @lru_cache
 def get_engine() -> Engine:
-    # pre_ping: i database gratuiti chiudono le connessioni inattive.
-    return create_engine(get_settings().sqlalchemy_database_url, pool_pre_ping=True)
+    # pre_ping e recycle: i database gratuiti chiudono le connessioni inattive. Il pooler
+    # di Supabase Free dà 15 connessioni per utente, divise con migrazioni e caricamenti.
+    return create_engine(
+        get_settings().sqlalchemy_database_url,
+        pool_pre_ping=True,
+        pool_size=3,
+        max_overflow=2,
+        pool_timeout=10,
+        pool_recycle=300,
+        connect_args={"connect_timeout": 10},
+    )
 
 
 def get_session() -> Iterator[Session]:

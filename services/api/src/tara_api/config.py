@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="TARA_", env_file=".env", extra="ignore")
 
     environment: str = "development"
+    release: str = "dev"
+    """Commit dell'immagine in esecuzione: il CD lo passa come build arg."""
     database_url: str = "postgresql://tara:tara@localhost:55432/tara"
     off_user_agent: str = "Tara/0.1 (progetto personale)"
 

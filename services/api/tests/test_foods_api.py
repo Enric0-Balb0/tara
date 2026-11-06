@@ -249,6 +249,27 @@ def test_snapshot_is_not_sent_again_when_the_app_is_up_to_date(client: TestClien
     assert response.content == b""
 
 
+@pytest.mark.usefixtures("catalog")
+@pytest.mark.parametrize("header", ["W/{etag}", '"altra", {etag}', "*"])
+def test_snapshot_is_not_sent_again_when_a_proxy_rewrites_the_etag(
+    client: TestClient, header: str
+) -> None:
+    """Un proxy che comprime può indebolire l'ETag (W/): rifare lo snapshot costa 10 s."""
+    etag = client.get("/v1/catalog").headers["etag"]
+
+    response = client.get("/v1/catalog", headers={"If-None-Match": header.format(etag=etag)})
+
+    assert response.status_code == 304
+    assert response.headers["etag"] == etag
+
+
+@pytest.mark.usefixtures("catalog")
+def test_snapshot_is_sent_when_the_app_has_another_version(client: TestClient) -> None:
+    response = client.get("/v1/catalog", headers={"If-None-Match": 'W/"vecchia", "altra"'})
+
+    assert response.status_code == 200
+
+
 def test_snapshot_version_changes_when_foods_are_added(
     client: TestClient, session: Session
 ) -> None:
