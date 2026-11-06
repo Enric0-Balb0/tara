@@ -8,7 +8,10 @@ describe('searchStatus', () => {
   it('mentre scarica il catalogo lo dice', () => {
     expect(
       searchStatus({ query: 'albume', results: null, catalogSize: 0, syncing: true }),
-    ).toEqual({ kind: 'downloading', message: 'Gli alimenti si stanno scaricando…' });
+    ).toEqual({
+      kind: 'downloading',
+      message: 'Gli alimenti si stanno scaricando: la prima volta può volerci un minuto.',
+    });
   });
 
   it('senza catalogo e senza connessione chiede di riprovare, anche con una ricerca valida', () => {

@@ -1,7 +1,7 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { catalogInfo } from './catalogStore';
-import { syncCatalog } from './catalogSync';
+import { FIRST_DOWNLOAD_TIMEOUT_MS, syncCatalog, WAKE_DELAYS_MS } from './catalogSync';
 import { initDatabase } from './schema';
 import type { SqlDatabase } from './sql';
 import { openTestDatabase } from './testing/nodeDatabase';
@@ -30,6 +30,7 @@ const ok =
     new Response(body, { status: 200, headers: etag ? { ETag: etag } : {} });
 const notModified: Reply = async () => new Response(null, { status: 304 });
 const serverError: Reply = async () => new Response('errore', { status: 500 });
+const waking: Reply = async () => new Response('', { status: 503 });
 const networkDown: Reply = async () => {
   throw new TypeError('Network request failed');
 };
@@ -131,5 +132,70 @@ describe('syncCatalog', () => {
     const { fetch } = server(ok('<html>', '"v9"'));
     expect(await sync(fetch, LATER)).toEqual({ kind: 'failed', reason: 'invalid' });
     expect(await catalogInfo(db)).toEqual(before);
+  });
+
+  it('con il catalogo sul telefono non insiste: un solo tentativo', async () => {
+    await downloadFirstCatalog();
+    const waits: number[] = [];
+    const { fetch, requests } = server(waking);
+    expect(
+      await syncCatalog(db, {
+        apiUrl: 'http://api.test',
+        fetch,
+        now: () => LATER,
+        wait: async (ms) => void waits.push(ms),
+      }),
+    ).toEqual({ kind: 'failed', reason: 'server' });
+    expect(requests).toHaveLength(1);
+    expect(waits).toEqual([]);
+  });
+});
+
+/** Il backend gratuito si spegne dopo 15 minuti e impiega circa un minuto a ripartire. */
+describe('syncCatalog, primo download mentre il server si sveglia', () => {
+  function firstDownload(fetch: typeof globalThis.fetch, waits: number[] = []) {
+    return syncCatalog(db, {
+      apiUrl: 'http://api.test',
+      fetch,
+      now: () => FIRST,
+      wait: async (ms) => void waits.push(ms),
+    });
+  }
+
+  it('riprova con attese crescenti finché il server risponde', async () => {
+    const waits: number[] = [];
+    const { fetch, requests } = server(waking, networkDown, ok(snapshotText(), '"v1"'));
+    expect(await firstDownload(fetch, waits)).toEqual({
+      kind: 'updated',
+      version: 'v1',
+      foodCount: 3,
+    });
+    expect(requests).toHaveLength(3);
+    expect(waits).toEqual(WAKE_DELAYS_MS.slice(0, 2));
+  });
+
+  it("dopo l'ultima attesa si arrende", async () => {
+    const waits: number[] = [];
+    const { fetch, requests } = server(
+      ...Array.from({ length: WAKE_DELAYS_MS.length + 1 }, () => networkDown),
+    );
+    expect(await firstDownload(fetch, waits)).toEqual({ kind: 'failed', reason: 'offline' });
+    expect(requests).toHaveLength(WAKE_DELAYS_MS.length + 1);
+    expect(waits).toEqual(WAKE_DELAYS_MS);
+  });
+
+  it('la prima richiesta aspetta il risveglio oltre i 30 s', async () => {
+    vi.useFakeTimers();
+    try {
+      const { fetch, requests } = server(neverAnswers, ok(snapshotText(), '"v1"'));
+      const pending = firstDownload(fetch);
+      await vi.advanceTimersByTimeAsync(60_000);
+      expect(requests).toHaveLength(1);
+      await vi.advanceTimersByTimeAsync(FIRST_DOWNLOAD_TIMEOUT_MS);
+      expect(await pending).toMatchObject({ kind: 'updated', foodCount: 3 });
+      expect(requests).toHaveLength(2);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

@@ -41,7 +41,7 @@ describe('describeCatalog', () => {
       'Server non raggiungibile: uso la copia sul telefono',
     );
     expect(describeCatalog(empty, offline, false).detail).toBe(
-      'Server non raggiungibile: avvia il backend e riprova',
+      'Server non raggiungibile: controlla la connessione e riprova',
     );
   });
 

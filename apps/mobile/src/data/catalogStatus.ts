@@ -23,7 +23,7 @@ function detail(info: CatalogInfo | null, last: SyncResult | null, syncing: bool
       case 'offline':
         return (info?.foodCount ?? 0) > 0
           ? 'Server non raggiungibile: uso la copia sul telefono'
-          : 'Server non raggiungibile: avvia il backend e riprova';
+          : 'Server non raggiungibile: controlla la connessione e riprova';
       case 'server':
         return 'Il server ha risposto con un errore';
       case 'invalid':
