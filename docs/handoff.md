@@ -2,6 +2,24 @@
 
 Questo file riassume la conversazione di progettazione del 22 ottobre 2026 (claude.ai) da cui nasce il repository, così che una nuova sessione di Claude Code possa ripartire senza perdere contesto.
 
+## Riprendere il lavoro (aggiornato al 07/11/2026)
+
+- **Fase:** F0, passo 8 (backend online), seconda metà. Dettagli e passi esatti in "Prossimi passi", punto 8.
+- **Branch:** `feat/rnf-14-deploy`, partito da `main` (`64a9f99`, PR #32). Contiene solo questo aggiornamento dei documenti; la seconda PR del passo 8 si costruisce qui.
+- **In attesa di Enrico, dal pannello di Render:**
+  - cancellare il servizio creato per errore in Oregon e ricrearlo a Francoforte, sul piano Free;
+  - impostare le variabili d'ambiente;
+  - controllare che `/ready` risponda;
+  - salvare i due segreti GitHub;
+  - mandare l'URL `onrender.com`.
+- **Poi:**
+  - seconda PR: deploy verificato in `cd.yml`, ping anti-pausa, URL nei profili EAS, Newman sull'URL online;
+  - passo 9 (gate F0): Enrico rivede i nomi della sua dieta e dà l'ok per una build preview EAS, chiedendo prima di usare la quota.
+- **Note pratiche su questa macchina:**
+  - Dopo un riavvio Docker Desktop è spento: `Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"`, poi `docker compose -f infra/docker-compose.yml up -d`. Senza, i test del backend falliscono alla connessione.
+  - Le azioni che creano, cancellano o pagano qualcosa nei pannelli di Render, Supabase e GitHub le fa Enrico. Il controllo dei permessi blocca i clic di Claude che creano risorse. Le letture sono possibili: MCP di Supabase per SQL, log e advisor; `gh` per PR, run e nomi dei segreti.
+  - Gli agenti in background dei workflow si sono bloccati per ore sulle ricerche (ricognizione del 01/11). Per lavori brevi conviene procedere direttamente.
+
 ## Da dove nasce
 
 Enrico è un AI engineer e un appassionato di bodybuilding. Usa la versione gratuita di FatSecret e la trova limitante: contatore acqua, scanner di etichette, pasti personalizzati e altre funzioni utili sono a pagamento. Vuole un'app sua, in italiano, che copra le esigenze di un bodybuilder e usi l'AI per togliere lavoro ricorrente. All'inizio la usa solo lui; se funziona, la installeranno anche alcuni amici, e servirà un'infrastruttura web.
@@ -96,25 +114,66 @@ Non si possono fare dal repository; dettagli in `docs/processo.md`:
    - Flusso Maestro `ricerca.yaml` (tag `api`). Sull'emulatore Gboard propone a volte la prova della penna e si prende il testo digitato: i flussi la chiudono e riscrivono.
 Ordine approvato da Enrico il 31/10/2026 per chiudere la F0: prima il backend online, poi il gate sul telefono, poi l'autenticazione. USDA è rimandato a quando manca un generico della dieta reale.
 
-8. **Backend online** (in corso, branch `feat/rnf-14-backend-online`). Supabase Free per Postgres e Render Free per l'API, con i vincoli verificati in `docs/requisiti.md`.
-   - Fatto nel codice:
+8. **Backend online** (in corso). Supabase Free per Postgres e Render Free per l'API, con i vincoli verificati in `docs/requisiti.md`; procedura e segreti in `docs/processo.md`, "Delivery" e "Segreti".
+   - **Fatto, PR #32 (`64a9f99`):**
      - sicurezza per riga su tutte le tabelle, imposta da un test;
-     - ID stabili per i generici;
-     - `/ready` che interroga il database e `release` in `/health`;
+     - ID stabili (uuid5 da fonte e codice) per i generici;
+     - `/ready` che interroga il database e `release` (SHA dell'immagine) in `/health`;
      - pool adatto al pooler di Supabase;
-     - ETag che regge i proxy;
-     - nell'app, attesa del risveglio di Render al primo download.
-   - Misure con 0,1 CPU e database locale:
-     - snapshot in circa 10 s;
-     - 304 in meno di 0,05 s;
-     - picco di memoria intorno ai 220 MiB, 390 MiB con quattro download insieme.
-   - Da fare: preparare il database e caricare il catalogo (`docs/processo.md`, "Delivery"), creare il servizio Render, poi una seconda PR con il deploy verificato in `cd.yml`, il ping anti-pausa e l'URL dell'API nei profili EAS, e la prova con Newman sull'URL online.
+     - ETag che regge i proxy (`W/`, liste, `*`);
+     - nell'app, attesa del risveglio di Render al primo download (90 s, poi nuovi tentativi per circa un minuto);
+     - documenti e `infra/supabase/bootstrap.sql`.
+   - **Supabase, fatto e verificato il 07/11/2026.** Progetto `tara`, ref `fbwlepzrrvtngvbyktiv`, `eu-central-1`, piano Free.
+     - Estensioni `unaccent` e `pg_trgm` nello schema `extensions`.
+     - Schema alla revisione `3cf402a41280`.
+     - Catalogo caricato: 3.484 alimenti, 13.438 nomi, 68.817 valori, tutti con ID stabile.
+     - Data API spenta: nei log di PostgREST compare `db-schemas=pg_pgrst_no_exposed_schemas` e le richieste ricevono 503 `PGRST002`, che è l'effetto atteso.
+     - Advisor di sicurezza: solo l'avviso informativo `rls_enabled_no_policy`, voluto.
+     - Connessione: *session pooler* `aws-1-eu-central-1.pooler.supabase.com:5432`, utente `postgres.fbwlepzrrvtngvbyktiv`, database `postgres`, con `?sslmode=require`. L'host `aws-0-…` non conosce il progetto.
+     - La password la conosce solo Enrico.
+     - Il progetto riporta `release_channel: withdrawn` e una data di creazione anteriore alla creazione vera. Causa non trovata; finora nessun effetto.
+   - **Render, da sistemare (lo fa Enrico dal pannello).**
+     - Account creato, con la credenziale del registry `ghcr-tara`: token GitHub *classic* con solo `read:packages`, scadenza un anno. Render scarica l'immagine privata.
+     - Esiste un servizio `tara-api` creato per errore in **Oregon**: `https://tara-api-latest.onrender.com`, `srv-dbnho4s9v7es73cq9oc0`, piano Free, senza variabili d'ambiente. Il 07/11 `/health` rispondeva con `release 64a9f99` dopo 21 s di risveglio, mentre `/ready` dava 503 perché manca `TARA_DATABASE_URL`.
+     - La regione non si cambia dopo la creazione e il database è a Francoforte, quindi va ricreato:
+       1. pagina del servizio in Oregon → *Settings* → *Delete Web Service*;
+       2. *New → Web Service → Existing Image*: `ghcr.io/enric0-balb0/tara-api:latest`, credenziale `ghcr-tara`, *Connect*;
+       3. *Region*: il menu propone prima Oregon perché c'è già un servizio lì; scegliere **Deploy in a new region → Frankfurt (EU Central)**;
+       4. *Instance type*: **Free**. Il modulo preseleziona il piano da $7 al mese;
+       5. variabili `TARA_DATABASE_URL` (URI del session pooler) e `PORT=8000`; *Advanced → Health Check Path* `/health`; *Deploy web service*;
+       6. controllo: `https://<servizio>.onrender.com/ready` deve rispondere `{"status":"ok"}`;
+       7. *Settings → Deploy Hook*: copiare l'URL; dalla cartella del repository, `gh secret set RENDER_DEPLOY_HOOK_URL` e `gh secret set TARA_DATABASE_URL`, incollando il valore quando richiesto, mai in chat.
+     - Nel repository oggi non c'è nessun segreto (`gh secret list` è vuoto).
+   - **Seconda PR del passo 8** (branch `feat/rnf-14-deploy`), quando Enrico manda l'URL del servizio:
+     - in `cd.yml`, un job dopo la pubblicazione dell'immagine:
+       - controlla che i segreti non siano vuoti;
+       - esegue `docker run --rm -e TARA_DATABASE_URL "$IMAGE:$SHA" alembic upgrade head`;
+       - chiama l'hook con `curl -fsS -G --data-urlencode "imgURL=$IMAGE:$SHA"`, perché l'URL dell'hook contiene già `?key=`;
+       - fa polling di `/health` finché `release` coincide con lo SHA, con timeout di 10 minuti e 503 tollerati, poi chiama `/ready`;
+       - espone i segreti solo negli `env:` degli step che li usano;
+     - un workflow a cron due volte al giorno che chiama `/ready` con nuovi tentativi (`curl --retry 8 --retry-all-errors --retry-delay 15 --max-time 90`), contro la pausa di Supabase dopo 7 giorni senza attività;
+     - `EXPO_PUBLIC_API_URL` con l'URL https di Render nei profili `preview` e `production` di `apps/mobile/eas.json`, con un test che lo imponga https: senza, `src/config.ts` ripiega in silenzio sull'emulatore;
+     - un ambiente Postman per l'URL di Render e Newman sulla collezione `services/api/postman/`;
+     - prova a freddo: dopo almeno 20 minuti di inattività, tempo del primo `GET /v1/catalog`;
+     - intestazione di `cd.yml` e `docs/processo.md` aggiornate.
+   - Misure con 0,1 CPU e database locale, prima del deploy: snapshot in circa 10 s, 304 in meno di 0,05 s, picco di memoria intorno ai 220 MiB (390 MiB con quattro download insieme). Da rifare su Render.
 9. **Gate F0**: la ricerca di un generico restituisce valori corretti. Percorso della demo: "cerco albume, vedo i valori giusti, inserisco i grammi, funziona offline", da provare dall'inizio su un telefono con una build preview che parla con il backend online, dopo almeno 20 minuti di inattività del server, e poi senza rete. Prima, Enrico rivede i nomi degli alimenti della sua dieta.
 10. **Autenticazione** con codice via email (Supabase Auth).
 11. **Chiusura della F0**:
     - ruleset su `main`;
     - PR di Dependabot e patch di Expo;
     - aggiornamento di questo documento.
+    - Minori rimandati dei passi 6 e 7:
+      - nella scheda alimento non c'è «Indietro» durante il caricamento e `getFood` non gestisce gli errori;
+      - «Torna a 100 g» resta visibile dopo «Usa 100 g»;
+      - «Usa» fa partire la vibrazione di successo;
+      - «Indietro» non fa nulla se si arriva da un deep link;
+      - in `SearchField` la dimensione dell'icona è scritta a mano (20);
+      - nel profilo la dicitura «dei generici»;
+      - `CatalogProvider` non gestisce gli errori;
+      - SQLite senza `busy_timeout`;
+      - nutrienti orfani;
+      - nessun confronto di versione oltre all'ETag.
     - Restano per la F1:
       - backup pianificati del database prima dei diari reali;
       - un ruolo del database per l'API senza permessi sullo schema;
