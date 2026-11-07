@@ -49,6 +49,7 @@ jobs:
         with:
           context: services/api
           push: true
+          build-args: RELEASE=${{ github.event.workflow_run.head_sha }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=api

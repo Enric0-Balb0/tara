@@ -100,7 +100,32 @@ Una modifica è finita quando:
 
 ## Delivery
 
-**Backend (attivo).** `.github/workflows/cd.yml` parte quando la CI su `main` finisce verde e pubblica `ghcr.io/enric0-balb0/tara-api` con i tag `<sha>` e `latest`. L'immagine è la stessa che la CI ha già avviato e verificato. Il job di deploy si aggiunge in coda appena si sceglie l'hosting (questione aperta in `docs/requisiti.md`); ci vorrà un segreto di deploy nelle impostazioni del repository.
+**Backend (attivo).** `.github/workflows/cd.yml` parte quando la CI su `main` finisce verde e pubblica `ghcr.io/enric0-balb0/tara-api` con i tag `<sha>` e `latest`. L'immagine è la stessa che la CI ha già avviato e verificato, e porta il suo commit in `/health` (`release`).
+
+L'API gira su Render Free e il database su Supabase Free (scelte e limiti in `docs/requisiti.md`). Il deploy automatico arriva con la seconda PR del passo 8 e farà questo:
+
+1. applica le migrazioni con `alembic upgrade head` dalla stessa immagine appena pubblicata, verso il *session pooler* di Supabase;
+2. chiama il deploy hook di Render con il tag `<sha>`;
+3. aspetta che `/health` riporti quella `release` e che `/ready` risponda; altrimenti il job fallisce.
+
+Regole per le migrazioni:
+
+- Le migrazioni partono prima del deploy, quindi ognuna deve funzionare anche con l'immagine precedente.
+- Una colonna o tabella si toglie in una release successiva a quella che smette di usarla.
+- Il rollback è ridistribuire lo SHA precedente da Render e correggere in avanti, senza `alembic downgrade` in produzione.
+- Ogni tabella nuova attiva la sicurezza per riga: lo controlla un test.
+
+**Database di produzione, una volta per progetto.** Si fa da una finestra di PowerShell dedicata, da chiudere alla fine. La stringa di connessione non va mai in `.env`: lì la leggerebbero anche server locale e migrazioni autogenerate.
+
+```powershell
+# Estensioni nello schema extensions (SQL editor di Supabase o MCP): infra/supabase/bootstrap.sql
+cd services/api
+$env:TARA_DATABASE_URL = Read-Host 'URL del session pooler'   # ...pooler.supabase.com:5432/postgres?sslmode=require
+uv run alembic upgrade head
+uv run python -m tara_api.catalog_load ../../pipelines/catalog/data/build/ciqual-2025/catalogo.jsonl
+```
+
+Nel pannello di Supabase la Data API resta spenta: l'app parla solo con FastAPI.
 
 **App (in parte attiva).** Il progetto è collegato a EAS come `@enricobalbo/tara` (`extra.eas.projectId` in `app.json`) e le build passano da EAS Build con i profili di `apps/mobile/eas.json`:
 
@@ -161,7 +186,16 @@ Queste impostazioni non stanno nel repository e si fanno una volta dalla pagina 
 - Mai nel repository: in locale stanno in `.env` (ignorato da git; il modello è `services/api/.env.example`), in CI nei segreti di GitHub Actions.
 - gitleaks controlla i file in stage a ogni commit e tutta la storia in CI.
 - Le chiavi dei provider AI esistono solo sul backend (vedi `docs/requisiti.md`).
-- Segreti previsti: `EXPO_TOKEN` (EAS), credenziali di deploy dell'hosting, `TARA_DATABASE_URL` di produzione, chiavi dei provider AI.
+- Segreti previsti: `EXPO_TOKEN` (EAS), chiavi dei provider AI.
+- Segreti del backend online:
+
+  | Segreto | Dove | A cosa serve |
+  | --- | --- | --- |
+  | `TARA_DATABASE_URL` | GitHub Actions e variabili del servizio Render | URL del *session pooler* di Supabase (porta 5432, `sslmode=require`) |
+  | `RENDER_DEPLOY_HOOK_URL` | GitHub Actions | Avvia il deploy su Render |
+  | Token GitHub classico con `read:packages` | Credenziali del registry su Render | Scarica l'immagine privata da GHCR; scadenza di un anno, poi va ruotato |
+
+  Su Render va impostato anche `PORT=8000`; l'health check punta a `/health`.
 - Chiavi dei modelli AI della pipeline: in `pipelines/catalog/.env` (modello in `.env.example`). Si incollano solo lì, mai in chat, nei commit o nelle issue; gitleaks blocca i commit che le contengono.
 
 ## Preparare una nuova macchina

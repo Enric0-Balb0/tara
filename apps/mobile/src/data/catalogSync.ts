@@ -2,6 +2,10 @@
  * Allinea il catalogo del telefono a `GET /v1/catalog`. Con l'ETag il server risponde 304
  * se non è cambiato nulla; se il server è spento o non risponde, l'app continua con la
  * copia che ha (uso offline, RNF-03).
+ *
+ * Il backend gratuito si spegne dopo 15 minuti senza richieste e impiega circa un minuto a
+ * ripartire. Con il catalogo sul telefono basta un tentativo: si riprova al prossimo avvio.
+ * Senza catalogo l'app non ha alimenti, quindi aspetta il risveglio e riprova.
  */
 
 import { catalogInfo, markChecked, replaceCatalog } from './catalogStore';
@@ -12,17 +16,46 @@ export type SyncResult =
   | { kind: 'unchanged' }
   | { kind: 'failed'; reason: 'offline' | 'server' | 'invalid' };
 
+/** Attese tra un tentativo e l'altro al primo download: in tutto circa un minuto. */
+export const WAKE_DELAYS_MS = [3_000, 5_000, 10_000, 15_000, 30_000];
+/** La prima richiesta al server addormentato dura quanto il suo risveglio. */
+export const FIRST_DOWNLOAD_TIMEOUT_MS = 90_000;
+
 export interface SyncOptions {
   apiUrl: string;
   fetch?: typeof globalThis.fetch;
   now?: () => Date;
   /** Oltre questo tempo, risposta compresa, il server conta come non raggiungibile. */
   timeoutMs?: number;
+  wait?: (ms: number) => Promise<void>;
 }
+
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 export async function syncCatalog(
   db: SqlDatabase,
-  { apiUrl, fetch = globalThis.fetch, now = () => new Date(), timeoutMs = 30_000 }: SyncOptions,
+  { wait = sleep, ...options }: SyncOptions,
+): Promise<SyncResult> {
+  const { foodCount } = await catalogInfo(db);
+  if (foodCount > 0) return attempt(db, options);
+
+  let result = await attempt(db, { ...options, timeoutMs: FIRST_DOWNLOAD_TIMEOUT_MS });
+  for (const delay of WAKE_DELAYS_MS) {
+    if (result.kind !== 'failed') return result;
+    await wait(delay);
+    result = await attempt(db, options);
+  }
+  return result;
+}
+
+async function attempt(
+  db: SqlDatabase,
+  {
+    apiUrl,
+    fetch = globalThis.fetch,
+    now = () => new Date(),
+    timeoutMs = 30_000,
+  }: Omit<SyncOptions, 'wait'>,
 ): Promise<SyncResult> {
   const info = await catalogInfo(db);
   // Senza alimenti sul telefono un 304 non servirebbe a niente: si chiede tutto.

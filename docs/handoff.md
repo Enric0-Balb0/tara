@@ -70,7 +70,7 @@ Non si possono fare dal repository; dettagli in `docs/processo.md`:
 
 1. Ruleset su `main` (PR obbligatoria, controlli "CI passata" e "Titolo Conventional Commits", squash merge). Sul repository privato serve GitHub Pro (Student Developer Pack) oppure il repository pubblico.
 2. ~~`gh`, plugin `expo` e `pyright-lsp`, impostazioni di merge del repository~~: fatti.
-3. ~~Scegliere l'hosting~~: Supabase Free + Render Free (vedi `docs/requisiti.md`). Restano da creare gli account e da aggiungere il job di deploy a `cd.yml`.
+3. ~~Scegliere l'hosting~~: Supabase Free + Render Free (vedi `docs/requisiti.md`). Progetto Supabase `tara` creato (`eu-central-1`); restano l'account Render e i segreti (passo 8).
 
 ## Prossimi passi (fase F0)
 
@@ -78,7 +78,7 @@ Non si possono fare dal repository; dettagli in `docs/processo.md`:
 2. ~~**Import CIQUAL**~~: fatto con CIQUAL 2025. Download verificato (`tara_catalog.fetch`), mappatura sui 24 nutrienti di Tara che CIQUAL copre (`data/mappatura_ciqual.toml`), snapshot normalizzato con provenienza e confidenza (`tara_catalog.build` → `data/build/ciqual-2025/`). La pipeline usa ora i valori di stato del database (`raw`/`cooked`/`not_applicable`). Il caricamento nel database avviene dopo la traduzione, perché `food.name` richiede il nome italiano.
 3. ~~**Traduzione**~~: fatta per tutti i 3.484 alimenti di CIQUAL; layer multi-provider con Pydantic AI, prompt `prompts/traduzione-v3.md`, controlli deterministici sulle sole contraddizioni crudo/cotto, set di valutazione di 53 alimenti, traduzione a lotti con ripresa (`python -m tara_catalog.translate eval|ciqual`). Modello: `gemini-3.1-flash-lite` (vedi `docs/valutazioni.md`). Revisione: `translate revisione` scrive `data/build/ciqual-2025/revisione.csv` per Excel (in alto gli alimenti della dieta); `translate applica` salva le correzioni in `data/revisioni.csv`, versionato, che prevale sulle traduzioni del modello. Le traduzioni sono caricate come `llm` (non riviste) finché Enrico non le rivede. `export ciqual` scrive `data/build/ciqual-2025/catalogo.jsonl`, il contratto con il caricatore del backend.
 4. ~~**Caricamento del catalogo**~~: fatto; migrazione `source_code` (unico per fonte, obbligatorio per i generici condivisi) e `python -m tara_api.catalog_load`, che legge `catalogo.jsonl` e inserisce o aggiorna in una transazione; 3.484 alimenti in circa 4 secondi.
-5. **API di ricerca**: fatte `GET /v1/foods/search` (sottostringa senza accenti con indice a trigrammi, ogni parola deve comparire, crudo prima del cotto; circa 3 ms sul catalogo reale), `GET /v1/foods/{id}` (scheda con provenienza e confidenza) e `GET /v1/catalog` (snapshot per l'app: 5,5 MB in JSON, 382 KB compresso, ETag per non riscaricarlo). Prove a mano: Swagger su `/docs` e la collezione Postman in `services/api/postman/`. Da fare: autenticazione, insieme agli account Supabase.
+5. **API di ricerca**: fatte `GET /v1/foods/search` (sottostringa senza accenti con indice a trigrammi, ogni parola deve comparire, crudo prima del cotto; circa 3 ms sul catalogo reale), `GET /v1/foods/{id}` (scheda con provenienza e confidenza) e `GET /v1/catalog` (snapshot per l'app: 5,5 MB in JSON, 382 KB compresso, ETag per non riscaricarlo). Prove a mano: Swagger su `/docs` e la collezione Postman in `services/api/postman/`. L'autenticazione arriva dopo il gate (passo 10).
 6. ~~**Design system**~~: fatto. Stile "Bilancia" con i colori dei dischi e l'etichetta (`docs/design.md`); token in `apps/mobile/src/theme`, logica in `src/domain`, componenti in `src/components`, tab Oggi, Piano, Dispensa, Andamento; catalogo dei componenti solo in sviluppo (`tara://design`, flusso Maestro `design.yaml`). La development build si fa con EAS: in locale su Windows Reanimated supera il limite dei percorsi di CMake. Da riprendere: il foglio dei grammi è un overlay della schermata (l'intestazione resta visibile): quando lo userà la scheda alimento, valutare un modal di Expo Router a tutta finestra; caratteri da incorporare in build con il plugin `expo-font` invece di `useFonts`; i minori rimandati dalla revisione finale (lettore dello schermo che legge "g" e "–", separatore delle migliaia non presente in Archivo, alcuni valori visivi ancora scritti a mano).
 7. **App**: fatti SQLite e snapshot del catalogo (`apps/mobile/src/data`).
    - All'avvio l'app scarica `GET /v1/catalog` e lo sostituisce in una transazione: se arriva rotto resta quello di prima, e gli alimenti personali non si toccano.
@@ -94,7 +94,31 @@ Non si possono fare dal repository; dettagli in `docs/processo.md`:
    - Attribuzione di CIQUAL (RNF-10) nel profilo, sezione "Fonti dei dati".
    - Doppioni del catalogo risolti: la cottura arriva dalla traduzione fino all'app (food.cooking, snapshot formato 3, migrazione v3 sul telefono) e 47 correzioni rivedute da Enrico stanno in pipelines/catalog/data/revisioni.csv. L'export si ferma se due alimenti sembrerebbero uguali nell'app (stessi nome e cottura, entrambi cotti o entrambi no: crudo e n.a. non hanno etichetta); il vincolo ex_food_shared_name_state_cooking fa lo stesso nel database, al commit. Su un database locale con il catalogo vecchio: alembic upgrade 6794f1e91aaf, poi catalog_load, poi alembic upgrade head.
    - Flusso Maestro `ricerca.yaml` (tag `api`). Sull'emulatore Gboard propone a volte la prova della penna e si prende il testo digitato: i flussi la chiudono e riscrivono.
-8. **Gate F0**: la ricerca di un generico restituisce valori corretti. Percorso della demo: "cerco albume, vedo i valori giusti, inserisco i grammi, funziona offline", da provare dall'inizio su un telefono con il catalogo scaricato e poi senza rete. Dopo il gate restano in F0 l'autenticazione e il backend online.
+Ordine approvato da Enrico il 31/10/2026 per chiudere la F0: prima il backend online, poi il gate sul telefono, poi l'autenticazione. USDA è rimandato a quando manca un generico della dieta reale.
+
+8. **Backend online** (in corso, branch `feat/rnf-14-backend-online`). Supabase Free per Postgres e Render Free per l'API, con i vincoli verificati in `docs/requisiti.md`.
+   - Fatto nel codice:
+     - sicurezza per riga su tutte le tabelle, imposta da un test;
+     - ID stabili per i generici;
+     - `/ready` che interroga il database e `release` in `/health`;
+     - pool adatto al pooler di Supabase;
+     - ETag che regge i proxy;
+     - nell'app, attesa del risveglio di Render al primo download.
+   - Misure con 0,1 CPU e database locale:
+     - snapshot in circa 10 s;
+     - 304 in meno di 0,05 s;
+     - picco di memoria intorno ai 220 MiB, 390 MiB con quattro download insieme.
+   - Da fare: preparare il database e caricare il catalogo (`docs/processo.md`, "Delivery"), creare il servizio Render, poi una seconda PR con il deploy verificato in `cd.yml`, il ping anti-pausa e l'URL dell'API nei profili EAS, e la prova con Newman sull'URL online.
+9. **Gate F0**: la ricerca di un generico restituisce valori corretti. Percorso della demo: "cerco albume, vedo i valori giusti, inserisco i grammi, funziona offline", da provare dall'inizio su un telefono con una build preview che parla con il backend online, dopo almeno 20 minuti di inattività del server, e poi senza rete. Prima, Enrico rivede i nomi degli alimenti della sua dieta.
+10. **Autenticazione** con codice via email (Supabase Auth).
+11. **Chiusura della F0**:
+    - ruleset su `main`;
+    - PR di Dependabot e patch di Expo;
+    - aggiornamento di questo documento.
+    - Restano per la F1:
+      - backup pianificati del database prima dei diari reali;
+      - un ruolo del database per l'API senza permessi sullo schema;
+      - una cache dello snapshot, se le misure su Render la chiederanno.
 
 Prima di toccare API di Expo, leggere `apps/mobile/CLAUDE.md`: Expo cambia a ogni SDK.
 

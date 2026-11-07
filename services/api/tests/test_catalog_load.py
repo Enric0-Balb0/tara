@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -14,7 +15,13 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from tara_api import catalog_load
-from tara_api.catalog_load import CatalogEntry, CatalogFileError, load_catalog, read_catalog
+from tara_api.catalog_load import (
+    CatalogEntry,
+    CatalogFileError,
+    load_catalog,
+    read_catalog,
+    shared_food_id,
+)
 from tara_api.db.models import Food, FoodName, NutrientValue
 from tara_api.enums import FoodSource, FoodState, Language, NameOrigin, Provenance
 from tests.database import alembic_config, temporary_database
@@ -64,6 +71,15 @@ def test_load_inserts_foods_with_names_and_values(session: Session) -> None:
     protein = next(v for v in egg.nutrient_values if v.nutrient_code == "protein_g")
     assert protein.amount_per_100 == Decimal("10.9")
     assert (protein.provenance, protein.confidence) == (Provenance.REFERENCE, 0.85)
+
+
+def test_shared_food_ids_depend_only_on_source_and_code(session: Session) -> None:
+    """Un database ricreato da zero ritrova gli stessi ID: diari e ricette li citano."""
+    load_catalog(session, parse(entry(), entry("9104", name="Riso bianco")))
+
+    assert shared_food(session, "22001").id == uuid.UUID("ecfec3cb-477a-5ecb-b905-7c4da3e2f2a5")
+    assert shared_food(session, "9104").id == shared_food_id(FoodSource.CIQUAL, "9104")
+    assert shared_food_id(FoodSource.CIQUAL, "9104") != shared_food_id(FoodSource.USDA, "9104")
 
 
 def test_reload_updates_in_place_without_duplicates(session: Session) -> None:

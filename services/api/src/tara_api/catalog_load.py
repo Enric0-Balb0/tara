@@ -39,6 +39,14 @@ from tara_api.enums import (
 
 DESCRIPTION = "Carica nel database il catalogo dei generici scritto da tara_catalog.export."
 Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
+SHARED_FOOD_NAMESPACE = uuid.UUID("90d800ad-889e-4197-94ba-97567bfe3886")
+"""Non va cambiato: gli ID dei generici già distribuiti dipendono da questo valore."""
+
+
+def shared_food_id(source: FoodSource, source_code: str) -> uuid.UUID:
+    """ID di un generico condiviso, uguale in ogni database: un database ricreato senza
+    backup ritrova gli alimenti citati da diari e ricette."""
+    return uuid.uuid5(SHARED_FOOD_NAMESPACE, f"{source.value}:{source_code}")
 
 
 class CatalogName(BaseModel):
@@ -120,7 +128,7 @@ def load_catalog(session: Session, entries: Iterable[CatalogEntry]) -> LoadSumma
         food_id = existing.pop(key, None)
         row = {"name": entry.name, "state": entry.state, "cooking": entry.cooking}
         if food_id is None:
-            food_id = new_id()
+            food_id = shared_food_id(entry.source, entry.source_code)
             new_foods.append(
                 {"id": food_id, "source": entry.source, "source_code": entry.source_code, **row}
             )

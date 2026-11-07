@@ -27,7 +27,10 @@ export function searchStatus({
   // Prima di tutto: senza alimenti sul telefono "nessun risultato" sarebbe falso.
   if (catalogSize === 0) {
     return syncing
-      ? { kind: 'downloading', message: 'Gli alimenti si stanno scaricando…' }
+      ? {
+          kind: 'downloading',
+          message: 'Gli alimenti si stanno scaricando: la prima volta può volerci un minuto.',
+        }
       : {
           kind: 'offline',
           message: 'Gli alimenti si scaricano con la connessione: collegati e riprova.',
