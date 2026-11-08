@@ -21,7 +21,7 @@ concurrency:
 
 env:
   # Non è un segreto: lo contiene anche l'app (apps/mobile/eas.json).
-  API_URL: https://tara-api-latest.onrender.com
+  API_URL: https://tara-api-eu.onrender.com
   SHA: ${{ github.event.workflow_run.head_sha }}
 
 jobs:

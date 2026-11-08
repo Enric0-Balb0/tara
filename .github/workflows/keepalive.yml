@@ -19,7 +19,7 @@ concurrency:
 
 env:
   # Lo stesso indirizzo di cd.yml e di apps/mobile/eas.json.
-  API_URL: https://tara-api-latest.onrender.com
+  API_URL: https://tara-api-eu.onrender.com
 
 jobs:
   ready:

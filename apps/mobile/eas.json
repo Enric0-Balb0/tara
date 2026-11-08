@@ -17,13 +17,13 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://tara-api-latest.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://tara-api-eu.onrender.com"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://tara-api-latest.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://tara-api-eu.onrender.com"
       }
     }
   },

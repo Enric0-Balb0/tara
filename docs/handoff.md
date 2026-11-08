@@ -5,17 +5,18 @@ Questo file riassume la conversazione di progettazione del 22 ottobre 2026 (clau
 ## Riprendere il lavoro (aggiornato all'08/11/2026)
 
 - **Fase:** F0, passo 8 (backend online), seconda metà. Dettagli e passi esatti in "Prossimi passi", punto 8.
-- **Branch:** `feat/rnf-14-deploy`, partito da `main` (`64a9f99`, PR #32). La seconda PR del passo 8 è scritta qui: deploy verificato in `cd.yml`, `keepalive.yml`, URL nei profili EAS con il test, ambiente Postman di Render, documenti. Servizio: `https://tara-api-latest.onrender.com`.
-- **In attesa di Enrico** (controllo dell'08/11, ore 01):
-  - `/health` risponde 200 con `release 64a9f99`, ma `/ready` dà 503 «database non raggiungibile», e nei log di Supabase non arriva nessuna connessione. Senza `TARA_DATABASE_URL` il backend prova `localhost:55432`: probabilmente la variabile manca sul servizio, oppure è stata salvata senza un nuovo deploy;
-  - i due segreti: `gh secret list` sul repository `Enric0-Balb0/tara` è vuoto, e anche ambienti e segreti di Dependabot. Senza segreti il primo CD dopo il merge si ferma al controllo "Segreti impostati".
-  - La latenza non dice la regione: anche un'app inesistente su `onrender.com` aggiunge circa 200 ms dopo il TLS. La regione si legge nel pannello di Render.
+- **Branch:** `feat/rnf-14-deploy`, partito da `main` (`64a9f99`, PR #32). La seconda PR del passo 8 è scritta qui: deploy verificato in `cd.yml`, `keepalive.yml`, URL nei profili EAS con il test, ambiente Postman di Render, documenti. PR #33, in bozza. Servizio: `https://tara-api-eu.onrender.com`.
+- **In attesa di Enrico** (08/11, ore 02):
+  - nel pannello di Render, servizio `tara-api-eu` → *Environment*: aggiungere `TARA_DATABASE_URL` (URI del session pooler) con *Save, rebuild, and deploy*. Fino ad allora `/ready` dà 503, perché senza la variabile il backend prova `localhost:55432`;
+  - aggiornare il segreto `RENDER_DEPLOY_HOOK_URL` con l'hook di `tara-api-eu` (*Settings → Deploy Hook*): quello salvato l'08/11 alle 01:19 è del servizio in Oregon;
+  - cancellare il servizio `tara-api` in Oregon (`srv-dbnho4s9v7es73cq9oc0`): il controllo dei permessi blocca la cancellazione fatta da Claude;
+  - la CI della PR #33 è rossa solo per `expo-doctor` (patch di Expo, issue #24): serve prima una PR con `npx expo install --fix`.
 - **Poi:**
-  - Newman sull'URL online, prova a freddo, commit e PR, merge con i segreti già impostati, controllo del primo run del CD;
+  - Newman sull'URL online, prova a freddo, merge con CI verde, controllo del primo run del CD;
   - passo 9 (gate F0): Enrico rivede i nomi della sua dieta e dà l'ok per una build preview EAS, chiedendo prima di usare la quota.
 - **Note pratiche su questa macchina:**
   - Dopo un riavvio Docker Desktop è spento: `Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"`, poi `docker compose -f infra/docker-compose.yml up -d`. Senza, i test del backend falliscono alla connessione.
-  - Le azioni che creano, cancellano o pagano qualcosa nei pannelli di Render, Supabase e GitHub le fa Enrico. Il controllo dei permessi blocca i clic di Claude che creano risorse. Le letture sono possibili: MCP di Supabase per SQL, log e advisor; `gh` per PR, run e nomi dei segreti.
+  - Le azioni che creano, cancellano o pagano qualcosa nei pannelli di Render, Supabase e GitHub le fa Enrico, salvo autorizzazione esplicita. L'08/11, con l'autorizzazione, Claude ha creato un servizio Render dal Chrome "Browser 2", dove Enrico ha la sessione di Render; il controllo dei permessi ha comunque bloccato la cancellazione, che resta a Enrico. Le letture sono possibili: MCP di Supabase per SQL, log e advisor; `gh` per PR, run e nomi dei segreti.
   - Gli agenti in background dei workflow si sono bloccati per ore sulle ricerche (ricognizione del 01/11). Per lavori brevi conviene procedere direttamente.
 
 ## Da dove nasce
@@ -130,19 +131,13 @@ Ordine approvato da Enrico il 31/10/2026 per chiudere la F0: prima il backend on
      - Connessione: *session pooler* `aws-1-eu-central-1.pooler.supabase.com:5432`, utente `postgres.fbwlepzrrvtngvbyktiv`, database `postgres`, con `?sslmode=require`. L'host `aws-0-…` non conosce il progetto.
      - La password la conosce solo Enrico.
      - Il progetto riporta `release_channel: withdrawn` e una data di creazione anteriore alla creazione vera. Causa non trovata; finora nessun effetto.
-   - **Render, da sistemare (lo fa Enrico dal pannello).**
+   - **Render.**
      - Account creato, con la credenziale del registry `ghcr-tara`: token GitHub *classic* con solo `read:packages`, scadenza un anno. Render scarica l'immagine privata.
-     - Esiste un servizio `tara-api` creato per errore in **Oregon**: `https://tara-api-latest.onrender.com`, `srv-dbnho4s9v7es73cq9oc0`, piano Free, senza variabili d'ambiente. Il 07/11 `/health` rispondeva con `release 64a9f99` dopo 21 s di risveglio, mentre `/ready` dava 503 perché manca `TARA_DATABASE_URL`.
-     - La regione non si cambia dopo la creazione e il database è a Francoforte, quindi va ricreato:
-       1. pagina del servizio in Oregon → *Settings* → *Delete Web Service*;
-       2. *New → Web Service → Existing Image*: `ghcr.io/enric0-balb0/tara-api:latest`, credenziale `ghcr-tara`, *Connect*;
-       3. *Region*: il menu propone prima Oregon perché c'è già un servizio lì; scegliere **Deploy in a new region → Frankfurt (EU Central)**;
-       4. *Instance type*: **Free**. Il modulo preseleziona il piano da $7 al mese;
-       5. variabili `TARA_DATABASE_URL` (URI del session pooler) e `PORT=8000`; *Advanced → Health Check Path* `/health`; *Deploy web service*;
-       6. controllo: `https://<servizio>.onrender.com/ready` deve rispondere `{"status":"ok"}`;
-       7. *Settings → Deploy Hook*: copiare l'URL; dalla cartella del repository, `gh secret set RENDER_DEPLOY_HOOK_URL` e `gh secret set TARA_DATABASE_URL`, incollando il valore quando richiesto, mai in chat.
-     - Nel repository oggi non c'è nessun segreto (`gh secret list` è vuoto).
-   - **Seconda PR del passo 8** (branch `feat/rnf-14-deploy`): scritta l'08/11, manca l'URL del servizio. Procedura in `docs/processo.md`, "Delivery". Il polling di `/health` è provato in Git Bash contro il servizio in Oregon: release giusta con `/ready` a 503, release diversa e servizio inesistente fanno tutti fallire il job. Cosa contiene:
+     - **Servizio buono: `tara-api-eu`**, `srv-dbnsfkou01pc73dkc95g`, `https://tara-api-eu.onrender.com`, Frankfurt (EU Central), piano Free, progetto `tara-api` / Production. Creato da Claude l'08/11 con l'autorizzazione di Enrico, con `PORT=8000` e health check `/health`. Il primo deploy è andato online in 20 s; `/health` risponde in circa 90 ms contro i 250 ms del servizio in Oregon.
+     - Il nome `tara-api` è ancora preso dal servizio in Oregon. Il modulo propone come nome il riferimento dell'immagine (`tara-api:latest`): da lì veniva l'URL `tara-api-latest`. Il *Pre-Deploy Command* è bloccato sul piano Free.
+     - Servizio da cancellare: `tara-api` in **Oregon**, `https://tara-api-latest.onrender.com`, `srv-dbnho4s9v7es73cq9oc0`, senza variabili d'ambiente (*Settings → Delete Web Service*). Il 07/11 `/health` rispondeva con `release 64a9f99`, mentre `/ready` dava 503 perché manca `TARA_DATABASE_URL`.
+     - Segreti GitHub `TARA_DATABASE_URL` e `RENDER_DEPLOY_HOOK_URL` impostati l'08/11 alle 01:19; l'hook va aggiornato con quello di `tara-api-eu`.
+   - **Seconda PR del passo 8** (branch `feat/rnf-14-deploy`, PR #33 in bozza): scritta l'08/11. Procedura in `docs/processo.md`, "Delivery". Il polling di `/health` è provato in Git Bash contro il servizio in Oregon: release giusta con `/ready` a 503, release diversa e servizio inesistente fanno tutti fallire il job. Cosa contiene:
      - in `cd.yml`, un job dopo la pubblicazione dell'immagine:
        - controlla che i segreti non siano vuoti;
        - esegue `docker run --rm -e TARA_DATABASE_URL "$IMAGE:$SHA" alembic upgrade head`;

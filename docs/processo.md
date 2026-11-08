@@ -102,7 +102,7 @@ Una modifica è finita quando:
 
 **Backend (attivo).** `.github/workflows/cd.yml` parte quando la CI su `main` finisce verde e pubblica `ghcr.io/enric0-balb0/tara-api` con i tag `<sha>` e `latest`. L'immagine è la stessa che la CI ha già avviato e verificato, e porta il suo commit in `/health` (`release`).
 
-L'API gira su Render Free a Francoforte, all'indirizzo https://tara-api-latest.onrender.com, e il database su Supabase Free (scelte e limiti in `docs/requisiti.md`). Dopo la pubblicazione dell'immagine, sempre in `cd.yml`:
+L'API gira su Render Free a Francoforte, all'indirizzo https://tara-api-eu.onrender.com, e il database su Supabase Free (scelte e limiti in `docs/requisiti.md`). Dopo la pubblicazione dell'immagine, sempre in `cd.yml`:
 
 1. **Deploy API su Render** controlla che i segreti `TARA_DATABASE_URL` e `RENDER_DEPLOY_HOOK_URL` non siano vuoti, applica le migrazioni con `alembic upgrade head` dalla stessa immagine appena pubblicata, verso il *session pooler* di Supabase, e chiama il deploy hook di Render con l'immagine `<sha>`. Poi aspetta fino a 10 minuti che `/health` riporti quella `release` e controlla `/ready`; altrimenti il job fallisce.
 2. **Collezione Postman online** lancia Newman sull'API appena distribuita, con l'ambiente `services/api/postman/render.postman_environment.json`. Gira in un job senza segreti, perché esegue codice npm di terze parti.
