@@ -6,13 +6,13 @@ Questo file riassume la conversazione di progettazione del 22 ottobre 2026 (clau
 
 - **Fase:** F0, passo 8 (backend online), seconda metà. Dettagli e passi esatti in "Prossimi passi", punto 8.
 - **Branch:** `feat/rnf-14-deploy`, partito da `main` (`64a9f99`, PR #32). La seconda PR del passo 8 è scritta qui: deploy verificato in `cd.yml`, `keepalive.yml`, URL nei profili EAS con il test, ambiente Postman di Render, documenti. PR #33, in bozza. Servizio: `https://tara-api-eu.onrender.com`.
-- **In attesa di Enrico** (08/11, ore 02):
-  - nel pannello di Render, servizio `tara-api-eu` → *Environment*: aggiungere `TARA_DATABASE_URL` (URI del session pooler) con *Save, rebuild, and deploy*. Fino ad allora `/ready` dà 503, perché senza la variabile il backend prova `localhost:55432`;
-  - aggiornare il segreto `RENDER_DEPLOY_HOOK_URL` con l'hook di `tara-api-eu` (*Settings → Deploy Hook*): quello salvato l'08/11 alle 01:19 è del servizio in Oregon;
-  - cancellare il servizio `tara-api` in Oregon (`srv-dbnho4s9v7es73cq9oc0`): il controllo dei permessi blocca la cancellazione fatta da Claude;
-  - la CI della PR #33 è rossa solo per `expo-doctor` (patch di Expo, issue #24): serve prima una PR con `npx expo install --fix`.
+- **Stato dell'08/11 sera:** il backend online funziona. `/ready` risponde `ok` e Newman passa sull'URL di Render (9 richieste, 22 controlli). Backend e migrazioni usano il ruolo `tara` (vedi "Supabase" al punto 8).
+- **In attesa di Enrico:**
+  - cancellare il servizio `tara-api` in Oregon (`srv-dbnho4s9v7es73cq9oc0`), oggi solo sospeso: il controllo dei permessi blocca la cancellazione fatta da Claude;
+  - revocare l'access token Supabase usato per il ruolo `tara`, quando non serve più;
+  - aprire un ticket al supporto di Supabase: il reset della password dal pannello non arriva al ruolo `postgres` (dettagli al punto 8).
 - **Poi:**
-  - Newman sull'URL online, prova a freddo, merge con CI verde, controllo del primo run del CD;
+  - la CI della PR #33 è rossa solo per `expo-doctor` (patch di Expo, issue #24): prima una PR con `npx expo install --fix`, poi rebase della #33, merge con CI verde e controllo del primo run del CD;
   - passo 9 (gate F0): Enrico rivede i nomi della sua dieta e dà l'ok per una build preview EAS, chiedendo prima di usare la quota.
 - **Note pratiche su questa macchina:**
   - Dopo un riavvio Docker Desktop è spento: `Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"`, poi `docker compose -f infra/docker-compose.yml up -d`. Senza, i test del backend falliscono alla connessione.
@@ -128,15 +128,20 @@ Ordine approvato da Enrico il 31/10/2026 per chiudere la F0: prima il backend on
      - Catalogo caricato: 3.484 alimenti, 13.438 nomi, 68.817 valori, tutti con ID stabile.
      - Data API spenta: nei log di PostgREST compare `db-schemas=pg_pgrst_no_exposed_schemas` e le richieste ricevono 503 `PGRST002`, che è l'effetto atteso.
      - Advisor di sicurezza: solo l'avviso informativo `rls_enabled_no_policy`, voluto.
-     - Connessione: *session pooler* `aws-1-eu-central-1.pooler.supabase.com:5432`, utente `postgres.fbwlepzrrvtngvbyktiv`, database `postgres`, con `?sslmode=require`. L'host `aws-0-…` non conosce il progetto.
-     - La password la conosce solo Enrico.
+     - Connessione: *session pooler* `aws-1-eu-central-1.pooler.supabase.com:5432`, utente `tara.fbwlepzrrvtngvbyktiv`, database `postgres`, con `?sslmode=require`. L'host `aws-0-…` non conosce il progetto.
+     - **Ruolo `tara`, dall'08/11.** Due reset della password di `postgres` dal pannello e un riavvio del progetto non hanno cambiato l'impronta in `pg_authid`, e l'editor SQL del pannello ha cominciato a dare 28P01. La causa: su Postgres 17 `postgres` è membro di `supabase_privileged_role`, e `ALTER ROLE postgres` dà «Only superusers can alter privileged roles». Da allora:
+       - `tara` possiede le 7 tabelle e `tara_search_text` e ha USAGE su `extensions` (senza, la ricerca dava 500);
+       - `postgres` ha i permessi su tabelle presenti e future;
+       - la password di `tara` esiste solo nel segreto GitHub e su Render, e si cambia con `python -m tara_api.db_role`;
+       - un progetto nuovo crea il ruolo con `infra/supabase/bootstrap.sql`.
+     - La password di `postgres` è probabilmente ancora quella originale, e un suo frammento è finito nell'output di una sessione di Claude dell'08/11. Tara non la usa più, ma va cambiata dal supporto di Supabase. Nel ticket: impronta invariata dopo i reset, editor SQL in 28P01, errore di `ALTER ROLE` e `release_channel: withdrawn`.
      - Il progetto riporta `release_channel: withdrawn` e una data di creazione anteriore alla creazione vera. Causa non trovata; finora nessun effetto.
    - **Render.**
      - Account creato, con la credenziale del registry `ghcr-tara`: token GitHub *classic* con solo `read:packages`, scadenza un anno. Render scarica l'immagine privata.
      - **Servizio buono: `tara-api-eu`**, `srv-dbnsfkou01pc73dkc95g`, `https://tara-api-eu.onrender.com`, Frankfurt (EU Central), piano Free, progetto `tara-api` / Production. Creato da Claude l'08/11 con l'autorizzazione di Enrico, con `PORT=8000` e health check `/health`. Il primo deploy è andato online in 20 s; `/health` risponde in circa 90 ms contro i 250 ms del servizio in Oregon.
      - Il nome `tara-api` è ancora preso dal servizio in Oregon. Il modulo propone come nome il riferimento dell'immagine (`tara-api:latest`): da lì veniva l'URL `tara-api-latest`. Il *Pre-Deploy Command* è bloccato sul piano Free.
-     - Servizio da cancellare: `tara-api` in **Oregon**, `https://tara-api-latest.onrender.com`, `srv-dbnho4s9v7es73cq9oc0`, senza variabili d'ambiente (*Settings → Delete Web Service*). Il 07/11 `/health` rispondeva con `release 64a9f99`, mentre `/ready` dava 503 perché manca `TARA_DATABASE_URL`.
-     - Segreti GitHub `TARA_DATABASE_URL` e `RENDER_DEPLOY_HOOK_URL` impostati l'08/11 alle 01:19; l'hook va aggiornato con quello di `tara-api-eu`.
+     - Servizio da cancellare: `tara-api` in **Oregon**, `https://tara-api-latest.onrender.com`, `srv-dbnho4s9v7es73cq9oc0`, oggi sospeso (*Settings → Delete Web Service*).
+     - Segreti GitHub: `RENDER_DEPLOY_HOOK_URL` con l'hook di `tara-api-eu` dall'08/11 alle 11:25 UTC; `TARA_DATABASE_URL` con il ruolo `tara` dalle 15:18 UTC, lo stesso valore impostato su Render.
    - **Seconda PR del passo 8** (branch `feat/rnf-14-deploy`, PR #33 in bozza): scritta l'08/11. Procedura in `docs/processo.md`, "Delivery". Il polling di `/health` è provato in Git Bash contro il servizio in Oregon: release giusta con `/ready` a 503, release diversa e servizio inesistente fanno tutti fallire il job. Cosa contiene:
      - in `cd.yml`, un job dopo la pubblicazione dell'immagine:
        - controlla che i segreti non siano vuoti;
@@ -146,10 +151,11 @@ Ordine approvato da Enrico il 31/10/2026 per chiudere la F0: prima il backend on
        - espone i segreti solo negli `env:` degli step che li usano;
      - un workflow a cron due volte al giorno che chiama `/ready` con nuovi tentativi (`curl --retry 8 --retry-all-errors --retry-delay 15 --max-time 90`), contro la pausa di Supabase dopo 7 giorni senza attività;
      - `EXPO_PUBLIC_API_URL` con l'URL https di Render nei profili `preview` e `production` di `apps/mobile/eas.json`, con un test che lo imponga https: senza, `src/config.ts` ripiega in silenzio sull'emulatore;
-     - un ambiente Postman per l'URL di Render, e Newman sulla collezione `services/api/postman/` in un terzo job del CD, senza segreti né token;
-     - prova a freddo, ancora da fare: dopo almeno 20 minuti di inattività, tempo del primo `GET /v1/catalog`;
+     - un ambiente Postman per l'URL di Render, e Newman sulla collezione `services/api/postman/` in un terzo job del CD, senza segreti né token. Lanciato a mano l'08/11 sull'URL online: 22 controlli su 22, ETag compreso;
+     - ruolo `tara`: `tara_api.db_role` con i suoi test e `infra/supabase/bootstrap.sql`, provato due volte su un Postgres 17 locale configurato come Supabase;
+     - prova a freddo, l'08/11 alle 20:22 UTC dopo 22 minuti senza richieste: la prima `GET /v1/catalog` risponde 200 in 33,7 s, risveglio compreso, entro i 90 s che l'app concede al primo download; a caldo 9,7 s;
      - intestazione di `cd.yml` e `docs/processo.md` aggiornate.
-   - Misure con 0,1 CPU e database locale, prima del deploy: snapshot in circa 10 s, 304 in meno di 0,05 s, picco di memoria intorno ai 220 MiB (390 MiB con quattro download insieme). Da rifare su Render.
+   - Misure con 0,1 CPU e database locale, prima del deploy: snapshot in circa 10 s, 304 in meno di 0,05 s, picco di memoria intorno ai 220 MiB (390 MiB con quattro download insieme). Su Render l'08/11 lo snapshot (5,6 MB, circa 430 kB compressi) richiede 9,7 s a caldo e 33,7 s a freddo; la memoria si legge nelle metriche del servizio.
 9. **Gate F0**: la ricerca di un generico restituisce valori corretti. Percorso della demo: "cerco albume, vedo i valori giusti, inserisco i grammi, funziona offline", da provare dall'inizio su un telefono con una build preview che parla con il backend online, dopo almeno 20 minuti di inattività del server, e poi senza rete. Prima, Enrico rivede i nomi degli alimenti della sua dieta.
 10. **Autenticazione** con codice via email (Supabase Auth).
 11. **Chiusura della F0**:
@@ -169,7 +175,7 @@ Ordine approvato da Enrico il 31/10/2026 per chiudere la F0: prima il backend on
       - nessun confronto di versione oltre all'ETag.
     - Restano per la F1:
       - backup pianificati del database prima dei diari reali;
-      - un ruolo del database per l'API senza permessi sullo schema;
+      - un ruolo del database per l'API senza permessi sullo schema, distinto da `tara` che resta alle migrazioni (con le policy di sicurezza per riga che gli servono);
       - una cache dello snapshot, se le misure su Render la chiederanno.
 
 Prima di toccare API di Expo, leggere `apps/mobile/CLAUDE.md`: Expo cambia a ogni SDK.
