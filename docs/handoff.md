@@ -4,16 +4,18 @@ Questo file riassume la conversazione di progettazione del 22 ottobre 2026 (clau
 
 ## Riprendere il lavoro (aggiornato all'08/11/2026)
 
-- **Fase:** F0, passo 8 (backend online), seconda metà. Dettagli e passi esatti in "Prossimi passi", punto 8.
-- **Branch:** `feat/rnf-14-deploy`, partito da `main` (`64a9f99`, PR #32). La seconda PR del passo 8 è scritta qui: deploy verificato in `cd.yml`, `keepalive.yml`, URL nei profili EAS con il test, ambiente Postman di Render, documenti. PR #33, in bozza. Servizio: `https://tara-api-eu.onrender.com`.
-- **Stato dell'08/11 sera:** il backend online funziona. `/ready` risponde `ok` e Newman passa sull'URL di Render (9 richieste, 22 controlli). Backend e migrazioni usano il ruolo `tara` (vedi "Supabase" al punto 8).
-- **In attesa di Enrico:**
-  - cancellare il servizio `tara-api` in Oregon (`srv-dbnho4s9v7es73cq9oc0`), oggi solo sospeso: il controllo dei permessi blocca la cancellazione fatta da Claude;
-  - revocare l'access token Supabase usato per il ruolo `tara`, quando non serve più;
-  - aprire un ticket al supporto di Supabase: il reset della password dal pannello non arriva al ruolo `postgres` (dettagli al punto 8).
-- **Poi:**
-  - la CI della PR #33 è rossa solo per `expo-doctor` (patch di Expo, issue #24): prima una PR con `npx expo install --fix`, poi rebase della #33, merge con CI verde e controllo del primo run del CD;
-  - passo 9 (gate F0): Enrico rivede i nomi della sua dieta e dà l'ok per una build preview EAS, chiedendo prima di usare la quota.
+- **Fase:** F0, passo 9 (gate). Il passo 8, backend online, è chiuso l'08/11 con le PR #33 e #34.
+  - Ogni merge su `main` con CI verde va online da solo su `https://tara-api-eu.onrender.com`.
+  - Il primo run del CD (`d6f77da`) ha pubblicato l'immagine, applicato le migrazioni come `tara`, fatto il deploy in 56 s e passato Newman online. `/health` riporta la release e `/ready` risponde `ok`.
+- **Prossimo passo:** passo 9 (gate F0).
+  - Enrico rivede i nomi degli alimenti della sua dieta.
+  - Poi una build preview EAS che parla con il backend online, chiedendo a Enrico prima di usare la quota. La stessa build rifà anche il nativo per le patch di Expo della #34 (`react-native` 0.88.1).
+  - Fino ad allora la development build sull'emulatore resta su 0.88.0.
+- **Facoltativo:** fra qualche giorno riprovare il reset della password di `postgres` dal pannello di Supabase, poi controllare dall'MCP se `md5(rolpassword)` è cambiato.
+  - Se cambia, il reset funziona di nuovo e l'editor SQL del pannello torna a funzionare.
+  - Se non cambia, valutare un ticket al supporto (dettagli al punto 8).
+  - Per Tara non serve: backend e migrazioni usano il ruolo `tara`.
+- **Più avanti, una PR piccola:** `/ready` deve scrivere nei log tipo e messaggio dell'eccezione del database, senza password. Oggi un problema di credenziali dà solo 503, e l'08/11 trovarlo ha richiesto ore.
 - **Note pratiche su questa macchina:**
   - Dopo un riavvio Docker Desktop è spento: `Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"`, poi `docker compose -f infra/docker-compose.yml up -d`. Senza, i test del backend falliscono alla connessione.
   - Le azioni che creano, cancellano o pagano qualcosa nei pannelli di Render, Supabase e GitHub le fa Enrico, salvo autorizzazione esplicita. L'08/11, con l'autorizzazione, Claude ha creato un servizio Render dal Chrome "Browser 2", dove Enrico ha la sessione di Render; il controllo dei permessi ha comunque bloccato la cancellazione, che resta a Enrico. Le letture sono possibili: MCP di Supabase per SQL, log e advisor; `gh` per PR, run e nomi dei segreti.
@@ -113,7 +115,7 @@ Non si possono fare dal repository; dettagli in `docs/processo.md`:
    - Flusso Maestro `ricerca.yaml` (tag `api`). Sull'emulatore Gboard propone a volte la prova della penna e si prende il testo digitato: i flussi la chiudono e riscrivono.
 Ordine approvato da Enrico il 31/10/2026 per chiudere la F0: prima il backend online, poi il gate sul telefono, poi l'autenticazione. USDA è rimandato a quando manca un generico della dieta reale.
 
-8. **Backend online** (in corso). Supabase Free per Postgres e Render Free per l'API, con i vincoli verificati in `docs/requisiti.md`; procedura e segreti in `docs/processo.md`, "Delivery" e "Segreti".
+8. ~~**Backend online**~~: fatto l'08/11/2026 (PR #32, #33, #34). Supabase Free per Postgres e Render Free per l'API, con i vincoli verificati in `docs/requisiti.md`; procedura e segreti in `docs/processo.md`, "Delivery" e "Segreti".
    - **Fatto, PR #32 (`64a9f99`):**
      - sicurezza per riga su tutte le tabelle, imposta da un test;
      - ID stabili (uuid5 da fonte e codice) per i generici;
@@ -134,15 +136,15 @@ Ordine approvato da Enrico il 31/10/2026 per chiudere la F0: prima il backend on
        - `postgres` ha i permessi su tabelle presenti e future;
        - la password di `tara` esiste solo nel segreto GitHub e su Render, e si cambia con `python -m tara_api.db_role`;
        - un progetto nuovo crea il ruolo con `infra/supabase/bootstrap.sql`.
-     - La password di `postgres` è probabilmente ancora quella originale, e un suo frammento è finito nell'output di una sessione di Claude dell'08/11. Tara non la usa più, ma va cambiata dal supporto di Supabase. Nel ticket: impronta invariata dopo i reset, editor SQL in 28P01, errore di `ALTER ROLE` e `release_channel: withdrawn`.
+     - La password di `postgres` è probabilmente ancora quella originale, e un suo frammento è finito nell'output di una sessione di Claude dell'08/11. Il frammento sta solo nei file locali della conversazione, quindi il rischio è basso, e Tara quella password non la usa più. Per cambiarla serve il reset del pannello, se torna a funzionare, oppure il supporto di Supabase. Nell'eventuale ticket vanno: impronta invariata dopo i reset, editor SQL in 28P01, errore di `ALTER ROLE` e `release_channel: withdrawn`.
      - Il progetto riporta `release_channel: withdrawn` e una data di creazione anteriore alla creazione vera. Causa non trovata; finora nessun effetto.
    - **Render.**
      - Account creato, con la credenziale del registry `ghcr-tara`: token GitHub *classic* con solo `read:packages`, scadenza un anno. Render scarica l'immagine privata.
      - **Servizio buono: `tara-api-eu`**, `srv-dbnsfkou01pc73dkc95g`, `https://tara-api-eu.onrender.com`, Frankfurt (EU Central), piano Free, progetto `tara-api` / Production. Creato da Claude l'08/11 con l'autorizzazione di Enrico, con `PORT=8000` e health check `/health`. Il primo deploy è andato online in 20 s; `/health` risponde in circa 90 ms contro i 250 ms del servizio in Oregon.
      - Il nome `tara-api` è ancora preso dal servizio in Oregon. Il modulo propone come nome il riferimento dell'immagine (`tara-api:latest`): da lì veniva l'URL `tara-api-latest`. Il *Pre-Deploy Command* è bloccato sul piano Free.
-     - Servizio da cancellare: `tara-api` in **Oregon**, `https://tara-api-latest.onrender.com`, `srv-dbnho4s9v7es73cq9oc0`, oggi sospeso (*Settings → Delete Web Service*).
+     - Il servizio `tara-api` in Oregon (`tara-api-latest.onrender.com`) è stato cancellato da Enrico l'08/11. Anche l'access token Supabase usato per creare `tara` è revocato.
      - Segreti GitHub: `RENDER_DEPLOY_HOOK_URL` con l'hook di `tara-api-eu` dall'08/11 alle 11:25 UTC; `TARA_DATABASE_URL` con il ruolo `tara` dalle 15:18 UTC, lo stesso valore impostato su Render.
-   - **Seconda PR del passo 8** (branch `feat/rnf-14-deploy`, PR #33 in bozza): scritta l'08/11. Procedura in `docs/processo.md`, "Delivery". Il polling di `/health` è provato in Git Bash contro il servizio in Oregon: release giusta con `/ready` a 503, release diversa e servizio inesistente fanno tutti fallire il job. Cosa contiene:
+   - **Seconda PR del passo 8** (PR #33, unita l'08/11 come `d6f77da`, dopo la #34 con le patch di Expo che chiude l'issue #24). Procedura in `docs/processo.md`, "Delivery". Il polling di `/health` è provato in Git Bash contro il servizio in Oregon: release giusta con `/ready` a 503, release diversa e servizio inesistente fanno tutti fallire il job. Cosa contiene:
      - in `cd.yml`, un job dopo la pubblicazione dell'immagine:
        - controlla che i segreti non siano vuoti;
        - esegue `docker run --rm -e TARA_DATABASE_URL "$IMAGE:$SHA" alembic upgrade head`;
@@ -160,7 +162,7 @@ Ordine approvato da Enrico il 31/10/2026 per chiudere la F0: prima il backend on
 10. **Autenticazione** con codice via email (Supabase Auth).
 11. **Chiusura della F0**:
     - ruleset su `main`;
-    - PR di Dependabot e patch di Expo;
+    - PR di Dependabot ancora aperte (le patch di Expo sono arrivate con la #34, che ha assorbito la #31);
     - aggiornamento di questo documento.
     - Minori rimandati dei passi 6 e 7:
       - nella scheda alimento non c'è «Indietro» durante il caricamento e `getFood` non gestisce gli errori;
