@@ -32,7 +32,7 @@ npm run e2e:dev                                         # flussi Maestro sulla d
 
 ## Backend e catalogo
 
-All'avvio l'app scarica il catalogo dei generici da `GET /v1/catalog` e lo tiene in SQLite; da lì ricerca e scheda funzionano anche offline. L'indirizzo è `EXPO_PUBLIC_API_URL`, di default `http://10.0.2.2:8000`, cioè il PC visto dall'emulatore Android: per il primo download serve il backend acceso (`services/api`, `uv run uvicorn tara_api.main:app`, con il catalogo caricato). Per un telefono vero vedi `.env.example`. Stato del catalogo e "Aggiorna catalogo" nel menu Sviluppo del profilo. `npm run e2e:dev` salta i flussi con il tag `api` se il backend non risponde.
+All'avvio l'app scarica il catalogo dei generici da `GET /v1/catalog` e lo tiene in SQLite; da lì ricerca e scheda funzionano anche offline. L'indirizzo è `EXPO_PUBLIC_API_URL`, di default `http://10.0.2.2:8000`, cioè il PC visto dall'emulatore Android: per il primo download serve il backend acceso (`services/api`, `uv run uvicorn tara_api.main:app`, con il catalogo caricato). Per un telefono vero vedi `.env.example`. Le build EAS `preview` e `production` non leggono `.env.local`: prendono l'URL https del backend su Render dai loro profili in `eas.json`, e `src/config.test.ts` controlla che ci sia. Stato del catalogo e "Aggiorna catalogo" nel menu Sviluppo del profilo. `npm run e2e:dev` salta i flussi con il tag `api` se il backend non risponde.
 
 Typecheck, lint, test con coverage e doctor devono passare prima di dichiarare finito un lavoro: sono i controlli del job "App mobile" in CI.
 
