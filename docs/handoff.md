@@ -2,18 +2,16 @@
 
 Questo file riassume la conversazione di progettazione del 22 ottobre 2026 (claude.ai) da cui nasce il repository, così che una nuova sessione di Claude Code possa ripartire senza perdere contesto.
 
-## Riprendere il lavoro (aggiornato al 07/11/2026)
+## Riprendere il lavoro (aggiornato all'08/11/2026)
 
 - **Fase:** F0, passo 8 (backend online), seconda metà. Dettagli e passi esatti in "Prossimi passi", punto 8.
-- **Branch:** `feat/rnf-14-deploy`, partito da `main` (`64a9f99`, PR #32). Contiene solo questo aggiornamento dei documenti; la seconda PR del passo 8 si costruisce qui.
-- **In attesa di Enrico, dal pannello di Render:**
-  - cancellare il servizio creato per errore in Oregon e ricrearlo a Francoforte, sul piano Free;
-  - impostare le variabili d'ambiente;
-  - controllare che `/ready` risponda;
-  - salvare i due segreti GitHub;
-  - mandare l'URL `onrender.com`.
+- **Branch:** `feat/rnf-14-deploy`, partito da `main` (`64a9f99`, PR #32). La seconda PR del passo 8 è scritta qui: deploy verificato in `cd.yml`, `keepalive.yml`, URL nei profili EAS con il test, ambiente Postman di Render, documenti. Servizio: `https://tara-api-latest.onrender.com`.
+- **In attesa di Enrico** (controllo dell'08/11, ore 01):
+  - `/health` risponde 200 con `release 64a9f99`, ma `/ready` dà 503 «database non raggiungibile», e nei log di Supabase non arriva nessuna connessione. Senza `TARA_DATABASE_URL` il backend prova `localhost:55432`: probabilmente la variabile manca sul servizio, oppure è stata salvata senza un nuovo deploy;
+  - i due segreti: `gh secret list` sul repository `Enric0-Balb0/tara` è vuoto, e anche ambienti e segreti di Dependabot. Senza segreti il primo CD dopo il merge si ferma al controllo "Segreti impostati".
+  - La latenza non dice la regione: anche un'app inesistente su `onrender.com` aggiunge circa 200 ms dopo il TLS. La regione si legge nel pannello di Render.
 - **Poi:**
-  - seconda PR: deploy verificato in `cd.yml`, ping anti-pausa, URL nei profili EAS, Newman sull'URL online;
+  - Newman sull'URL online, prova a freddo, commit e PR, merge con i segreti già impostati, controllo del primo run del CD;
   - passo 9 (gate F0): Enrico rivede i nomi della sua dieta e dà l'ok per una build preview EAS, chiedendo prima di usare la quota.
 - **Note pratiche su questa macchina:**
   - Dopo un riavvio Docker Desktop è spento: `Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"`, poi `docker compose -f infra/docker-compose.yml up -d`. Senza, i test del backend falliscono alla connessione.
@@ -144,7 +142,7 @@ Ordine approvato da Enrico il 31/10/2026 per chiudere la F0: prima il backend on
        6. controllo: `https://<servizio>.onrender.com/ready` deve rispondere `{"status":"ok"}`;
        7. *Settings → Deploy Hook*: copiare l'URL; dalla cartella del repository, `gh secret set RENDER_DEPLOY_HOOK_URL` e `gh secret set TARA_DATABASE_URL`, incollando il valore quando richiesto, mai in chat.
      - Nel repository oggi non c'è nessun segreto (`gh secret list` è vuoto).
-   - **Seconda PR del passo 8** (branch `feat/rnf-14-deploy`), quando Enrico manda l'URL del servizio:
+   - **Seconda PR del passo 8** (branch `feat/rnf-14-deploy`): scritta l'08/11, manca l'URL del servizio. Procedura in `docs/processo.md`, "Delivery". Il polling di `/health` è provato in Git Bash contro il servizio in Oregon: release giusta con `/ready` a 503, release diversa e servizio inesistente fanno tutti fallire il job. Cosa contiene:
      - in `cd.yml`, un job dopo la pubblicazione dell'immagine:
        - controlla che i segreti non siano vuoti;
        - esegue `docker run --rm -e TARA_DATABASE_URL "$IMAGE:$SHA" alembic upgrade head`;
@@ -153,8 +151,8 @@ Ordine approvato da Enrico il 31/10/2026 per chiudere la F0: prima il backend on
        - espone i segreti solo negli `env:` degli step che li usano;
      - un workflow a cron due volte al giorno che chiama `/ready` con nuovi tentativi (`curl --retry 8 --retry-all-errors --retry-delay 15 --max-time 90`), contro la pausa di Supabase dopo 7 giorni senza attività;
      - `EXPO_PUBLIC_API_URL` con l'URL https di Render nei profili `preview` e `production` di `apps/mobile/eas.json`, con un test che lo imponga https: senza, `src/config.ts` ripiega in silenzio sull'emulatore;
-     - un ambiente Postman per l'URL di Render e Newman sulla collezione `services/api/postman/`;
-     - prova a freddo: dopo almeno 20 minuti di inattività, tempo del primo `GET /v1/catalog`;
+     - un ambiente Postman per l'URL di Render, e Newman sulla collezione `services/api/postman/` in un terzo job del CD, senza segreti né token;
+     - prova a freddo, ancora da fare: dopo almeno 20 minuti di inattività, tempo del primo `GET /v1/catalog`;
      - intestazione di `cd.yml` e `docs/processo.md` aggiornate.
    - Misure con 0,1 CPU e database locale, prima del deploy: snapshot in circa 10 s, 304 in meno di 0,05 s, picco di memoria intorno ai 220 MiB (390 MiB con quattro download insieme). Da rifare su Render.
 9. **Gate F0**: la ricerca di un generico restituisce valori corretti. Percorso della demo: "cerco albume, vedo i valori giusti, inserisco i grammi, funziona offline", da provare dall'inizio su un telefono con una build preview che parla con il backend online, dopo almeno 20 minuti di inattività del server, e poi senza rete. Prima, Enrico rivede i nomi degli alimenti della sua dieta.
