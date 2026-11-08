@@ -24,6 +24,16 @@ In VS Code ci sono i task "Backend: avvia API in locale" e "Backend: collezione 
   npx --yes newman@6.2.1 run services/api/postman/tara-api.postman_collection.json -e services/api/postman/locale.postman_environment.json
   ```
 
+## Sull'API online
+
+L'ambiente `render.postman_environment.json` ("Tara · Render") punta al servizio su Render. Il CD lancia la collezione con questo ambiente dopo ogni deploy (`.github/workflows/cd.yml`); a mano:
+
+```powershell
+npx --yes newman@6.2.1 run services/api/postman/tara-api.postman_collection.json -e services/api/postman/render.postman_environment.json
+```
+
+Se il servizio dorme, la prima richiesta aspetta il risveglio, circa un minuto.
+
 ## Regole
 
 - Quando cambia un endpoint, aggiorna la richiesta e i suoi controlli nello stesso commit.
