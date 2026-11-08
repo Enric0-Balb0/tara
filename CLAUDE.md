@@ -4,7 +4,7 @@ App personale di tracciamento della dieta per bodybuilder, interamente in italia
 
 Leggi prima:
 - `docs/requisiti.md`: requisiti con ID (RF-xx, RNF-xx), architettura, modello dati, roadmap a fasi F0–F5.
-- `docs/handoff.md`: decisioni prese finora, perché, e prossimi passi concreti.
+- `docs/handoff.md`: decisioni prese finora, perché, e prossimi passi concreti. La sezione "Riprendere il lavoro" dice da dove ripartire.
 - `docs/processo.md`: flusso di sviluppo, quality gate, Definition of Done, CI/CD.
 - `docs/strumenti.md`: plugin, skill, MCP e librerie raccomandati per fase.
 - `docs/valutazioni.md`: valutazioni che giustificano modelli e prompt AI.
@@ -26,7 +26,8 @@ Leggi prima:
 apps/mobile/        App Expo (SDK 58, React Native, TypeScript, Expo Router in src/app)
 services/api/       Backend FastAPI: sync, gateway AI, proxy Open Food Facts
 pipelines/catalog/  Import, traduzione e validazione del catalogo dei generici
-infra/              docker-compose per Postgres + pgvector (e il backend in container) in locale
+infra/              docker-compose per Postgres + pgvector (e il backend in container) in locale;
+                    supabase/bootstrap.sql per un progetto Supabase nuovo
 docs/               Requisiti, handoff, processo e strumenti
 .github/            CI, CD, Dependabot, modelli di PR e issue
 ```
@@ -50,6 +51,7 @@ uv run alembic upgrade head                              # applica le migrazioni
 uv run alembic revision --autogenerate -m "describe"     # nuova migrazione, da rileggere
 uv run uvicorn tara_api.main:app --reload     # Swagger su http://localhost:8000/docs; prove a mano in services/api/postman/
 uv run python -m tara_api.catalog_load ../../pipelines/catalog/data/build/ciqual-2025/catalogo.jsonl  # carica i generici, idempotente
+uv run python -m tara_api.db_role   # nuova password del ruolo tara in produzione: docs/processo.md, "Segreti"
 
 # Pipeline del catalogo
 cd pipelines/catalog
@@ -72,6 +74,8 @@ uv tool install pre-commit; pre-commit install
 docker compose -f infra/docker-compose.yml up -d
 ```
 
+In produzione l'API gira su Render Free e il database su Supabase Free (`eu-central-1`); il CD pubblica l'immagine su GHCR. Procedura, regole per le migrazioni e segreti: `docs/processo.md`, sezioni "Delivery" e "Segreti".
+
 ## Convenzioni
 
 - Codice, identificatori e commenti tecnici in inglese; testi dell'interfaccia, docstring di dominio e documentazione in italiano.
@@ -86,6 +90,7 @@ docker compose -f infra/docker-compose.yml up -d
 - Database: ogni modifica allo schema passa da una migrazione Alembic riletta a mano; le regole di dominio sono vincoli del database, verificati da test che nominano il vincolo atteso.
 - Prompt e schemi di output dei modelli AI vivono nel repository e sono versionati; ogni cambio di modello o prompt passa dagli eval.
 - Costi: zero finché l'app è personale (piani gratuiti o esecuzione locale), con ogni fornitore sostituibile via configurazione. Nessun servizio a pagamento come default.
+- Produzione: la stringa di connessione del database di produzione non va mai in `.env`, in chat o nei commit; vive nei segreti di GitHub e nelle variabili di Render, e in locale solo in una finestra di PowerShell dedicata. Ogni tabella nuova attiva la sicurezza per riga (lo controlla un test). Le azioni che creano, cancellano o pagano risorse nei pannelli di Render, Supabase e GitHub le fa Enrico.
 
 ## Come lavorare
 

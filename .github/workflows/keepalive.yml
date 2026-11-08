@@ -1,0 +1,33 @@
+# Ping del backend online, due volte al giorno. Un progetto Supabase Free senza attività
+# per 7 giorni va in pausa: /ready interroga il database e lo tiene attivo. Il primo
+# tentativo sveglia anche Render, che risponde dopo circa un minuto.
+#
+# GitHub sospende i workflow pianificati dopo 60 giorni senza attività nel repository
+# pubblico: allora va riattivato dalla pagina Actions (vedi docs/processo.md, "Delivery").
+name: Ping del backend
+
+on:
+  schedule:
+    - cron: "41 5,17 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: keepalive
+  cancel-in-progress: true
+
+env:
+  # Lo stesso indirizzo di cd.yml e di apps/mobile/eas.json.
+  API_URL: https://tara-api-eu.onrender.com
+
+jobs:
+  ready:
+    name: /ready su Render
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Database raggiungibile
+        run: |
+          curl -fsS --retry 8 --retry-all-errors --retry-delay 15 --max-time 90 "$API_URL/ready" \
+            | jq -e '.status == "ok"'
