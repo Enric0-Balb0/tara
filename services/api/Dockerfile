@@ -2,7 +2,7 @@
 # Immagine di produzione del backend: dipendenze dal lockfile, nessun tool di sviluppo,
 # utente non root. Build locale: docker build -t tara-api services/api
 
-FROM ghcr.io/astral-sh/uv:0.13.5 AS uv
+FROM ghcr.io/astral-sh/uv:0.13.7 AS uv
 
 FROM python:3.12-slim AS build
 COPY --from=uv /uv /usr/local/bin/uv
