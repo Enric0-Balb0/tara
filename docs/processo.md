@@ -109,7 +109,7 @@ L'API gira su Render Free a Francoforte, all'indirizzo https://tara-api-eu.onren
 
 Il deploy si rilancia da *Actions → CD → Re-run jobs* sull'ultimo run. Per distribuire a mano uno SHA precedente: pagina del servizio su Render → *Manual Deploy* → *Deploy an existing image*, con `ghcr.io/enric0-balb0/tara-api:<sha>`.
 
-`keepalive.yml` chiama `/ready` alle 5:41 e alle 17:41 UTC, con nuovi tentativi per il risveglio di Render: senza attività per 7 giorni Supabase Free mette in pausa il progetto. Sul repository pubblico GitHub sospende i workflow pianificati dopo 60 giorni senza commit: allora si riattiva da *Actions → Ping del backend → Enable workflow*. Un ping fallito arriva per email a chi ha modificato per ultimo il workflow.
+`keepalive.yml` chiama `/ready` alle 5:41 e alle 17:41 UTC, con nuovi tentativi per il risveglio di Render: senza attività per 7 giorni Supabase Free mette in pausa il progetto. GitHub avvia i workflow pianificati anche con 7 ore di ritardo (dal 9 al 14/11: 11 ping su 11 riusciti, nessuno all'orario scritto). Il margine resta ampio, perché basta un ping a settimana. Sul repository pubblico GitHub sospende i workflow pianificati dopo 60 giorni senza commit: allora si riattiva da *Actions → Ping del backend → Enable workflow*. Un ping fallito arriva per email a chi ha modificato per ultimo il workflow.
 
 Oltre che in questa pagina, l'indirizzo dell'API compare in quattro file: `cd.yml`, `keepalive.yml`, `apps/mobile/eas.json` (profili `preview` e `production`, imposto https da `src/config.test.ts`) e l'ambiente Postman di Render. Se il servizio viene ricreato, vanno cambiati tutti nello stesso commit.
 
