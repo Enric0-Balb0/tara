@@ -262,8 +262,11 @@ function macroColumn(code: keyof FoodHit['per100']): string {
 /**
  * Le regole di `search_foods` del backend, senza la somiglianza a trigrammi: ogni parola
  * deve comparire in un nome o, solo qui, nella cottura; prima i nomi che iniziano con la
- * ricerca, poi il crudo (si pesa a crudo, principio 4), poi i nomi più corti; a parità di
- * nome il cotto senza cottura precisata.
+ * ricerca, poi il crudo (si pesa a crudo, principio 4), poi chi ha un nome uguale alla
+ * ricerca, poi i nomi più corti; a parità di nome il cotto senza cottura precisata.
+ *
+ * Il nome uguale sta al posto della somiglianza: è ciò che permette a un alias del
+ * catalogo ("uovo", "pasta") di portare in cima l'alimento di tutti i giorni.
  */
 export async function searchFoods(db: SqlDatabase, query: string, limit = 20): Promise<FoodHit[]> {
   const words = searchWords(query);
@@ -276,10 +279,13 @@ export async function searchFoods(db: SqlDatabase, query: string, limit = 20): P
      FROM food AS f
      WHERE ${words.map(() => "f.search_text LIKE ? ESCAPE '\\'").join(' AND ')}
      ORDER BY (char(10) || f.search_text) LIKE ? ESCAPE '\\' DESC,
-              f.state = 'raw' DESC, length(f.name), f.name, f.cooking IS NOT NULL, f.cooking
+              f.state = 'raw' DESC,
+              (char(10) || f.search_text || char(10)) LIKE ? ESCAPE '\\' DESC,
+              length(f.name), f.name, f.cooking IS NOT NULL, f.cooking
      LIMIT ?`,
     ...words.map((word) => `%${escapeLike(word)}%`),
     `%\n${escapeLike(key)}%`,
+    `%\n${escapeLike(key)}\n%`,
     limit,
   );
   return rows.map((row) => ({
