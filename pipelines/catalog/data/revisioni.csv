@@ -17,6 +17,7 @@ codice,nome,stato,cottura,alias,note
 9520,Farina di riso,raw,,,"ricerca degli alimenti della dieta, gate F0 (14/11/2026)"
 9810,"Pasta di semola, secca",raw,,pasta di semola|pasta secca|pasta|spaghetti|penne|fusilli|rigatoni,"ricerca degli alimenti della dieta, gate F0 (14/11/2026)"
 9811,"Pasta di semola, secca",cooked,lessato,pasta di semola|pasta secca|pasta|spaghetti|penne|fusilli|rigatoni,"ricerca degli alimenti della dieta, gate F0 (14/11/2026)"
+13005,"Banana, polpa senza pelle",raw,,banana fresca|banana|banane,"ricerca degli alimenti della dieta, gate F0 (14/11/2026)"
 13043,"Pesca, con buccia, snocciolata",raw,,pesche|pesca,"ricerca degli alimenti della dieta, gate F0 (14/11/2026)"
 13163,"Bevanda lattea ai cereali per neonati, per colazione, dai 4-6 mesi",not_applicable,,bevanda cereali neonati colazione,"nome distinto (approvato da Enrico, 30/10/2026)"
 13167,"Cereali istantanei per neonati, in polvere, dai 4-6 mesi",not_applicable,,cereali istantanei neonati,"nome distinto (approvato da Enrico, 30/10/2026)"
