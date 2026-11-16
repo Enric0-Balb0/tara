@@ -123,6 +123,8 @@ def test_cli_writes_the_review_file_for_the_configured_model(
     monkeypatch.setattr(translate, "TRANSLATIONS", tmp_path / "traduzioni.jsonl")
     monkeypatch.setattr(translate, "USAGE_LOG", tmp_path / "uso-ai.jsonl")
     monkeypatch.setattr(translate, "REVIEW", tmp_path / "revisione.csv")
+    # Without this the test reads the versioned data/revisioni.csv and skips reviewed foods.
+    monkeypatch.setattr(translate, "REVIEWED", tmp_path / "revisioni.csv")
     translate.main(["ciqual"], model=echo_model())
     other = {
         **json.loads((tmp_path / "traduzioni.jsonl").read_text(encoding="utf-8").splitlines()[0])

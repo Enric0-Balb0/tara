@@ -78,6 +78,30 @@ describe('searchFoods', () => {
     ]);
   });
 
+  it('un nome uguale alla ricerca viene prima di un nome canonico più corto', async () => {
+    const egg = (id: string, name: string, names: string[]): TestFood => ({
+      ...WHOLE_EGG,
+      id,
+      name,
+      names,
+    });
+    await replaceCatalog(
+      db,
+      snapshotText([
+        ...TEST_FOODS,
+        egg('uovo-oca', 'Uovo di oca', ['Uovo di oca', 'uova di oca']),
+        egg('uovo-gallina', 'Uovo di gallina', ['Uovo di gallina', 'uovo', 'uova']),
+      ]),
+      { etag: '"v2"', syncedAt: '2026-11-14T22:00:00.000Z' },
+    );
+
+    expect(names(await searchFoods(db, 'uovo')).slice(0, 2)).toEqual([
+      'Uovo di gallina',
+      'Uovo di oca',
+    ]);
+    expect(names(await searchFoods(db, 'Uova'))).toEqual(['Uovo di gallina', 'Uovo di oca']);
+  });
+
   it('i caratteri speciali valgono alla lettera', async () => {
     expect(names(await searchFoods(db, "d'uovo"))).toEqual(["Albume d'uovo", "Albume d'uovo"]);
     expect(await searchFoods(db, '%%')).toEqual([]);
