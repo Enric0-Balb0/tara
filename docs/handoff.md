@@ -2,20 +2,17 @@
 
 Questo file riassume la conversazione di progettazione del 22 ottobre 2026 (claude.ai) da cui nasce il repository, così che una nuova sessione di Claude Code possa ripartire senza perdere contesto.
 
-## Riprendere il lavoro (aggiornato all'08/11/2026)
+## Riprendere il lavoro (aggiornato al 16/11/2026)
 
-- **Fase:** F0, passo 9 (gate). Il passo 8, backend online, è chiuso l'08/11 con le PR #33 e #34.
-  - Ogni merge su `main` con CI verde va online da solo su `https://tara-api-eu.onrender.com`.
-  - Il primo run del CD (`d6f77da`) ha pubblicato l'immagine, applicato le migrazioni come `tara`, fatto il deploy in 56 s e passato Newman online. `/health` riporta la release e `/ready` risponde `ok`.
-- **Prossimo passo:** passo 9 (gate F0).
-  - Enrico rivede i nomi degli alimenti della sua dieta.
-  - Poi una build preview EAS che parla con il backend online, chiedendo a Enrico prima di usare la quota. La stessa build rifà anche il nativo per le patch di Expo della #34 (`react-native` 0.88.1).
-  - Fino ad allora la development build sull'emulatore resta su 0.88.0.
-- **Facoltativo:** fra qualche giorno riprovare il reset della password di `postgres` dal pannello di Supabase, poi controllare dall'MCP se `md5(rolpassword)` è cambiato.
-  - Se cambia, il reset funziona di nuovo e l'editor SQL del pannello torna a funzionare.
-  - Se non cambia, valutare un ticket al supporto (dettagli al punto 8).
-  - Per Tara non serve: backend e migrazioni usano il ruolo `tara`.
-- **Più avanti, una PR piccola:** `/ready` deve scrivere nei log tipo e messaggio dell'eccezione del database, senza password. Oggi un problema di credenziali dà solo 503, e l'08/11 trovarlo ha richiesto ore.
+- **Fase:** F0, passo 9 (gate).
+  - Backend online dall'08/11 (passo 8): ogni merge su `main` con CI verde va online da solo su `https://tara-api-eu.onrender.com`.
+  - Nomi della dieta di Enrico fatti il 16/11 (PR #41, dettagli al passo 9); catalogo di produzione ricaricato lo stesso giorno.
+- **Prossimo passo: la prova del gate sul telefono con la build preview.**
+  - Il 16/11, con l'approvazione di Enrico, è partita la build preview EAS per Android dal commit `2f1c36c`. Rifà anche il nativo con le patch di Expo della #34 (`react-native` 0.88.1); la development build sull'emulatore resta su 0.88.0.
+  - **Azione di Enrico:** installare l'APK e fare la prova: almeno 20 minuti di inattività del server, poi cercare "albume", controllare i valori, inserire i grammi, e ripetere senza rete.
+- **Restano:**
+  - PR in corso sui log di `/ready`: oggi un problema di credenziali dà solo 503, e l'08/11 trovarlo ha richiesto ore.
+  - PR di Dependabot aperte #28, #35, #36, #38, #39, per la chiusura della F0 (passo 11).
 - **Note pratiche su questa macchina:**
   - Dopo un riavvio Docker Desktop è spento: `Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"`, poi `docker compose -f infra/docker-compose.yml up -d`. Senza, i test del backend falliscono alla connessione.
   - Le azioni che creano, cancellano o pagano qualcosa nei pannelli di Render, Supabase e GitHub le fa Enrico, salvo autorizzazione esplicita. L'08/11, con l'autorizzazione, Claude ha creato un servizio Render dal Chrome "Browser 2", dove Enrico ha la sessione di Render; il controllo dei permessi ha comunque bloccato la cancellazione, che resta a Enrico. Le letture sono possibili: MCP di Supabase per SQL, log e advisor; `gh` per PR, run e nomi dei segreti.
@@ -111,7 +108,7 @@ Non si possono fare dal repository; dettagli in `docs/processo.md`:
      - la scheda mostra l'etichetta per 100 g e la fonte (lo snapshot è al formato 2, con `source`; sul telefono è la migrazione v2);
      - il foglio dei grammi, per decisione di Enrico, in F0 **calcola soltanto**: "Usa 200 g" riporta l'etichetta a 200 g, e dallo stesso foglio si passa alla variante cruda o cotta. Il diario arriva in F1.
    - Attribuzione di CIQUAL (RNF-10) nel profilo, sezione "Fonti dei dati".
-   - Doppioni del catalogo risolti: la cottura arriva dalla traduzione fino all'app (food.cooking, snapshot formato 3, migrazione v3 sul telefono) e 47 correzioni rivedute da Enrico stanno in pipelines/catalog/data/revisioni.csv. L'export si ferma se due alimenti sembrerebbero uguali nell'app (stessi nome e cottura, entrambi cotti o entrambi no: crudo e n.a. non hanno etichetta); il vincolo ex_food_shared_name_state_cooking fa lo stesso nel database, al commit. Su un database locale con il catalogo vecchio: alembic upgrade 6794f1e91aaf, poi catalog_load, poi alembic upgrade head.
+   - Doppioni del catalogo risolti: la cottura arriva dalla traduzione fino all'app (food.cooking, snapshot formato 3, migrazione v3 sul telefono) e le correzioni rivedute da Enrico stanno in pipelines/catalog/data/revisioni.csv (47 allora, 88 alimenti dal 16/11 con la PR #41). L'export si ferma se due alimenti sembrerebbero uguali nell'app (stessi nome e cottura, entrambi cotti o entrambi no: crudo e n.a. non hanno etichetta); il vincolo ex_food_shared_name_state_cooking fa lo stesso nel database, al commit. Su un database locale con il catalogo vecchio: alembic upgrade 6794f1e91aaf, poi catalog_load, poi alembic upgrade head.
    - Flusso Maestro `ricerca.yaml` (tag `api`). Sull'emulatore Gboard propone a volte la prova della penna e si prende il testo digitato: i flussi la chiudono e riscrivono.
 Ordine approvato da Enrico il 31/10/2026 per chiudere la F0: prima il backend online, poi il gate sul telefono, poi l'autenticazione. USDA è rimandato a quando manca un generico della dieta reale.
 
@@ -136,7 +133,7 @@ Ordine approvato da Enrico il 31/10/2026 per chiudere la F0: prima il backend on
        - `postgres` ha i permessi su tabelle presenti e future;
        - la password di `tara` esiste solo nel segreto GitHub e su Render, e si cambia con `python -m tara_api.db_role`;
        - un progetto nuovo crea il ruolo con `infra/supabase/bootstrap.sql`.
-     - La password di `postgres` è probabilmente ancora quella originale, e un suo frammento è finito nell'output di una sessione di Claude dell'08/11. Il frammento sta solo nei file locali della conversazione, quindi il rischio è basso, e Tara quella password non la usa più. Per cambiarla serve il reset del pannello, se torna a funzionare, oppure il supporto di Supabase. Nell'eventuale ticket vanno: impronta invariata dopo i reset, editor SQL in 28P01, errore di `ALTER ROLE` e `release_channel: withdrawn`.
+     - La password di `postgres` è cambiata il 14/11: il reset dal pannello di Supabase è arrivato al database (impronta in `pg_authid` cambiata), quindi il frammento finito nell'output di una sessione di Claude dell'08/11 non vale più e non serve un ticket al supporto. Tara quella password non la usa: backend e migrazioni usano `tara`.
      - Il progetto riporta `release_channel: withdrawn` e una data di creazione anteriore alla creazione vera. Causa non trovata; finora nessun effetto.
    - **Render.**
      - Account creato, con la credenziale del registry `ghcr-tara`: token GitHub *classic* con solo `read:packages`, scadenza un anno. Render scarica l'immagine privata.
@@ -159,6 +156,17 @@ Ordine approvato da Enrico il 31/10/2026 per chiudere la F0: prima il backend on
      - intestazione di `cd.yml` e `docs/processo.md` aggiornate.
    - Misure con 0,1 CPU e database locale, prima del deploy: snapshot in circa 10 s, 304 in meno di 0,05 s, picco di memoria intorno ai 220 MiB (390 MiB con quattro download insieme). Su Render l'08/11 lo snapshot (5,6 MB, circa 430 kB compressi) richiede 9,7 s a caldo e 33,7 s a freddo; la memoria si legge nelle metriche del servizio.
 9. **Gate F0**: la ricerca di un generico restituisce valori corretti. Percorso della demo: "cerco albume, vedo i valori giusti, inserisco i grammi, funziona offline", da provare dall'inizio su un telefono con una build preview che parla con il backend online, dopo almeno 20 minuti di inattività del server, e poi senza rete. Prima, Enrico rivede i nomi degli alimenti della sua dieta.
+   - **Nomi della dieta di Enrico: fatto il 16/11 (PR #41, `2f1c36c`).** Alimenti presi da due screenshot del suo diario.
+     - `pipelines/catalog/data/revisioni.csv` ha 88 alimenti rivisti (45 nuovi): alias per plurali e nomi comuni; un nome cambiato (15005 "Gherigli di noce, essiccati" → "Noci sgusciate"); tolti gli alias sbagliati del modello che facevano vincere l'alimento più grasso o sbagliato (petto e coscia di pollo con pelle, pane di tipo 2 per "pane integrale", latte a ridotto contenuto di lattosio, farina di riso, carne di pollo e di gallina con o senza pelle).
+     - Ricerca offline dell'app (`apps/mobile/src/data/catalogStore.ts`): un alimento con nome o alias uguale alla ricerca viene subito dopo il criterio del crudo. Prima, sul telefono, 10 ricerche della dieta su 32 davano l'alimento sbagliato (vinceva il nome canonico più corto); dopo, 32 su 32.
+     - Verifica: tre agenti di revisione; Newman 22/22 in locale e in produzione; i flussi Maestro reggono; nessun alimento uguale a un altro. Catalogo di produzione ricaricato da Enrico il 16/11 (3.484 aggiornati): 23 ricerche della dieta su 23 corrette sull'API online.
+     - Un test della pipeline (`tests/test_translate_cli.py`) leggeva il `revisioni.csv` versionato: ora è isolato.
+     - Non coperti da CIQUAL:
+       - whey protein, maltodestrine, crema di riso, EAA: prodotti confezionati, da etichetta o barcode in F1;
+       - skyr e fiocchi di latte;
+       - lo "yogurt alla greca" di CIQUAL è quello francese cremoso (3 g di proteine);
+       - 143 alimenti senza energia;
+       - "latte" mostra ancora per primo il latte di capra crudo, perché il crudo viene prima del nome esatto.
 10. **Autenticazione** con codice via email (Supabase Auth).
 11. **Chiusura della F0**:
     - ruleset su `main`;
