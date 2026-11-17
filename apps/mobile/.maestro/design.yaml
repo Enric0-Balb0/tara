@@ -1,9 +1,10 @@
-# Catalogo dei componenti (solo nella development build): i componenti si vedono con i
+# Catalogo dei componenti (solo nella development build, tag dev): i componenti si vedono con i
 # dati dell'albume di CIQUAL e il foglio dei grammi gestisce peso, tara ed errore.
 appId: com.enricobalbo.tara
 name: Catalogo dei componenti
 tags:
   - design
+  - dev
 ---
 - runFlow: subflows/avvio.yaml
 - extendedWaitUntil:

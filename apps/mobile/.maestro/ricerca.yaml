@@ -1,4 +1,5 @@
-# Ricerca e scheda alimento (development build, con il backend acceso per il primo download):
+# Ricerca e scheda alimento (serve il backend per il primo download: quello locale con la
+# development build, quello su Render con la build preview):
 # cerco albume, vedo i valori giusti e la fonte, calcolo i grammi. Il crudo viene prima del cotto.
 appId: com.enricobalbo.tara
 name: Ricerca e scheda alimento

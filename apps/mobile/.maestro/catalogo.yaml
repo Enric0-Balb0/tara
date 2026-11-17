@@ -1,10 +1,11 @@
-# Catalogo sul telefono (solo development build, con il backend acceso su questo PC):
+# Catalogo sul telefono (solo development build, tag dev, con il backend acceso su questo PC):
 # all'avvio l'app scarica il catalogo dei generici e il menu di sviluppo del profilo ne
 # mostra lo stato; un secondo controllo trova il catalogo già aggiornato (ETag).
 appId: com.enricobalbo.tara
 name: Catalogo sul telefono
 tags:
   - api
+  - dev
 ---
 - runFlow: subflows/avvio.yaml
 - extendedWaitUntil:

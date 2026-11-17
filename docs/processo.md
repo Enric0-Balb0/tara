@@ -176,6 +176,8 @@ npm run e2e:dev   # development build: dev server acceso, adb reverse automatico
 npm run e2e       # build preview, con il bundle incluso
 ```
 
+I flussi con il tag `api` girano solo se il backend risponde a `/health`, altrimenti lo script li salta con un avviso: la development build usa quello locale (`TARA_API_URL`, di default `http://localhost:8000`), la build preview quello del suo profilo in `eas.json`, che su Render Free può metterci fino a un minuto a svegliarsi (lo script aspetta 90 s). La build preview salta sempre i flussi con i tag `dev` e `design`, che passano dal menu Sviluppo del profilo, presente solo con `__DEV__`.
+
 Maestro richiede JDK 17+: lo script lo passa solo al processo di Maestro (il JDK di Android Studio, o `TARA_JAVA_HOME`), quindi un `JAVA_HOME` globale diverso resta intatto. Lo script disattiva anche la telemetria anonima di Maestro.
 
 **Verifiche visive di Claude.** Con l'emulatore acceso Claude cattura lo schermo con `adb exec-out screencap -p` e lo guarda, e interagisce con `adb shell input` o con Maestro: ogni modifica all'interfaccia si controlla sullo schermo vero, non solo nel codice. La prima verifica ha trovato subito due difetti invisibili nel codice: le icone delle tab mancano (un `?` al posto del glifo) e quel `?` finisce nell'etichetta letta dallo screen reader.
