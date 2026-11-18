@@ -42,8 +42,12 @@ SNAKE_CASE_CODE = "~ '^[a-z][a-z0-9_]*$'"
 
 
 class AppUser(Base):
-    """Proprietario dei dati personali. Il collegamento all'identità di login arriva con
-    l'autenticazione (F0, passo 4)."""
+    """Proprietario dei dati personali.
+
+    `id` è l'id dell'utente in `auth.users` di Supabase (il `sub` del token): `GET /v1/me`
+    crea la riga al primo accesso. Nessuna chiave esterna verso `auth.users`, perché lo
+    schema `auth` esiste solo su Supabase, non in locale né in CI.
+    """
 
     __tablename__ = "app_user"
 

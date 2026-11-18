@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     """Commit dell'immagine in esecuzione: il CD lo passa come build arg."""
     database_url: str = "postgresql://tara:tara@localhost:55432/tara"
     off_user_agent: str = "Tara/0.1 (progetto personale)"
+    supabase_url: str | None = None
+    """Indirizzo del progetto Supabase (`https://<ref>.supabase.co`), non un segreto: da qui
+    l'API ricava la JWKS pubblica e l'emittente dei token. Senza, gli endpoint autenticati
+    rispondono 503."""
 
     @property
     def sqlalchemy_database_url(self) -> str:
