@@ -1,0 +1,43 @@
+# Primo avvio, telefono senza alimenti (serve il backend: quello locale con la development
+# build, quello su Render con la build preview). Il download parte con la rete spenta, così
+# l'attesa c'è sempre, anche con il server già sveglio: la ricerca dice a che punto è e,
+# quando gli alimenti arrivano, lo avvisa e mostra i risultati di «albume» senza riscriverlo.
+appId: com.enricobalbo.tara
+name: Primo download degli alimenti
+tags:
+  - api
+# Anche se il flusso si ferma a metà, la rete torna accesa per i flussi successivi.
+onFlowComplete:
+  - setAirplaneMode: disabled
+---
+- setAirplaneMode: enabled
+- runFlow: subflows/avvio.yaml
+- extendedWaitUntil:
+    visible: Diario di oggi
+    timeout: 30000
+- tapOn: Cerca un alimento
+- inputText: albume
+# Sull'emulatore Gboard propone a volte la prova della penna e si prende il testo.
+- runFlow:
+    when:
+      visible: Try out your stylus
+    commands:
+      - tapOn: Cancel
+      - eraseText: 20
+      - inputText: albume
+- assertVisible: Gli alimenti si stanno scaricando.
+# La fase in parole: il server non risponde ancora, l'app riprova.
+- extendedWaitUntil:
+    visible: 'Il server si sta svegliando: tentativo \d di \d\.'
+    timeout: 30000
+- assertVisible:
+    id: avanzamento-alimenti
+- takeScreenshot: screenshots/primo-download-attesa
+- setAirplaneMode: disabled
+# Torna la rete: al tentativo successivo arrivano gli alimenti, senza toccare niente.
+- extendedWaitUntil:
+    visible: "Albume d'uovo in polvere"
+    timeout: 120000
+- assertVisible: 'Alimenti pronti: \d+\.'
+- assertNotVisible: Gli alimenti si stanno scaricando.
+- takeScreenshot: screenshots/primo-download-pronti

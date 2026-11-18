@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { columns, radius, space, touch } from './layout';
-import { curves, durations, PRESS_SCALE } from './motion';
+import { curves, durations, INDETERMINATE_STEP_MS, PRESS_SCALE } from './motion';
 
 // Valori di docs/design.md: cambiano solo insieme al documento.
 describe('layout', () => {
@@ -28,5 +28,9 @@ describe('motion', () => {
     expect(curves.standard).toEqual([0.2, 0, 0, 1]);
     expect(curves.exit).toEqual([0.4, 0, 1, 1]);
     expect(PRESS_SCALE).toBe(0.97);
+  });
+
+  it("l'attesa senza durata nota avanza piano, un passo ogni 320 ms", () => {
+    expect(INDETERMINATE_STEP_MS).toBe(320);
   });
 });

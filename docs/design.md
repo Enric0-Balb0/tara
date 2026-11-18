@@ -127,6 +127,7 @@ Un'unica famiglia: **Archivo** (licenza OFL), in più larghezze. La larghezza di
 | `rapido` | 160 ms | standard | cambio di stato, interruttori, totali che si aggiornano |
 | `foglio` | 240 ms in entrata, 200 ms in uscita | entrata / uscita | il foglio di inserimento sale dal basso |
 | `voce` | 200 ms | standard | una voce entra nel pasto: compare e la riga si apre in altezza |
+| `attesa` | 320 ms per passo, all'infinito | lineare | attesa di durata ignota: il tratteggio della barra di avanzamento scorre di un passo; fermo con il movimento ridotto |
 
 - Curve: standard `cubic-bezier(0.2, 0, 0, 1)`, uscita `cubic-bezier(0.4, 0, 1, 1)`.
 - Le animazioni girano sul thread dell'interfaccia (Reanimated), mai sul thread JavaScript, per non scattare.
@@ -145,6 +146,7 @@ Linee da 2 px su una griglia di 24, estremità arrotondate, disegnate come set u
 | **Barra di ricerca** | "Cerca un alimento" e pulsante scanner, sempre in basso sopra le tab | lo scanner è il pulsante principale, quadrato, colore `azione` |
 | **Riga di risultato** | nome su due righe al massimo, stato (solo "cotto"; il crudo è il predefinito) con sotto la cottura in secondo piano se c'è ("al vapore"), kcal e proteine per 100 g | tocco → scheda alimento |
 | **Barra graduata** | avanzamento di un macro verso l'obiettivo | parte piena = registrato; tratteggio a colore pieno = previsto dal piano, detto anche dal lettore dello schermo; tacche ogni 10% in `testoSecondario` (≥ 3:1); segno al traguardo; oltre il 100% la parte in eccesso resta visibile oltre il segno |
+| **Barra di avanzamento** | attese vere, come il primo download degli alimenti: stessa forma della barra graduata (binario, tacche ogni 10%), parte piena in `testo` | piena solo con una frazione misurata (byte ricevuti su un totale dichiarato); altrimenti tratteggio che scorre (`attesa`). Mai una percentuale stimata dal tempo; sotto, la fase in parole |
 | **Voce di diario** | una riga allineata: nome, peso, kcal, proteine | **registrata**: testo pieno; **prevista**: bordo tratteggiato, testo attenuato, pulsante "Conferma" |
 | **Intestazione del pasto** | nome, "2 di 3", totali nelle stesse colonne delle voci | pasto completo → si chiude in una riga ("6 di 6, come da piano"); si riapre con un tocco |
 | **Foglio di inserimento** | alimento, crudo/cotto, lettura dei grammi, macro aggiornati mentre si digita, tastierino | "Ultima volta a cena: 500 g" (RF-42); "Aggiungi e continua" e "Aggiungi 500 g" |

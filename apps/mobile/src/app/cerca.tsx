@@ -1,17 +1,21 @@
 import { useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useRef, useState } from 'react';
-import { FlatList, StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, FlatList, StyleSheet, View } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 
+import { Icon } from '@/components/Icon';
 import { PressableScale } from '@/components/PressableScale';
+import { ProgressTrack } from '@/components/ProgressTrack';
 import { ResultRow } from '@/components/ResultRow';
 import { SearchField } from '@/components/SearchField';
 import { TaraText } from '@/components/TaraText';
 import { useCatalog } from '@/data/CatalogProvider';
 import { type FoodHit, searchFoods } from '@/data/catalogStore';
 import type { SqlDatabase } from '@/data/sql';
-import { searchStatus } from '@/domain/searchStatus';
+import { catalogReadyNotice, downloadProgress, searchStatus } from '@/domain/searchStatus';
 import { radius, space, touch } from '@/theme/layout';
+import { durations } from '@/theme/motion';
 import { useTheme } from '@/theme/useTheme';
 
 /** "Cerca un alimento": a ogni lettera cerca nel catalogo sul telefono, anche offline. */
@@ -19,7 +23,7 @@ export default function SearchScreen() {
   const { colors } = useTheme();
   const router = useRouter();
   const db: SqlDatabase = useSQLiteContext();
-  const { info, syncing, refresh } = useCatalog();
+  const { info, syncing, progress, refresh } = useCatalog();
   const [query, setQuery] = useState('');
   // I risultati restano legati alla ricerca che li ha prodotti.
   const [results, setResults] = useState<{ query: string; hits: FoodHit[] } | null>(null);
@@ -27,6 +31,24 @@ export default function SearchScreen() {
   const retried = useRef(false);
   const catalogSize = info?.foodCount;
   const catalogVersion = info?.version;
+
+  // Se la schermata ha visto il telefono senza alimenti, quando arrivano lo dice: l'avviso
+  // resta finché la ricerca non cambia.
+  const [waitedForCatalog, setWaitedForCatalog] = useState(false);
+  const [ready, setReady] = useState<{ foodCount: number; query: string } | null>(null);
+  if (catalogSize === 0 && !waitedForCatalog) setWaitedForCatalog(true);
+  if (waitedForCatalog && catalogSize !== undefined && catalogSize > 0) {
+    setWaitedForCatalog(false);
+    setReady({ foodCount: catalogSize, query });
+  }
+  const notice =
+    ready !== null && ready.query === query ? catalogReadyNotice(ready.foodCount) : null;
+
+  useEffect(() => {
+    if (ready !== null) {
+      AccessibilityInfo.announceForAccessibility(catalogReadyNotice(ready.foodCount));
+    }
+  }, [ready]);
 
   useEffect(() => {
     const request = ++latest.current;
@@ -36,7 +58,8 @@ export default function SearchScreen() {
         if (request === latest.current) setResults({ query, hits });
       })
       .catch((error: unknown) => console.error('Ricerca non riuscita', error));
-    // catalogVersion: se arriva un catalogo mentre la schermata è aperta, si cerca di nuovo.
+    // catalogVersion: se arriva un catalogo mentre la schermata è aperta, si cerca di nuovo,
+    // così i risultati della ricerca già scritta compaiono da soli.
   }, [db, query, catalogVersion]);
 
   // Senza catalogo sul telefono si riprova una volta da soli: forse la connessione è tornata.
@@ -68,6 +91,18 @@ export default function SearchScreen() {
         keyExtractor={(hit) => hit.id}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
+        ListHeaderComponent={
+          notice ? (
+            <Animated.View
+              entering={FadeIn.duration(durations.entry)}
+              accessibilityLiveRegion="polite"
+              style={[styles.notice, { borderColor: colors.border }]}
+            >
+              <Icon name="check" color="text" size={20} />
+              <TaraText variant="bodyStrong">{notice}</TaraText>
+            </Animated.View>
+          ) : undefined
+        }
         renderItem={({ item }) => (
           <ResultRow
             name={item.name}
@@ -79,7 +114,9 @@ export default function SearchScreen() {
           />
         )}
         ListFooterComponent={
-          status?.message ? (
+          status?.kind === 'downloading' && status.message ? (
+            <Download headline={status.message} {...downloadProgress(progress)} />
+          ) : status?.message ? (
             <View style={styles.footer}>
               <TaraText color="textSecondary" style={styles.message}>
                 {status.message}
@@ -100,9 +137,47 @@ export default function SearchScreen() {
   );
 }
 
+/** Il primo download: cosa succede, la barra e la fase in parole. */
+function Download({
+  headline,
+  detail,
+  fraction,
+}: {
+  headline: string;
+  detail: string;
+  fraction: number | null;
+}) {
+  return (
+    <View style={styles.download}>
+      <TaraText variant="bodyStrong">{headline}</TaraText>
+      <ProgressTrack
+        fraction={fraction}
+        accessibilityLabel={`${headline} ${detail}`}
+        testID="avanzamento-alimenti"
+      />
+      <TaraText variant="caption" color="textSecondary">
+        {detail}
+      </TaraText>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   top: { paddingHorizontal: space.l, paddingBottom: space.m },
+  notice: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.s,
+    paddingHorizontal: space.l,
+    paddingVertical: space.m,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  download: {
+    paddingHorizontal: space.l,
+    paddingVertical: space.xl,
+    gap: space.s,
+  },
   footer: {
     paddingHorizontal: space.l,
     paddingVertical: space.xl,
