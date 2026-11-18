@@ -18,3 +18,10 @@ export const curves = {
 } as const satisfies Record<string, readonly [number, number, number, number]>;
 
 export const PRESS_SCALE = 0.97;
+
+/**
+ * Attesa di durata ignota (risveglio del server, salvataggio): il tratteggio della barra
+ * avanza di un passo in questo tempo, piano e a velocità costante. Con il movimento
+ * ridotto resta fermo.
+ */
+export const INDETERMINATE_STEP_MS = 320;
