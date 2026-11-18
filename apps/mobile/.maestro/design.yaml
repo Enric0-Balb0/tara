@@ -7,6 +7,7 @@ tags:
   - dev
 ---
 - runFlow: subflows/avvio.yaml
+- runFlow: subflows/accedi.yaml
 - extendedWaitUntil:
     visible: Diario di oggi
     timeout: 30000
