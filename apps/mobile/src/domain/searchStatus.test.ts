@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { searchStatus } from './searchStatus';
+import { catalogReadyNotice, downloadProgress, searchStatus } from './searchStatus';
 
 const base = { catalogSize: 3484, syncing: false };
 
@@ -10,7 +10,7 @@ describe('searchStatus', () => {
       searchStatus({ query: 'albume', results: null, catalogSize: 0, syncing: true }),
     ).toEqual({
       kind: 'downloading',
-      message: 'Gli alimenti si stanno scaricando: la prima volta può volerci un minuto.',
+      message: 'Gli alimenti si stanno scaricando.',
     });
   });
 
@@ -59,5 +59,66 @@ describe('searchStatus', () => {
     expect(searchStatus({ ...base, query: 'albume', results: { query: 'albume', count: 2 } })).toEqual(
       { kind: 'results', message: null },
     );
+  });
+});
+
+describe('downloadProgress', () => {
+  it('prima di sapere qualcosa avvisa che il server può dormire', () => {
+    const expected = {
+      detail: 'Mi collego al server: se era fermo, si sveglia in circa un minuto.',
+      fraction: null,
+    };
+    expect(downloadProgress(null)).toEqual(expected);
+    expect(downloadProgress({ phase: 'connecting', attempt: 1, attempts: 6 })).toEqual(expected);
+  });
+
+  it('dai tentativi successivi dice quale tentativo è, senza inventare una percentuale', () => {
+    expect(downloadProgress({ phase: 'connecting', attempt: 3, attempts: 6 })).toEqual({
+      detail: 'Il server si sta svegliando: tentativo 3 di 6.',
+      fraction: null,
+    });
+  });
+
+  it('con la dimensione nota mostra i megabyte ricevuti e la frazione', () => {
+    expect(
+      downloadProgress({ phase: 'downloading', receivedBytes: 1_250_000, totalBytes: 5_000_000 }),
+    ).toEqual({ detail: 'Ricevuti 1,3 di 5,0 MB.', fraction: 0.25 });
+  });
+
+  it('senza dimensione nota mostra solo i megabyte ricevuti', () => {
+    expect(
+      downloadProgress({ phase: 'downloading', receivedBytes: 2_340_000, totalBytes: null }),
+    ).toEqual({ detail: 'Ricevuti 2,3 MB.', fraction: null });
+  });
+
+  it('una dimensione incoerente (compressa, più piccola del ricevuto) non dà una frazione', () => {
+    expect(
+      downloadProgress({ phase: 'downloading', receivedBytes: 900_000, totalBytes: 432_508 }),
+    ).toEqual({ detail: 'Ricevuti 0,9 MB.', fraction: null });
+    expect(
+      downloadProgress({ phase: 'downloading', receivedBytes: 900_000, totalBytes: 0 }),
+    ).toEqual({ detail: 'Ricevuti 0,9 MB.', fraction: null });
+  });
+
+  it('appena il server risponde, prima dei primi dati', () => {
+    expect(
+      downloadProgress({ phase: 'downloading', receivedBytes: 20_000, totalBytes: 5_000_000 }),
+    ).toEqual({ detail: 'Il server risponde: ricevo gli alimenti.', fraction: 0.004 });
+    expect(
+      downloadProgress({ phase: 'downloading', receivedBytes: 0, totalBytes: null }),
+    ).toEqual({ detail: 'Il server risponde: ricevo gli alimenti.', fraction: null });
+  });
+
+  it('mentre salva sul telefono', () => {
+    expect(downloadProgress({ phase: 'saving' })).toEqual({
+      detail: 'Salvo gli alimenti sul telefono.',
+      fraction: null,
+    });
+  });
+});
+
+describe('catalogReadyNotice', () => {
+  it('dice quanti alimenti sono pronti, senza separatore delle migliaia', () => {
+    expect(catalogReadyNotice(3484)).toBe('Alimenti pronti: 3484.');
   });
 });

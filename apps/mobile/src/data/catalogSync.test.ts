@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { CatalogProgress } from '@/domain/searchStatus';
+
 import { catalogInfo } from './catalogStore';
 import { FIRST_DOWNLOAD_TIMEOUT_MS, syncCatalog, WAKE_DELAYS_MS } from './catalogSync';
 import { initDatabase } from './schema';
 import type { SqlDatabase } from './sql';
+import { fakeXhr, split } from './testing/fakeXhr';
 import { openTestDatabase } from './testing/nodeDatabase';
 import { snapshotText, TEST_FOODS } from './testing/snapshot';
 
@@ -197,5 +200,154 @@ describe('syncCatalog, primo download mentre il server si sveglia', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+});
+
+const ATTEMPTS = WAKE_DELAYS_MS.length + 1;
+
+/** Avanzamento: ogni fase riportata, nell'ordine, insieme alle attese tra i tentativi. */
+describe('syncCatalog, avanzamento', () => {
+  function recorder() {
+    const log: (CatalogProgress | { wait: number })[] = [];
+    return {
+      log,
+      onProgress: (progress: CatalogProgress) => void log.push(progress),
+      wait: async (ms: number) => void log.push({ wait: ms }),
+    };
+  }
+
+  it('al primo download: collegamento, download, salvataggio', async () => {
+    const { log, onProgress, wait } = recorder();
+    const { fetch } = server(ok(snapshotText(), '"v1"'));
+    await syncCatalog(db, { apiUrl: 'http://api.test', fetch, now: () => FIRST, wait, onProgress });
+    expect(log).toEqual([
+      { phase: 'connecting', attempt: 1, attempts: ATTEMPTS },
+      { phase: 'downloading', receivedBytes: 0, totalBytes: null },
+      { phase: 'saving' },
+    ]);
+  });
+
+  it("con fetch usa la dimensione dichiarata, se c'è", async () => {
+    const { log, onProgress, wait } = recorder();
+    const body = snapshotText();
+    const fetch = (async () =>
+      new Response(body, {
+        status: 200,
+        headers: { ETag: '"v1"', 'Content-Length': String(body.length) },
+      })) as typeof globalThis.fetch;
+    await syncCatalog(db, { apiUrl: 'http://api.test', fetch, now: () => FIRST, wait, onProgress });
+    expect(log[1]).toEqual({ phase: 'downloading', receivedBytes: 0, totalBytes: body.length });
+  });
+
+  it('mentre il server si sveglia dice il tentativo prima di ogni attesa', async () => {
+    const { log, onProgress, wait } = recorder();
+    const { fetch } = server(waking, networkDown, ok(snapshotText(), '"v1"'));
+    await syncCatalog(db, { apiUrl: 'http://api.test', fetch, now: () => FIRST, wait, onProgress });
+    expect(log).toEqual([
+      { phase: 'connecting', attempt: 1, attempts: ATTEMPTS },
+      { phase: 'connecting', attempt: 2, attempts: ATTEMPTS },
+      { wait: WAKE_DELAYS_MS[0] },
+      { phase: 'connecting', attempt: 3, attempts: ATTEMPTS },
+      { wait: WAKE_DELAYS_MS[1] },
+      { phase: 'downloading', receivedBytes: 0, totalBytes: null },
+      { phase: 'saving' },
+    ]);
+  });
+
+  it('con il catalogo sul telefono un solo tentativo e, se non cambia, niente salvataggio', async () => {
+    await downloadFirstCatalog();
+    const { log, onProgress, wait } = recorder();
+    const { fetch } = server(notModified);
+    await syncCatalog(db, { apiUrl: 'http://api.test', fetch, now: () => LATER, wait, onProgress });
+    expect(log).toEqual([{ phase: 'connecting', attempt: 1, attempts: 1 }]);
+  });
+});
+
+/** In React Native fetch non dice quanti byte sono arrivati: XMLHttpRequest sì. */
+describe('syncCatalog con XMLHttpRequest', () => {
+  function xhrSync(
+    XMLHttpRequest: ReturnType<typeof fakeXhr>['XMLHttpRequest'],
+    timeoutMs?: number,
+  ) {
+    const log: CatalogProgress[] = [];
+    const result = syncCatalog(db, {
+      apiUrl: 'http://api.test/',
+      XMLHttpRequest,
+      now: () => FIRST,
+      timeoutMs,
+      wait: async () => undefined,
+      onProgress: (progress) => void log.push(progress),
+    });
+    return { result, log };
+  }
+
+  it('riporta i byte ricevuti e il totale dichiarato', async () => {
+    const body = snapshotText();
+    const bytes = new TextEncoder().encode(body).length;
+    const { XMLHttpRequest, requests } = fakeXhr({
+      status: 200,
+      headers: { ETag: '"v1"', 'Content-Length': String(bytes) },
+      chunks: split(body, 3),
+      total: bytes,
+    });
+    const { result, log } = xhrSync(XMLHttpRequest);
+    expect(await result).toEqual({ kind: 'updated', version: 'v1', foodCount: 3 });
+    expect(requests).toEqual([
+      { method: 'GET', url: 'http://api.test/v1/catalog', headers: { accept: 'application/json' } },
+    ]);
+    const downloads = log.flatMap((p) => (p.phase === 'downloading' ? [p] : []));
+    expect(downloads[0]).toEqual({ phase: 'downloading', receivedBytes: 0, totalBytes: bytes });
+    expect(downloads.map((p) => p.totalBytes)).toEqual([bytes, bytes, bytes, bytes]);
+    const received = downloads.map((p) => p.receivedBytes);
+    expect(received.at(-1)).toBe(bytes);
+    expect([...received].sort((a, b) => a - b)).toEqual(received);
+    expect(log.at(-1)).toEqual({ phase: 'saving' });
+    expect(await catalogInfo(db)).toMatchObject({ foodCount: 3, etag: '"v1"' });
+  });
+
+  it('senza totale dichiarato lo lascia ignoto', async () => {
+    const { XMLHttpRequest } = fakeXhr({
+      status: 200,
+      headers: { ETag: '"v1"' },
+      chunks: split(snapshotText(), 2),
+      total: null,
+    });
+    const { result, log } = xhrSync(XMLHttpRequest);
+    expect(await result).toMatchObject({ kind: 'updated' });
+    const downloads = log.flatMap((p) => (p.phase === 'downloading' ? [p] : []));
+    expect(downloads).toHaveLength(3);
+    expect(downloads.every((p) => p.totalBytes === null)).toBe(true);
+  });
+
+  it('chiede solo se è cambiato e accetta il 304', async () => {
+    await downloadFirstCatalog();
+    const { XMLHttpRequest, requests } = fakeXhr({ status: 304 });
+    const { result, log } = xhrSync(XMLHttpRequest);
+    expect(await result).toEqual({ kind: 'unchanged' });
+    expect(requests[0]?.headers['if-none-match']).toBe('"v1"');
+    expect(log).toEqual([{ phase: 'connecting', attempt: 1, attempts: 1 }]);
+  });
+
+  it('errore di rete: offline', async () => {
+    await downloadFirstCatalog();
+    const { XMLHttpRequest } = fakeXhr('network-error');
+    expect(await xhrSync(XMLHttpRequest).result).toEqual({ kind: 'failed', reason: 'offline' });
+  });
+
+  it('server che non risponde: offline dopo il timeout', async () => {
+    await downloadFirstCatalog();
+    const { XMLHttpRequest } = fakeXhr('hang');
+    expect(await xhrSync(XMLHttpRequest, 10).result).toEqual({
+      kind: 'failed',
+      reason: 'offline',
+    });
+  });
+
+  it('errore del server: nessun download riportato', async () => {
+    await downloadFirstCatalog();
+    const { XMLHttpRequest } = fakeXhr({ status: 503, chunks: ['sveglia'] });
+    const { result, log } = xhrSync(XMLHttpRequest);
+    expect(await result).toEqual({ kind: 'failed', reason: 'server' });
+    expect(log.some((p) => p.phase === 'downloading')).toBe(false);
   });
 });

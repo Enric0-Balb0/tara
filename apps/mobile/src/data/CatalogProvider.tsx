@@ -11,6 +11,7 @@ import {
 } from 'react';
 
 import { API_URL } from '@/config';
+import type { CatalogProgress } from '@/domain/searchStatus';
 
 import { type CatalogInfo, catalogInfo } from './catalogStore';
 import { type SyncResult, syncCatalog } from './catalogSync';
@@ -20,6 +21,8 @@ interface CatalogState {
   info: CatalogInfo | null;
   last: SyncResult | null;
   syncing: boolean;
+  /** A che punto è il controllo in corso; null quando non ce n'è uno. */
+  progress: CatalogProgress | null;
   /** Controlla di nuovo con il server; non parte se un controllo è già in corso. */
   refresh: () => void;
 }
@@ -33,15 +36,17 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   const [info, setInfo] = useState<CatalogInfo | null>(null);
   const [last, setLast] = useState<SyncResult | null>(null);
   const [syncing, setSyncing] = useState(true);
+  const [progress, setProgress] = useState<CatalogProgress | null>(null);
   const running = useRef(false);
 
   const sync = useCallback(async () => {
     try {
       setInfo(await catalogInfo(db));
-      setLast(await syncCatalog(db, { apiUrl: API_URL }));
+      setLast(await syncCatalog(db, { apiUrl: API_URL, onProgress: setProgress }));
       setInfo(await catalogInfo(db));
     } finally {
       running.current = false;
+      setProgress(null);
       setSyncing(false);
     }
   }, [db]);
@@ -60,8 +65,8 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
   }, [sync]);
 
   const value = useMemo(
-    () => ({ info, last, syncing, refresh }),
-    [info, last, syncing, refresh],
+    () => ({ info, last, syncing, progress, refresh }),
+    [info, last, syncing, progress, refresh],
   );
   return <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>;
 }
