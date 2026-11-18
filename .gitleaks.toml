@@ -1,0 +1,11 @@
+# Configurazione di gitleaks: le regole predefinite più un'eccezione stretta.
+# Letta sia dall'hook di pre-commit sia dal job "Scansione segreti" in CI.
+title = "Tara"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Chiavi publishable di Supabase: pubbliche per costruzione (finiscono nel bundle dell'app, i dati li protegge la sicurezza per riga). Le chiavi sb_secret_ restano segnalate."
+regexTarget = "secret"
+regexes = ['''^sb_publishable_[A-Za-z0-9_-]+$''']

@@ -17,13 +17,17 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://tara-api-eu.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://tara-api-eu.onrender.com",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://fbwlepzrrvtngvbyktiv.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_GoF02dpsjcYOff3Qn_jECQ_ZHQI_-xI"
       }
     },
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://tara-api-eu.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://tara-api-eu.onrender.com",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://fbwlepzrrvtngvbyktiv.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_GoF02dpsjcYOff3Qn_jECQ_ZHQI_-xI"
       }
     }
   },

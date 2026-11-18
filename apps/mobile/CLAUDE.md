@@ -36,6 +36,10 @@ All'avvio l'app scarica il catalogo dei generici da `GET /v1/catalog` e lo tiene
 
 Typecheck, lint, test con coverage e doctor devono passare prima di dichiarare finito un lavoro: sono i controlli del job "App mobile" in CI.
 
+## Accesso (Supabase Auth)
+
+Accesso con codice via email, iscrizioni chiuse: gli utenti li crea Enrico nel pannello di Supabase e la richiesta del codice passa sempre `shouldCreateUser: false` (`otpRequest` in `src/domain/accesso.ts`, con pulizia di email e codice, attesa di 60 s per un nuovo invio e messaggi di errore). Il client è `src/data/supabase.ts`: sessione nel localStorage di expo-sqlite, rinnovo del token legato ad `AppState`, niente polyfill per `URL`. URL e chiave `sb_publishable_` sono pubblici per costruzione: le build `preview` e `production` li prendono da `eas.json`, `npx expo start` da `.env.local` (copiali da `.env.example`). Mai una chiave `sb_secret_` o `service_role` nell'app: lo controllano `src/config.test.ts` e gitleaks, che ammette solo le publishable (`.gitleaks.toml`).
+
 ## Verificare l'interfaccia
 
 Ogni modifica visibile si controlla sull'emulatore, non solo nel codice: screenshot con `adb exec-out screencap -p > <file>.png` (salvato nello scratchpad, non nel repository), interazioni con `adb shell input` o con un flusso Maestro. Un flusso nuovo in `.maestro/` per ogni percorso utente che entra nell'app; testi e asserzioni in italiano, come l'interfaccia. Strategia completa in `docs/processo.md`, sezione "Test dell'interfaccia".

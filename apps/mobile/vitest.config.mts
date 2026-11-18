@@ -16,12 +16,14 @@ export default defineConfig({
       provider: 'v8',
       include: ['src/domain/**/*.ts', 'src/theme/**/*.ts', 'src/data/**/*.ts'],
       // useTheme usa React Native, fonts.ts i require dei .ttf: non girano in Node.
-      // src/data/testing contiene solo gli strumenti dei test.
+      // src/data/testing contiene solo gli strumenti dei test; supabase.ts è il client di
+      // Supabase Auth, colla con expo-sqlite e AppState (la logica sta in domain/accesso.ts).
       exclude: [
         'src/**/*.test.ts',
         'src/theme/useTheme.ts',
         'src/theme/fonts.ts',
         'src/data/testing/**',
+        'src/data/supabase.ts',
       ],
       reporter: ['text', 'json-summary'],
       thresholds: { lines: 80, functions: 80, branches: 80, statements: 80 },
