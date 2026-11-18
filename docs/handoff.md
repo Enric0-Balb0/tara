@@ -2,17 +2,14 @@
 
 Questo file riassume la conversazione di progettazione del 22 ottobre 2026 (claude.ai) da cui nasce il repository, così che una nuova sessione di Claude Code possa ripartire senza perdere contesto.
 
-## Riprendere il lavoro (aggiornato al 16/11/2026)
+## Riprendere il lavoro (aggiornato al 18/11/2026)
 
-- **Fase:** F0, passo 9 (gate).
+- **Fase:** F0, passo 10 (autenticazione). **Gate F0 superato il 18/11** (passo 9).
   - Backend online dall'08/11 (passo 8): ogni merge su `main` con CI verde va online da solo su `https://tara-api-eu.onrender.com`.
-  - Nomi della dieta di Enrico fatti il 16/11 (PR #41, dettagli al passo 9); catalogo di produzione ricaricato lo stesso giorno.
-- **Prossimo passo: la prova del gate sul telefono con la build preview.**
-  - Il 16/11, con l'approvazione di Enrico, è partita la build preview EAS per Android dal commit `2f1c36c`. Rifà anche il nativo con le patch di Expo della #34 (`react-native` 0.88.1); la development build sull'emulatore resta su 0.88.0.
-  - **Azione di Enrico:** installare l'APK e fare la prova: almeno 20 minuti di inattività del server, poi cercare "albume", controllare i valori, inserire i grammi, e ripetere senza rete.
-- **Restano:**
-  - PR in corso sui log di `/ready`: oggi un problema di credenziali dà solo 503, e l'08/11 trovarlo ha richiesto ore.
-  - PR di Dependabot aperte #28, #35, #36, #38, #39, per la chiusura della F0 (passo 11).
+  - Enrico ha fatto la prova sul telefono con l'APK preview (build dal commit `2f1c36c`): server fermo da più di 20 minuti, "albume", valori, grammi, poi senza rete. Tutto funziona.
+- **In corso:** il primo download del catalogo, durante il gate, mostrava solo "può volerci un minuto". Non c'era avanzamento, la fine non veniva segnalata e la ricerca andava rifatta a mano. La correzione è nel branch `feat/RNF-03-avanzamento-catalogo`.
+- **Prossimo passo:** autenticazione con codice via email (Supabase Auth), passo 10.
+- **Restano:** PR di Dependabot aperte #28, #35, #36, #38, #39, per la chiusura della F0 (passo 11).
 - **Note pratiche su questa macchina:**
   - Dopo un riavvio Docker Desktop è spento: `Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"`, poi `docker compose -f infra/docker-compose.yml up -d`. Senza, i test del backend falliscono alla connessione.
   - Le azioni che creano, cancellano o pagano qualcosa nei pannelli di Render, Supabase e GitHub le fa Enrico, salvo autorizzazione esplicita. L'08/11, con l'autorizzazione, Claude ha creato un servizio Render dal Chrome "Browser 2", dove Enrico ha la sessione di Render; il controllo dei permessi ha comunque bloccato la cancellazione, che resta a Enrico. Le letture sono possibili: MCP di Supabase per SQL, log e advisor; `gh` per PR, run e nomi dei segreti.
@@ -155,7 +152,7 @@ Ordine approvato da Enrico il 31/10/2026 per chiudere la F0: prima il backend on
      - prova a freddo, l'08/11 alle 20:22 UTC dopo 22 minuti senza richieste: la prima `GET /v1/catalog` risponde 200 in 33,7 s, risveglio compreso, entro i 90 s che l'app concede al primo download; a caldo 9,7 s;
      - intestazione di `cd.yml` e `docs/processo.md` aggiornate.
    - Misure con 0,1 CPU e database locale, prima del deploy: snapshot in circa 10 s, 304 in meno di 0,05 s, picco di memoria intorno ai 220 MiB (390 MiB con quattro download insieme). Su Render l'08/11 lo snapshot (5,6 MB, circa 430 kB compressi) richiede 9,7 s a caldo e 33,7 s a freddo; la memoria si legge nelle metriche del servizio.
-9. **Gate F0**: la ricerca di un generico restituisce valori corretti. Percorso della demo: "cerco albume, vedo i valori giusti, inserisco i grammi, funziona offline", da provare dall'inizio su un telefono con una build preview che parla con il backend online, dopo almeno 20 minuti di inattività del server, e poi senza rete. Prima, Enrico rivede i nomi degli alimenti della sua dieta.
+9. ~~**Gate F0**~~: superato il 18/11/2026. la ricerca di un generico restituisce valori corretti. Percorso della demo: "cerco albume, vedo i valori giusti, inserisco i grammi, funziona offline", da provare dall'inizio su un telefono con una build preview che parla con il backend online, dopo almeno 20 minuti di inattività del server, e poi senza rete. Prima, Enrico rivede i nomi degli alimenti della sua dieta.
    - **Nomi della dieta di Enrico: fatto il 16/11 (PR #41, `2f1c36c`).** Alimenti presi da due screenshot del suo diario.
      - `pipelines/catalog/data/revisioni.csv` ha 88 alimenti rivisti (45 nuovi): alias per plurali e nomi comuni; un nome cambiato (15005 "Gherigli di noce, essiccati" → "Noci sgusciate"); tolti gli alias sbagliati del modello che facevano vincere l'alimento più grasso o sbagliato (petto e coscia di pollo con pelle, pane di tipo 2 per "pane integrale", latte a ridotto contenuto di lattosio, farina di riso, carne di pollo e di gallina con o senza pelle).
      - Ricerca offline dell'app (`apps/mobile/src/data/catalogStore.ts`): un alimento con nome o alias uguale alla ricerca viene subito dopo il criterio del crudo. Prima, sul telefono, 10 ricerche della dieta su 32 davano l'alimento sbagliato (vinceva il nome canonico più corto); dopo, 32 su 32.
@@ -167,6 +164,10 @@ Ordine approvato da Enrico il 31/10/2026 per chiudere la F0: prima il backend on
        - lo "yogurt alla greca" di CIQUAL è quello francese cremoso (3 g di proteine);
        - 143 alimenti senza energia;
        - "latte" mostra ancora per primo il latte di capra crudo, perché il crudo viene prima del nome esatto.
+    - **Prova sul telefono: superata il 18/11/2026.** APK preview contro Render, dopo più di 20 minuti di inattività del server e poi in modalità aereo: ricerca, valori, grammi e uso offline senza problemi.
+      - Prima, PR #45: `/ready` scrive nel log perché il database non risponde, senza la password.
+      - Prima, PR #46: `npm run e2e` esegue i flussi `api` sulla build preview contro Render.
+      - Unico rilievo di Enrico: il primo download non mostra l'avanzamento, non avvisa quando finisce, e la ricerca va rifatta a mano (correzione nel branch `feat/RNF-03-avanzamento-catalogo`).
 10. **Autenticazione** con codice via email (Supabase Auth).
 11. **Chiusura della F0**:
     - ruleset su `main`;
