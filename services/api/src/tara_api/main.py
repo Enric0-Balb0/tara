@@ -10,7 +10,7 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from tara_api import __version__, foods
+from tara_api import __version__, foods, users
 from tara_api.config import get_settings
 from tara_api.db.session import get_session
 
@@ -24,6 +24,7 @@ app = FastAPI(title="Tara API", version=__version__)
 # Lo snapshot del catalogo pesa qualche MB in JSON: compresso si scarica anche in 4G.
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.include_router(foods.router)
+app.include_router(users.router)
 
 
 @app.get("/health")

@@ -227,6 +227,27 @@
           ]
         }
       ]
+    },
+    {
+      "name": "Utente",
+      "item": [
+        {
+          "name": "Utente senza token (401)",
+          "request": { "method": "GET", "url": "{{baseUrl}}/v1/me" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('rifiutata con 401', () => pm.response.to.have.status(401));",
+                  "pm.test('chiede un token Bearer', () => pm.response.to.have.header('WWW-Authenticate', 'Bearer'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

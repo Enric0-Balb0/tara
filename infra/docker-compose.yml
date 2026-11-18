@@ -26,6 +26,7 @@ services:
     environment:
       TARA_ENVIRONMENT: development
       TARA_DATABASE_URL: postgresql://tara:tara@db:5432/tara
+      TARA_SUPABASE_URL: https://fbwlepzrrvtngvbyktiv.supabase.co
     ports:
       - "8000:8000"
     depends_on:

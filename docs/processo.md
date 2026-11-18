@@ -209,6 +209,8 @@ Queste impostazioni non stanno nel repository e si fanno una volta dalla pagina 
   | Token GitHub classico con `read:packages` | Credenziali del registry su Render | Scarica l'immagine privata da GHCR; scadenza di un anno, poi va ruotato |
 
   Su Render va impostato anche `PORT=8000`; l'health check punta a `/health`.
+
+  Su Render serve anche `TARA_SUPABASE_URL=https://fbwlepzrrvtngvbyktiv.supabase.co`, che non è un segreto: da lì l'API scarica la JWKS pubblica del progetto e verifica i token di Supabase Auth senza segreti condivisi (RNF-04). Senza, gli endpoint autenticati come `/v1/me` rispondono 503; una richiesta senza token riceve comunque 401, quindi la collezione Postman del CD resta verde. La imposta Enrico (*Environment* del servizio, *Save, rebuild, and deploy*).
 - Cambio della password del database: `uv run python -m tara_api.db_role` da `services/api`. Chiede un access token personale di Supabase (*Account → Access Tokens*, da revocare dopo). Genera una password nuova e manda a Supabase solo la sua impronta SCRAM, poi aggiorna il segreto GitHub e copia la stringa negli appunti. Su Render va incollata a mano in `TARA_DATABASE_URL` (*Save, rebuild, and deploy*); alla fine si svuotano gli appunti. Password e token non compaiono mai nell'output.
 - Chiavi dei modelli AI della pipeline: in `pipelines/catalog/.env` (modello in `.env.example`). Si incollano solo lì, mai in chat, nei commit o nelle issue; gitleaks blocca i commit che le contengono.
 
