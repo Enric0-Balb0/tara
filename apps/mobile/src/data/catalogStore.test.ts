@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { catalogInfo, markChecked, replaceCatalog, SnapshotError } from './catalogStore';
+import {
+  catalogInfo,
+  clearCatalog,
+  markChecked,
+  replaceCatalog,
+  SnapshotError,
+} from './catalogStore';
 import { initDatabase } from './schema';
 import type { SqlDatabase } from './sql';
 import { openTestDatabase } from './testing/nodeDatabase';
@@ -168,6 +174,35 @@ describe('replaceCatalog', () => {
     });
     expect(await valueCount('mio')).toBe(1);
     expect((await catalogInfo(db)).foodCount).toBe(3);
+  });
+});
+
+describe('clearCatalog', () => {
+  it('torna al telefono appena installato: niente generici né stato del catalogo', async () => {
+    await replaceV1();
+    await clearCatalog(db);
+    expect(await catalogInfo(db)).toEqual({
+      foodCount: 0,
+      version: null,
+      etag: null,
+      syncedAt: null,
+      checkedAt: null,
+    });
+    expect(await db.getFirstAsync('SELECT count(*) AS n FROM nutrient_value')).toEqual({ n: 0 });
+  });
+
+  it('non tocca gli alimenti personali', async () => {
+    await replaceV1();
+    await db.runAsync(
+      `INSERT INTO food (id, user_id, name, state, base_unit, search_text)
+       VALUES ('mio', 'u1', 'Pancake proteico', 'cooked', 'g', 'pancake proteico')`,
+    );
+    await db.runAsync(
+      `INSERT INTO nutrient_value (food_id, nutrient_code, amount_per_100, provenance, confidence)
+       VALUES ('mio', 'protein_g', 25, 'manual', 1)`,
+    );
+    await clearCatalog(db);
+    expect(await valueCount('mio')).toBe(1);
   });
 });
 

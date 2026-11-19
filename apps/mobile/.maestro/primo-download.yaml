@@ -1,21 +1,54 @@
-# Primo avvio, telefono senza alimenti (serve il backend: quello locale con la development
-# build, quello su Render con la build preview). Il download parte con la rete spenta, così
-# l'attesa c'è sempre, anche con il server già sveglio: la ricerca dice a che punto è e,
-# quando gli alimenti arrivano, lo avvisa e mostra i risultati di «albume» senza riscriverlo.
+# Primo download degli alimenti (serve il backend; solo development build, perché usa il
+# menu Sviluppo). L'app scarica il catalogo già mentre si accede, quindi il telefono
+# «appena installato» si ricrea dopo l'accesso: con la rete spenta, «Svuota e riscarica il
+# catalogo» cancella gli alimenti e i tentativi falliscono. La ricerca lo dice e offre
+# «Riprova»; da lì, ancora senza rete, l'attesa c'è sempre, anche con il server già sveglio:
+# la ricerca dice a che punto è e, quando gli alimenti arrivano, lo avvisa e mostra i
+# risultati di «albume» senza riscriverlo. Il flusso aspetta stati stabili, mai un tempo:
+# mentre la barra di avanzamento si muove Maestro aspetta a ogni tasto, quindi si scrive
+# solo a schermo fermo. Dura circa quattro minuti.
 appId: com.enricobalbo.tara
 name: Primo download degli alimenti
 tags:
   - api
+  - dev
 # Anche se il flusso si ferma a metà, la rete torna accesa per i flussi successivi.
 onFlowComplete:
   - setAirplaneMode: disabled
 ---
-- setAirplaneMode: enabled
 - runFlow: subflows/avvio.yaml
+- runFlow: subflows/accedi.yaml
 - extendedWaitUntil:
     visible: Diario di oggi
     timeout: 30000
-- tapOn: Cerca un alimento
+- tapOn: Profilo
+- scrollUntilVisible:
+    element: Svuota e riscarica il catalogo
+# Il pulsante è spento finché il download dell'avvio non finisce.
+- extendedWaitUntil:
+    visible:
+      text: Svuota e riscarica il catalogo
+      enabled: true
+    timeout: 120000
+- setAirplaneMode: enabled
+- tapOn: Svuota e riscarica il catalogo
+# Senza rete i tentativi finiscono in circa un minuto: il profilo lo dice.
+- extendedWaitUntil:
+    visible: 'Server non raggiungibile: controlla la connessione e riprova'
+    timeout: 180000
+- back
+# Senza alimenti la ricerca riprova da sola: si aspetta l'ultimo tentativo e la sua fine,
+# così si scrive a schermo fermo. Nel frattempo la barra si muove: i tocchi che la fanno
+# partire hanno un limite all'attesa che lo schermo si fermi.
+- tapOn:
+    text: Cerca un alimento
+    waitToSettleTimeoutMs: 1000
+- extendedWaitUntil:
+    visible: 'Il server si sta svegliando: tentativo 6 di 6\.'
+    timeout: 120000
+- extendedWaitUntil:
+    visible: 'Gli alimenti si scaricano con la connessione: collegati e riprova.'
+    timeout: 120000
 - inputText: albume
 # Sull'emulatore Gboard propone a volte la prova della penna e si prende il testo.
 - runFlow:
@@ -25,6 +58,10 @@ onFlowComplete:
       - tapOn: Cancel
       - eraseText: 20
       - inputText: albume
+- hideKeyboard
+- tapOn:
+    text: Riprova
+    waitToSettleTimeoutMs: 1000
 - assertVisible: Gli alimenti si stanno scaricando.
 # La fase in parole: il server non risponde ancora, l'app riprova.
 - extendedWaitUntil:

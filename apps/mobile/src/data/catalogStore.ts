@@ -205,6 +205,21 @@ export async function markChecked(db: SqlDatabase, checkedAt: string): Promise<v
   await setState(db, STATE_KEYS.checkedAt, checkedAt);
 }
 
+/**
+ * Cancella il catalogo condiviso e il suo stato, come su un telefono appena installato
+ * (menu Sviluppo, per riprovare il primo download). Gli alimenti personali restano.
+ */
+export async function clearCatalog(db: SqlDatabase): Promise<void> {
+  await db.withExclusiveTransactionAsync(async (txn) => {
+    // Cancellazioni esplicite: nella connessione della transazione foreign_keys è spento.
+    await txn.runAsync(
+      'DELETE FROM nutrient_value WHERE food_id IN (SELECT id FROM food WHERE user_id IS NULL)',
+    );
+    await txn.runAsync('DELETE FROM food WHERE user_id IS NULL');
+    for (const key of Object.values(STATE_KEYS)) await setState(txn, key, null);
+  });
+}
+
 export interface FoodHit {
   id: string;
   name: string;
