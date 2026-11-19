@@ -5,11 +5,14 @@ version: 2
 updates:
   # App mobile. Le dipendenze dell'SDK Expo e di React Native si aggiornano solo con
   # `npx expo install --fix` o con l'upgrade di SDK, mai a mano:
-  # - react, react-dom e react-native sono fissati a una versione esatta dall'SDK:
-  #   Dependabot non li tocca, nemmeno per le patch;
+  # - react, react-dom, react-native, react-native-reanimated, react-native-worklets e
+  #   react-native-svg sono fissati a una versione esatta dall'SDK (bundledNativeModules
+  #   di expo): Dependabot non li tocca, nemmeno per le patch, altrimenti expo-doctor
+  #   fallisce (vedi la PR #50);
   # - gli altri pacchetti dell'SDK (range ~) ricevono solo le patch;
   # - eslint resta sulla major supportata da eslint-config-expo (ESLint 10 rompe
-  #   eslint-plugin-react: vedi la PR #4).
+  #   eslint-plugin-react: vedi la PR #4);
+  # - @types/node segue la major di Node in .nvmrc (e in CI): sale solo insieme a Node.
   - package-ecosystem: npm
     directory: /apps/mobile
     schedule:
@@ -23,6 +26,9 @@ updates:
       - dependency-name: "react"
       - dependency-name: "react-dom"
       - dependency-name: "react-native"
+      - dependency-name: "react-native-reanimated"
+      - dependency-name: "react-native-worklets"
+      - dependency-name: "react-native-svg"
       - dependency-name: "expo"
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
       - dependency-name: "expo-*"
@@ -36,6 +42,9 @@ updates:
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
       - dependency-name: "eslint"
+        update-types: ["version-update:semver-major"]
+      # Segue .nvmrc: i tipi di Node 26 descrivono API che il runtime 22 non ha.
+      - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
     groups:
       mobile:
