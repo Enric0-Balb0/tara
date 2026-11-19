@@ -200,7 +200,8 @@ Maestro richiede JDK 17+: lo script lo passa solo al processo di Maestro (il JDK
 
 Queste impostazioni non stanno nel repository e si fanno una volta dalla pagina *Settings*:
 
-- **Ruleset su `main`**: PR obbligatoria, controlli obbligatori *CI passata* e *Titolo Conventional Commits*, branch aggiornato prima del merge, storia lineare, niente force push né cancellazione. Su un repository **privato** i ruleset richiedono GitHub Pro (incluso nel GitHub Student Developer Pack, da verificare sul proprio account); in alternativa il repository va reso pubblico.
+- **Ruleset su `main`**: PR obbligatoria con solo squash merge, controlli obbligatori *CI passata* e *Titolo Conventional Commits* (app GitHub Actions, id 15368), branch aggiornato prima del merge, storia lineare, niente force push né cancellazione, nessuna eccezione nemmeno per gli amministratori. La regola è versionata in `.github/rulesets/main.json`. Per applicarla: *Settings → Rules → Rulesets → New ruleset → Import a ruleset*, scegliere il file e salvare. Per cambiarla si modifica il file con una PR e lo si reimporta. Il repository è pubblico, quindi i ruleset non richiedono GitHub Pro.
+  - Con "branch aggiornato" una PR rimasta indietro va riallineata prima del merge (`@dependabot rebase` per quelle di Dependabot, *Update branch* per le altre).
 - **Pull request**: solo *squash merge*, titolo della PR come messaggio predefinito, cancellazione automatica dei branch dopo il merge.
 - **Actions**: permessi del `GITHUB_TOKEN` in sola lettura per impostazione predefinita (i workflow chiedono solo ciò che serve).
 - **Sicurezza**: Dependabot alerts e security updates attivi.

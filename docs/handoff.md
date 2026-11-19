@@ -2,18 +2,16 @@
 
 Questo file riassume la conversazione di progettazione del 22 ottobre 2026 (claude.ai) da cui nasce il repository, così che una nuova sessione di Claude Code possa ripartire senza perdere contesto.
 
-## Riprendere il lavoro (aggiornato al 19/11/2026)
+## Riprendere il lavoro (aggiornato al 19/11/2026, sera)
 
-- **Fase:** F0, passo 10 (autenticazione), quasi chiuso. **Gate F0 superato il 18/11** (passo 9).
+- **Fase:** F0, passo 11 (chiusura). **Gate F0 superato il 18/11** (passo 9); **passo 10 (autenticazione) fatto il 19/11**.
   - Backend online dall'08/11 (passo 8): ogni merge su `main` con CI verde va online da solo su `https://tara-api-eu.onrender.com`.
-  - Avanzamento del primo download (feedback del gate): PR #52.
-  - Accesso con codice via email, iscrizioni chiuse: API (#48), client (#49), schermate (#51). Provato sull'emulatore contro Supabase vero: codice, ingresso, "Accesso come", "Esci", riavvio a freddo senza rete con la sessione salvata, tasto indietro.
-  - Test e2e con codice generato via admin: branch `feat/RNF-04-e2e-accesso`, tutti i flussi Maestro verdi sulla development build.
+  - Accesso con codice via email, iscrizioni chiuse: API (#48), client (#49), schermate (#51), e2e con codice generato via admin (#53), scrittura controllata nei flussi Maestro (#55). Su Render c'è `TARA_SUPABASE_URL`: con un token vero dell'utente e2e `/v1/me` risponde 200 e crea la riga in `app_user` con l'id di `auth.users`.
+  - Dependabot: #36 (actions), #54 (api, al posto della #39 che Dependabot ha chiuso), #50 (solo vitest 5.1; `react-native-svg`, `react-native-worklets`, `react-native-reanimated` e le major di `@types/node` ora esclusi in `dependabot.yml`).
 - **Bloccato su Enrico:**
-  - Render: variabile `TARA_SUPABASE_URL` (`docs/processo.md`, "Segreti"). Senza, `/v1/me` risponde 503 e il backend non crea l'utente; l'app funziona lo stesso.
+  - Ruleset su `main`: importare `.github/rulesets/main.json` (`docs/processo.md`, "Configurazione di GitHub"). È l'ultimo pezzo della F0.
   - Email vere: Supabase permette di modificare il template solo con un SMTP proprio. Scelta consigliata: Brevo gratuito (300 email al giorno, basta confermare l'indirizzo mittente, senza dominio). Poi il template Magic Link con oggetto "Il tuo codice per Tara" e `{{ .Token }}`. Serve prima della prossima build per il telefono, non per gli e2e.
-  - Fatto il 19/11: utenti a mano (il suo e `+e2e`, confermati), codice di 6 cifre, iscrizioni chiuse, chiave `tara_e2e` nella variabile d'ambiente.
-- **Prossimo passo:** chiusura della F0 (passo 11): ruleset e PR di Dependabot aperte #36, #39, #50. Poi una build EAS preview con l'accesso, da chiedere prima perché consuma quota.
+- **Prossimo passo:** dopo il ruleset, chiusura formale della F0 e una build EAS preview con l'accesso (da chiedere prima: consuma quota), poi la F1.
 - **Note pratiche su questa macchina:**
   - Dopo un riavvio Docker Desktop è spento: `Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"`, poi `docker compose -f infra/docker-compose.yml up -d`. Senza, i test del backend falliscono alla connessione.
   - Development build locale (gratis, al posto di EAS): Gradle vuole JDK 17+, ma `JAVA_HOME` di sistema è Zulu 8, quindi `$env:JAVA_HOME='C:\Program Files\Android\Android Studio\jbr'`. Con il limite di 260 caratteri di Windows si compila da una copia corta, `C:\tb` (robocopy senza `node_modules`, `android`, `.expo`, poi `npm ci` e `npx expo prebuild --clean`); `subst` non funziona con Gradle. Per installarla sopra l'APK preview serve prima `adb uninstall com.enricobalbo.tara` (firma diversa).
@@ -175,7 +173,7 @@ Ordine approvato da Enrico il 31/10/2026 per chiudere la F0: prima il backend on
       - Prima, PR #45: `/ready` scrive nel log perché il database non risponde, senza la password.
       - Prima, PR #46: `npm run e2e` esegue i flussi `api` sulla build preview contro Render.
       - Unico rilievo di Enrico: il primo download non mostra l'avanzamento, non avvisa quando finisce, e la ricerca va rifatta a mano (correzione nel branch `feat/RNF-03-avanzamento-catalogo`).
-10. **Autenticazione** con codice via email (Supabase Auth): fatta il 19/11, manca la parte di Enrico (variabile su Render, SMTP e template).
+10. ~~**Autenticazione**~~ con codice via email (Supabase Auth): fatta il 19/11. Resta a Enrico SMTP e template email, necessari solo per le email vere.
     - Decisioni di Enrico: tutta l'app chiusa finché non si accede (il catalogo resta pubblico); iscrizioni chiuse, utenti creati a mano e `shouldCreateUser: false`; nei test un codice generato via admin, nessuna scorciatoia nell'app.
     - API: token verificati con la JWKS pubblica del progetto (ES256/RS256, `aud` e `iss` controllati), `GET /v1/me` crea l'utente con lo stesso id di `auth.users` (#48).
     - App: sessione nel localStorage di expo-sqlite, letta senza rete; `Stack.Protected`; "Esci" solo sul telefono (#49, #51).
