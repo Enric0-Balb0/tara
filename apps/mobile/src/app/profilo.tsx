@@ -78,7 +78,12 @@ export default function ProfileScreen() {
           <PressableScale onPress={catalog.refresh} disabled={catalog.syncing} style={rowStyle}>
             <TaraText>Aggiorna catalogo</TaraText>
           </PressableScale>
-          <PressableScale onPress={catalog.reset} disabled={catalog.syncing} style={rowStyle}>
+          <PressableScale
+            testID="svuota-catalogo"
+            onPress={catalog.reset}
+            disabled={catalog.syncing}
+            style={rowStyle}
+          >
             <TaraText>Svuota e riscarica il catalogo</TaraText>
           </PressableScale>
           <PressableScale onPress={() => router.push('/design')} style={rowStyle}>

@@ -24,14 +24,16 @@ onFlowComplete:
 - tapOn: Profilo
 - scrollUntilVisible:
     element: Svuota e riscarica il catalogo
-# Il pulsante è spento finché il download dell'avvio non finisce.
+# Il pulsante è spento finché il download dell'avvio non finisce. Si cerca per id: il
+# testo sta in un nodo figlio che resta sempre acceso, l'id sul pulsante che si spegne.
 - extendedWaitUntil:
     visible:
-      text: Svuota e riscarica il catalogo
+      id: svuota-catalogo
       enabled: true
     timeout: 120000
 - setAirplaneMode: enabled
-- tapOn: Svuota e riscarica il catalogo
+- tapOn:
+    id: svuota-catalogo
 # Senza rete i tentativi finiscono in circa un minuto: il profilo lo dice.
 - extendedWaitUntil:
     visible: 'Server non raggiungibile: controlla la connessione e riprova'

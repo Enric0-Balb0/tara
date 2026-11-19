@@ -10,7 +10,8 @@ export default defineConfig({
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
   test: {
-    include: ['src/**/*.test.ts'],
+    // scripts/: la logica pura dello script E2E (scripts/e2eFlows.mjs).
+    include: ['src/**/*.test.ts', 'scripts/**/*.test.mjs'],
     environment: 'node',
     coverage: {
       provider: 'v8',

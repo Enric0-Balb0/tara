@@ -9,10 +9,13 @@
 // Sign-in: the app has no test bypass. Before each flow the script asks Supabase Auth
 // (admin API, secret key in TARA_E2E_SUPABASE_SECRET_KEY, never in the repo) for a fresh
 // one-time code of the e2e user and passes EMAIL and OTP to Maestro: no email is sent.
-// The user is TARA_E2E_EMAIL, or else the only Supabase user whose address has "+e2e@".
+// The user is TARA_E2E_EMAIL, or else the only Supabase user whose address has "+e2e@";
+// either way it must already exist and be confirmed (generate_link signs up unknown users).
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+
+import { checkSecretKey, flowTags, pickE2eUser, selectFlows } from './e2eFlows.mjs';
 
 const devMode = process.argv.includes('--dev');
 const onlyFlows = process.argv.slice(2).filter((arg) => !arg.startsWith('--'));
@@ -53,24 +56,27 @@ function secretKey() {
   return result.stdout?.trim() || undefined;
 }
 
+// Errors carry a fixed message: the ones from fetch could repeat request details.
 async function authAdmin(supabaseUrl, key, path, init = {}) {
-  const response = await fetch(`${supabaseUrl}/auth/v1/admin/${path}`, {
-    ...init,
-    headers: { apikey: key, 'Content-Type': 'application/json' },
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!response.ok) throw new Error(`Supabase Auth ${path}: HTTP ${response.status}`);
+  const endpoint = path.split('?')[0];
+  let response;
+  try {
+    response = await fetch(`${supabaseUrl}/auth/v1/admin/${path}`, {
+      ...init,
+      headers: { apikey: key, 'Content-Type': 'application/json' },
+      signal: AbortSignal.timeout(15000),
+    });
+  } catch {
+    throw new Error(`Supabase Auth ${endpoint}: richiesta non riuscita (rete?)`);
+  }
+  if (!response.ok) throw new Error(`Supabase Auth ${endpoint}: HTTP ${response.status}`);
   return response.json();
 }
 
+// A small project: one page of users is all of them.
 async function e2eEmail(supabaseUrl, key) {
-  if (process.env.TARA_E2E_EMAIL) return process.env.TARA_E2E_EMAIL;
   const { users } = await authAdmin(supabaseUrl, key, 'users?per_page=1000');
-  const matches = users.filter((user) => user.email?.includes('+e2e@'));
-  if (matches.length !== 1) {
-    throw new Error(`Utenti con "+e2e@" in Supabase: ${matches.length}. Imposta TARA_E2E_EMAIL.`);
-  }
-  return matches[0].email;
+  return pickE2eUser(users, process.env.TARA_E2E_EMAIL);
 }
 
 // One-time code of an existing user, created by the admin API without sending email.
@@ -82,13 +88,6 @@ async function freshOtp(supabaseUrl, key, email) {
   const otp = link.email_otp ?? link.properties?.email_otp;
   if (!otp) throw new Error('Supabase Auth non ha restituito il codice monouso');
   return otp;
-}
-
-// Tags listed in the flow header (the part before `---`).
-function flowTags(text) {
-  const header = text.split(/^---$/m)[0];
-  const block = header.match(/^tags:[ \t]*\r?\n((?:[ \t]+-[ \t]*\S+[ \t]*\r?\n?)+)/m);
-  return block ? [...block[1].matchAll(/-\s*(\S+)/g)].map((match) => match[1]) : [];
 }
 
 function androidStudioJdk() {
@@ -141,34 +140,48 @@ if (devMode) {
     }
   }
 }
+const flowsDir = new URL('../.maestro/', import.meta.url);
+const files = readdirSync(flowsDir)
+  .filter((file) => file.endsWith('.yaml'))
+  .map((file) => ({ file, tags: flowTags(readFileSync(new URL(file, flowsDir), 'utf8')) }));
+const { flows, problems } = selectFlows(files, onlyFlows, excludedTags);
+if (problems.length > 0) {
+  for (const problem of problems) console.error(problem);
+  process.exit(1);
+}
+if (excludedTags.length > 0) console.log(`Salto i flussi con i tag: ${excludedTags.join(', ')}.`);
+
 const supabaseUrl = preview.EXPO_PUBLIC_SUPABASE_URL;
-const key = secretKey();
+// The value is never printed: only whether it is usable.
+const key = checkSecretKey(secretKey());
 if (!supabaseUrl || !key) {
   console.error(
-    'Per accedere servono EXPO_PUBLIC_SUPABASE_URL nel profilo preview di eas.json e la ' +
-      'variabile TARA_E2E_SUPABASE_SECRET_KEY (docs/processo.md, "Segreti").',
+    'Per accedere servono EXPO_PUBLIC_SUPABASE_URL nel profilo preview di eas.json e una chiave ' +
+      'sb_secret_ valida in TARA_E2E_SUPABASE_SECRET_KEY (docs/processo.md, "Segreti").',
   );
   process.exit(1);
 }
-const email = await e2eEmail(supabaseUrl, key);
-
-const flowsDir = new URL('../.maestro/', import.meta.url);
-const flows = readdirSync(flowsDir)
-  .filter((name) => name.endsWith('.yaml'))
-  .sort()
-  .filter((name) => onlyFlows.length === 0 || onlyFlows.includes(name.replace(/[.]yaml$/, '')))
-  .filter((name) => {
-    const tags = flowTags(readFileSync(new URL(name, flowsDir), 'utf8'));
-    return !tags.some((tag) => excludedTags.includes(tag));
-  });
-if (excludedTags.length > 0) console.log(`Salto i flussi con i tag: ${excludedTags.join(', ')}.`);
+let email;
+try {
+  email = await e2eEmail(supabaseUrl, key);
+} catch (error) {
+  console.error(error instanceof Error ? error.message : 'Utente e2e non trovato.');
+  process.exit(1);
+}
 
 // One Maestro run per flow: each flow starts from a clean app and signs in again, and a
 // code works once, so every flow gets its own.
 const failed = [];
 for (const flow of flows) {
   const name = flow.replace(/\.yaml$/, '');
-  const otp = await freshOtp(supabaseUrl, key, email);
+  let otp;
+  try {
+    otp = await freshOtp(supabaseUrl, key, email);
+  } catch (error) {
+    console.error(`${name}: ${error instanceof Error ? error.message : 'codice non ottenuto'}`);
+    failed.push(name);
+    continue;
+  }
   const args = ['test', join('.maestro', flow), '--test-output-dir', join('e2e-results', name)];
   args.push(...baseArgs, '-e', `EMAIL=${email}`, '-e', `OTP=${otp}`);
   if (run('maestro', args, env) !== 0) failed.push(name);

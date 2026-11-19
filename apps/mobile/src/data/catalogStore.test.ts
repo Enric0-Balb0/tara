@@ -202,6 +202,9 @@ describe('clearCatalog', () => {
        VALUES ('mio', 'protein_g', 25, 'manual', 1)`,
     );
     await clearCatalog(db);
+    expect(await db.getFirstAsync("SELECT user_id FROM food WHERE id = 'mio'")).toEqual({
+      user_id: 'u1',
+    });
     expect(await valueCount('mio')).toBe(1);
   });
 });
