@@ -1,0 +1,36 @@
+# Scrive TESTO nel campo con id CAMPO (che ha già il fuoco) e controlla che ci sia arrivato
+# davvero, confrontando il testo del campo: un confronto esatto, non una regex.
+# Sull'emulatore la tastiera Gboard a volte resta nella modalità penna: propone «Try out
+# your stylus» e si prende il testo, oppure lo perde e `inputText` risulta comunque
+# riuscito. Allora si riavvia la tastiera e si riscrive; appena riavviata può raddoppiare
+# il primo carattere, quindi c'è un ultimo tentativo a tastiera già pronta.
+appId: com.enricobalbo.tara
+---
+- inputText: ${TESTO}
+- runFlow:
+    when:
+      visible: Try out your stylus
+    commands:
+      - tapOn: Cancel
+- copyTextFrom:
+    id: ${CAMPO}
+- runFlow:
+    when:
+      true: ${maestro.copiedText !== TESTO}
+    commands:
+      - stopApp: com.google.android.inputmethod.latin
+      - tapOn:
+          id: ${CAMPO}
+      - eraseText: 80
+      - inputText: ${TESTO}
+      - copyTextFrom:
+          id: ${CAMPO}
+- runFlow:
+    when:
+      true: ${maestro.copiedText !== TESTO}
+    commands:
+      - eraseText: 80
+      - inputText: ${TESTO}
+      - copyTextFrom:
+          id: ${CAMPO}
+- assertTrue: ${maestro.copiedText === TESTO}

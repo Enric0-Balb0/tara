@@ -51,15 +51,11 @@ onFlowComplete:
 - extendedWaitUntil:
     visible: 'Gli alimenti si scaricano con la connessione: collegati e riprova.'
     timeout: 120000
-- inputText: albume
-# Sull'emulatore Gboard propone a volte la prova della penna e si prende il testo.
 - runFlow:
-    when:
-      visible: Try out your stylus
-    commands:
-      - tapOn: Cancel
-      - eraseText: 20
-      - inputText: albume
+    file: subflows/scrivi.yaml
+    env:
+      CAMPO: campo-ricerca
+      TESTO: albume
 - hideKeyboard
 - tapOn:
     text: Riprova
