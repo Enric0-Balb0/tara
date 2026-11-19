@@ -25,6 +25,7 @@ export function SearchField({ value, onChangeText, autoFocus = false }: Props) {
       <Icon name="search" color="text" size={20} />
       <TextInput
         ref={input}
+        testID="campo-ricerca"
         value={value}
         onChangeText={onChangeText}
         autoFocus={autoFocus}

@@ -9,7 +9,11 @@ appId: com.enricobalbo.tara
     timeout: 30000
 - tapOn:
     id: campo-email
-- inputText: ${EMAIL}
+- runFlow:
+    file: scrivi.yaml
+    env:
+      CAMPO: campo-email
+      TESTO: ${EMAIL}
 - hideKeyboard
 - tapOn: Ho già un codice
 - extendedWaitUntil:
@@ -18,6 +22,10 @@ appId: com.enricobalbo.tara
     timeout: 10000
 - tapOn:
     id: campo-codice
-- inputText: ${OTP}
+- runFlow:
+    file: scrivi.yaml
+    env:
+      CAMPO: campo-codice
+      TESTO: ${OTP}
 - hideKeyboard
 - tapOn: Verifica
