@@ -9,7 +9,7 @@ Questo file riassume la conversazione di progettazione del 22 ottobre 2026 (clau
   - Accesso con codice via email, iscrizioni chiuse: API (#48), client (#49), schermate (#51), e2e con codice generato via admin (#53), scrittura controllata nei flussi Maestro (#55). Su Render c'è `TARA_SUPABASE_URL`: con un token vero dell'utente e2e `/v1/me` risponde 200 e crea la riga in `app_user` con l'id di `auth.users`.
   - Dependabot: #36 (actions), #54 (api, al posto della #39 che Dependabot ha chiuso), #50 (solo vitest 5.1; `react-native-svg`, `react-native-worklets`, `react-native-reanimated` e le major di `@types/node` ora esclusi in `dependabot.yml`).
 - **Bloccato su Enrico:**
-  - Ruleset su `main`: importare `.github/rulesets/main.json` (`docs/processo.md`, "Delivery"). È l'ultimo pezzo della F0.
+  - Ruleset su `main`: importare `.github/rulesets/main.json` (`docs/processo.md`, "Configurazione di GitHub"). È l'ultimo pezzo della F0.
   - Email vere: Supabase permette di modificare il template solo con un SMTP proprio. Scelta consigliata: Brevo gratuito (300 email al giorno, basta confermare l'indirizzo mittente, senza dominio). Poi il template Magic Link con oggetto "Il tuo codice per Tara" e `{{ .Token }}`. Serve prima della prossima build per il telefono, non per gli e2e.
 - **Prossimo passo:** dopo il ruleset, chiusura formale della F0 e una build EAS preview con l'accesso (da chiedere prima: consuma quota), poi la F1.
 - **Note pratiche su questa macchina:**
