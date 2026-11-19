@@ -18,9 +18,16 @@ if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
   );
 }
 
+/**
+ * Chiave della sessione nel localStorage, fissa: `SessionProvider` la rilegge da qui per
+ * sapere se c'è una sessione salvata anche quando il rinnovo del token fallisce offline.
+ */
+export const AUTH_STORAGE_KEY = 'tara-auth';
+
 export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   auth: {
     storage: localStorage,
+    storageKey: AUTH_STORAGE_KEY,
     persistSession: true,
     autoRefreshToken: true,
     // Su Android e iOS la sessione non arriva da un URL: il codice si inserisce a mano.

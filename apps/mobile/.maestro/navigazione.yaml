@@ -1,11 +1,12 @@
 # Smoke test: l'app si avvia su Oggi, le quattro tab aprono la schermata giusta e il
-# profilo si apre dall'intestazione di Oggi.
+# profilo si apre dall'intestazione di Oggi. Si entra con subflows/accedi.yaml (EMAIL, OTP).
 appId: com.enricobalbo.tara
 name: Navigazione tra le tab
 tags:
   - smoke
 ---
 - runFlow: subflows/avvio.yaml
+- runFlow: subflows/accedi.yaml
 - extendedWaitUntil:
     visible: Diario di oggi
     timeout: 30000
@@ -25,5 +26,6 @@ tags:
 
 - tapOn: Profilo
 - assertVisible: Tipi di giornata e target, fase della dieta, stack integratori e notifiche.
+- assertVisible: Accesso come
 - back
 - assertVisible: Diario di oggi
