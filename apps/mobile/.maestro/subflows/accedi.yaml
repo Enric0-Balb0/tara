@@ -1,8 +1,7 @@
 # Accede con un codice già pronto, senza chiederne uno nuovo: "Ho già un codice".
-# Servono le variabili EMAIL e OTP. Il codice lo genera lo script E2E con la chiave
-# segreta di Supabase (link di accesso creato dall'amministratore, nessuna email): l'app
-# non ha scorciatoie per i test. Finché lo script non lo fa, i flussi che chiamano questo
-# sottoflusso non possono girare.
+# Servono le variabili EMAIL e OTP: le passa scripts/e2e.mjs, che prima di ogni flusso
+# chiede a Supabase Auth un codice nuovo con la chiave segreta (API admin, nessuna email).
+# L'app non ha scorciatoie per i test.
 appId: com.enricobalbo.tara
 ---
 - extendedWaitUntil:

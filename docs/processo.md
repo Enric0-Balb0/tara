@@ -174,7 +174,17 @@ npx expo start --dev-client                                 # dev server; "a" ap
 ```powershell
 npm run e2e:dev   # development build: dev server acceso, adb reverse automatico
 npm run e2e       # build preview, con il bundle incluso
+npm run e2e:dev -- ricerca primo-download   # solo i flussi indicati
 ```
+
+**Accesso nei flussi.** L'app non ha scorciatoie per i test: ogni flusso entra con `subflows/accedi.yaml`, che scrive email e codice e usa «Ho già un codice». Prima di ogni flusso lo script chiede a Supabase Auth un codice monouso nuovo per l'utente e2e (API admin `generate_link`, nessuna email inviata) e lo passa a Maestro come `EMAIL` e `OTP`. Un codice vale una volta sola e ogni flusso riparte da un'app pulita, quindi Maestro gira una volta per flusso. Servono:
+
+- `TARA_E2E_SUPABASE_SECRET_KEY`: la chiave segreta `tara_e2e` del progetto Supabase, solo nella variabile d'ambiente dell'utente Windows (vedi "Segreti"). Su Windows lo script la legge anche dal registro, quindi non serve aprire un terminale nuovo dopo averla impostata.
+- l'utente e2e: `TARA_E2E_EMAIL`, oppure l'unico utente di Supabase con `+e2e@` nell'indirizzo, creato a mano e confermato. Lo script controlla che esista e sia confermato prima di chiedere il codice, perché `generate_link` iscrive un indirizzo sconosciuto anche con le iscrizioni chiuse: un errore di battitura creerebbe un utente.
+
+Lo script esce con errore, senza lanciare Maestro, quando un flusso chiesto per nome non esiste o è escluso dai tag (`npm run e2e -- primo-download`: la build preview salta il tag `dev`), o quando non resta nessun flusso. Così meno flussi del previsto non sembrano mai un giro verde. La chiave viene controllata (`sb_secret_…`) prima di ogni richiesta, e i messaggi d'errore non la ripetono mai. La logica pura dello script sta in `scripts/e2eFlows.mjs`, con i test in Vitest.
+
+**Animazioni e attese.** Dopo ogni tocco Maestro aspetta che lo schermo si fermi. Mentre la barra di avanzamento indeterminata si muove, ogni tasto e ogni tocco aspetta tutta l'animazione: scrivere «albume» durante un download è arrivato a 108 s. I flussi quindi scrivono solo a schermo fermo, aspettano stati stabili invece di tempi fissi e danno `waitToSettleTimeoutMs` ai tocchi che fanno partire la barra (`primo-download.yaml`).
 
 I flussi con il tag `api` girano solo se il backend risponde a `/health`, altrimenti lo script li salta con un avviso: la development build usa quello locale (`TARA_API_URL`, di default `http://localhost:8000`), la build preview quello del suo profilo in `eas.json`, che su Render Free può metterci fino a un minuto a svegliarsi (lo script aspetta 90 s). La build preview salta sempre i flussi con i tag `dev` e `design`, che passano dal menu Sviluppo del profilo, presente solo con `__DEV__`.
 
@@ -207,6 +217,7 @@ Queste impostazioni non stanno nel repository e si fanno una volta dalla pagina 
   | `TARA_DATABASE_URL` | GitHub Actions e variabili del servizio Render | URL del *session pooler* di Supabase con il ruolo `tara` (utente `tara.<ref>`, porta 5432, `sslmode=require`) |
   | `RENDER_DEPLOY_HOOK_URL` | GitHub Actions | Avvia il deploy su Render |
   | Token GitHub classico con `read:packages` | Credenziali del registry su Render | Scarica l'immagine privata da GHCR; scadenza di un anno, poi va ruotato |
+  | Chiave segreta Supabase `tara_e2e` (`sb_secret_…`) | Solo nella variabile d'ambiente utente `TARA_E2E_SUPABASE_SECRET_KEY` del PC di Enrico | Genera i codici di accesso dei test e2e (`scripts/e2e.mjs`); mai nell'app, nel repository o in chat. Se trapela, si crea una chiave nuova e si cancella la vecchia nel pannello di Supabase |
 
   Su Render va impostato anche `PORT=8000`; l'health check punta a `/health`.
 

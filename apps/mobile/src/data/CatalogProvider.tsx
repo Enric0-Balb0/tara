@@ -13,7 +13,7 @@ import {
 import { API_URL } from '@/config';
 import type { CatalogProgress } from '@/domain/searchStatus';
 
-import { type CatalogInfo, catalogInfo } from './catalogStore';
+import { type CatalogInfo, catalogInfo, clearCatalog } from './catalogStore';
 import { type SyncResult, syncCatalog } from './catalogSync';
 import type { SqlDatabase } from './sql';
 
@@ -25,6 +25,8 @@ interface CatalogState {
   progress: CatalogProgress | null;
   /** Controlla di nuovo con il server; non parte se un controllo è già in corso. */
   refresh: () => void;
+  /** Menu Sviluppo: cancella il catalogo e lo riscarica, come al primo avvio. */
+  reset: () => void;
 }
 
 const CatalogContext = createContext<CatalogState | null>(null);
@@ -64,9 +66,22 @@ export function CatalogProvider({ children }: { children: ReactNode }) {
     void sync();
   }, [sync]);
 
+  const reset = useCallback(() => {
+    if (running.current) return;
+    running.current = true;
+    setSyncing(true);
+    void (async () => {
+      try {
+        await clearCatalog(db);
+      } finally {
+        await sync();
+      }
+    })();
+  }, [db, sync]);
+
   const value = useMemo(
-    () => ({ info, last, syncing, progress, refresh }),
-    [info, last, syncing, progress, refresh],
+    () => ({ info, last, syncing, progress, refresh, reset }),
+    [info, last, syncing, progress, refresh, reset],
   );
   return <CatalogContext.Provider value={value}>{children}</CatalogContext.Provider>;
 }
