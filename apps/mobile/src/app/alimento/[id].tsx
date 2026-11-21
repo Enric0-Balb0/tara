@@ -13,6 +13,7 @@ import { StateTag } from '@/components/StateTag';
 import { TaraText } from '@/components/TaraText';
 import { type FoodDetail, getFood, getVariant } from '@/data/catalogStore';
 import { addEntry, ensureMealSlots, lastQuantity, type MealSlot } from '@/data/diaryStore';
+import { addPlanItem } from '@/data/planStore';
 import { useSession } from '@/data/SessionProvider';
 import type { SqlDatabase } from '@/data/sql';
 import { minutesOfDay, slotForTime, toLocalDate } from '@/domain/diary';
@@ -28,7 +29,13 @@ import { useTheme } from '@/theme/useTheme';
  * L'intestazione nativa è nascosta perché il foglio copra tutta la schermata.
  */
 export default function FoodScreen() {
-  const params = useLocalSearchParams<{ id: string; slot?: string; date?: string }>();
+  // plan: id del tipo di giornata quando si aggiunge al piano invece che al diario (RF-130).
+  const params = useLocalSearchParams<{
+    id: string;
+    slot?: string;
+    date?: string;
+    plan?: string;
+  }>();
   const { id } = params;
   const db: SqlDatabase = useSQLiteContext();
   const router = useRouter();
@@ -134,7 +141,18 @@ export default function FoodScreen() {
     if (userId === undefined || slot === undefined || !food || saving.current) return;
     saving.current = true;
     try {
-      await addEntry(db, { userId, date, mealSlotId: slot.id, food, quantity, now: new Date() });
+      if (params.plan) {
+        await addPlanItem(db, {
+          userId,
+          dayTypeId: params.plan,
+          mealSlotId: slot.id,
+          food,
+          quantity,
+          now: new Date(),
+        });
+      } else {
+        await addEntry(db, { userId, date, mealSlotId: slot.id, food, quantity, now: new Date() });
+      }
     } catch (error: unknown) {
       saving.current = false;
       console.error('Voce non salvata', error);
@@ -144,8 +162,13 @@ export default function FoodScreen() {
     setSheetOpen(false);
     // "Aggiungi e continua" torna ai risultati per il prossimo alimento dello stesso pasto,
     // con pasto e giorno scelti qui; altrimenti si torna a Oggi, dove la voce compare.
-    if (andContinue) router.dismissTo({ pathname: '/cerca', params: { slot: slot.id, date } });
-    else router.dismissTo('/');
+    // Dal piano si torna al Piano, dal diario a Oggi.
+    if (andContinue) {
+      router.dismissTo({
+        pathname: '/cerca',
+        params: params.plan ? { slot: slot.id, plan: params.plan } : { slot: slot.id, date },
+      });
+    } else router.dismissTo(params.plan ? '/piano' : '/');
   }
 
   return (
@@ -190,7 +213,11 @@ export default function FoodScreen() {
             style={[styles.primary, { backgroundColor: colors.action }]}
           >
             <TaraText variant="bodyStrong" color="background">
-              {slot ? `Aggiungi a ${slot.name}` : 'Aggiungi'}
+              {slot
+                ? params.plan
+                  ? `Aggiungi al piano: ${slot.name}`
+                  : `Aggiungi a ${slot.name}`
+                : 'Aggiungi'}
             </TaraText>
           </PressableScale>
         </View>

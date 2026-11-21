@@ -26,8 +26,11 @@ interface Props {
   totals: Record<DiaryNutrient, Total>;
   /** Il target in vigore quel giorno per il tipo di giornata; undefined se non c'è. */
   target: MacroTargets | undefined;
-  dayTypeName: string | undefined;
-  onSetTargets: () => void;
+  /** Per il lettore dello schermo: di base "Obiettivi della giornata". */
+  label?: string;
+  dayTypeName?: string;
+  /** Senza, niente invito al Piano quando manca il target (nel Piano stesso). */
+  onSetTargets?: () => void;
 }
 
 function hasAnyTarget(target: MacroTargets | undefined): target is MacroTargets {
@@ -41,19 +44,27 @@ function hasAnyTarget(target: MacroTargets | undefined): target is MacroTargets 
  * Obiettivi della giornata (RF-45, RF-50): kcal registrate contro il target con quanto manca,
  * e una barra graduata per macro. Senza target restano i totali, con l'invito a impostarli.
  */
-export function DayGoals({ totals, target, dayTypeName, onSetTargets }: Props) {
+export function DayGoals({
+  totals,
+  target,
+  label = 'Obiettivi della giornata',
+  dayTypeName,
+  onSetTargets,
+}: Props) {
   const { colors } = useTheme();
   if (!hasAnyTarget(target)) {
     return (
       <View style={styles.stack}>
         <DayTotals totals={totals} />
-        <PressableScale onPress={onSetTargets} style={styles.link}>
-          <TaraText variant="caption" color="textSecondary">
-            {dayTypeName
-              ? `Nessun target per ${dayTypeName}: impostalo nel Piano`
-              : 'Nessun target: impostalo nel Piano'}
-          </TaraText>
-        </PressableScale>
+        {onSetTargets ? (
+          <PressableScale onPress={onSetTargets} style={styles.link}>
+            <TaraText variant="caption" color="textSecondary">
+              {dayTypeName
+                ? `Nessun target per ${dayTypeName}: impostalo nel Piano`
+                : 'Nessun target: impostalo nel Piano'}
+            </TaraText>
+          </PressableScale>
+        ) : null}
       </View>
     );
   }
@@ -66,7 +77,7 @@ export function DayGoals({ totals, target, dayTypeName, onSetTargets }: Props) {
   const incomplete = Object.values(totals).some((total) => total.incomplete);
   return (
     <View
-      accessibilityLabel="Obiettivi della giornata"
+      accessibilityLabel={label}
       style={[styles.panel, { backgroundColor: colors.surface, borderColor: colors.border }]}
     >
       <View

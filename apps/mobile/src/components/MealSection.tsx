@@ -18,13 +18,15 @@ interface Props {
   /** Le voci del pasto con la loro chiave (l'id della voce); vuoto se non c'è niente. */
   entries: readonly { key: string; row: ReactNode }[];
   onAdd: () => void;
+  /** Etichetta per il lettore dello schermo; di base "Aggiungi a Pranzo". */
+  addLabel?: string;
 }
 
 /**
  * Un pasto del diario (docs/design.md, "Intestazione del pasto"): nome e totali nelle stesse
  * colonne delle voci, le voci, e "Aggiungi" per cercare un alimento da mettere qui.
  */
-export function MealSection({ name, kcal, protein, entries, onAdd }: Props) {
+export function MealSection({ name, kcal, protein, entries, onAdd, addLabel }: Props) {
   const { colors, reduceMotion } = useTheme();
   const empty = entries.length === 0;
   // "voce": la riga nuova compare e le altre si spostano; con il movimento ridotto solo
@@ -80,7 +82,11 @@ export function MealSection({ name, kcal, protein, entries, onAdd }: Props) {
           ))}
         </View>
       )}
-      <PressableScale onPress={onAdd} accessibilityLabel={`Aggiungi a ${name}`} style={styles.add}>
+      <PressableScale
+        onPress={onAdd}
+        accessibilityLabel={addLabel ?? `Aggiungi a ${name}`}
+        style={styles.add}
+      >
         <Icon name="plus" color="textSecondary" />
         <TaraText variant="bodyStrong" color="textSecondary">
           Aggiungi
