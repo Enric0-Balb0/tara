@@ -21,6 +21,7 @@ import {
   updateEntryQuantity,
 } from '@/data/diaryStore';
 import { confirmPlanItem, pendingPlan, type PlanItem, planFor } from '@/data/planStore';
+import { copyEntries } from '@/data/quickStore';
 import { useSession } from '@/data/SessionProvider';
 import type { SqlDatabase } from '@/data/sql';
 import {
@@ -41,7 +42,8 @@ import {
   toLocalDate,
   totals,
 } from '@/domain/diary';
-import { space, touch } from '@/theme/layout';
+import { radius, space, touch } from '@/theme/layout';
+import { useTheme } from '@/theme/useTheme';
 
 /**
  * Oggi (RF-40, RF-45, RF-50, RF-51): tipo di giornata, obiettivi contro il target in vigore
@@ -54,10 +56,13 @@ export default function TodayScreen() {
   const userId = session?.user.id;
   const router = useRouter();
   const navigation = useNavigation();
+  const { colors } = useTheme();
   const [today, setToday] = useState(() => toLocalDate(new Date()));
   const [date, setDate] = useState(today);
   const [slots, setSlots] = useState<MealSlot[]>([]);
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
+  // Le voci del giorno prima, per "Copia da ieri" (RF-44).
+  const [previous, setPrevious] = useState<DiaryEntry[]>([]);
   const [editing, setEditing] = useState<DiaryEntry | null>(null);
   const [dayTypes, setDayTypes] = useState<DayType[]>([]);
   const [dayTypeId, setDayTypeId] = useState<string | undefined>(undefined);
@@ -70,6 +75,8 @@ export default function TodayScreen() {
   const latest = useRef(0);
   // Una conferma alla volta: un doppio tocco su "Conferma" non registra due voci.
   const confirmingNow = useRef(false);
+  // Una copia alla volta: un doppio tocco non copia due volte.
+  const copying = useRef(false);
 
   // Dopo mezzanotte, con l'app rimasta aperta, "oggi" va avanti: chi guardava oggi passa
   // al giorno nuovo, chi guardava un altro giorno resta lì.
@@ -94,10 +101,11 @@ export default function TodayScreen() {
     // arrivata dopo, mostrerebbe le voci di un altro giorno.
     const request = ++latest.current;
     try {
-      const [mealSlots, dayEntries, types] = await Promise.all([
+      const [mealSlots, dayEntries, types, previousEntries] = await Promise.all([
         ensureMealSlots(db, userId, new Date()),
         entriesForDay(db, userId, date),
         ensureDayTypes(db, userId, new Date()),
+        entriesForDay(db, userId, addDays(date, -1)),
       ]);
       // Un giorno con voci fissa il suo tipo: cambiare i tipi dopo non riscrive il passato.
       if (dayEntries.length > 0) await keepDayType(db, userId, date, new Date());
@@ -111,6 +119,7 @@ export default function TodayScreen() {
       if (request !== latest.current) return;
       setSlots(mealSlots);
       setEntries(dayEntries);
+      setPrevious(previousEntries);
       setDayTypes(types);
       setDayTypeId(typeId);
       setTarget(dayTarget);
@@ -178,6 +187,30 @@ export default function TodayScreen() {
       await load();
     }
   }
+
+  // Copia dal giorno prima, un pasto o la giornata intera, come voci nuove (RF-44).
+  async function copyFromPrevious(mealSlotId?: string) {
+    if (userId === undefined || copying.current) return;
+    copying.current = true;
+    try {
+      await copyEntries(db, {
+        userId,
+        fromDate: addDays(date, -1),
+        toDate: date,
+        ...(mealSlotId ? { mealSlotId } : {}),
+        now: new Date(),
+      });
+    } catch (error: unknown) {
+      console.error('Voci non copiate', error);
+      Alert.alert('Voci non copiate', 'Il telefono non è riuscito a copiarle. Riprova.');
+    } finally {
+      copying.current = false;
+    }
+    await load();
+  }
+
+  const previousName =
+    date === today ? 'ieri' : addDays(date, -1) === today ? 'oggi' : dayLabel(addDays(date, -1));
 
   async function chooseDayType(id: string) {
     if (userId === undefined || id === dayTypeId) return;
@@ -253,6 +286,16 @@ export default function TodayScreen() {
           onSetTargets={() => router.navigate('/piano')}
         />
 
+        {/* Con voci previste dal piano la copia registrerebbe il pasto due volte. */}
+        {entries.length === 0 && previous.length > 0 && pending.length === 0 ? (
+          <PressableScale
+            onPress={() => void copyFromPrevious()}
+            style={[styles.copyDay, { borderColor: colors.borderStrong }]}
+          >
+            <TaraText variant="bodyStrong">Copia la giornata di {previousName}</TaraText>
+          </PressableScale>
+        ) : null}
+
         {entries.length > 0 ? (
           <View style={styles.legend}>
             <TaraText variant="minimum" color="textSecondary">
@@ -290,6 +333,16 @@ export default function TodayScreen() {
                   : undefined
               }
               onConfirmAll={() => void confirm(ownPending)}
+              copy={
+                own.length === 0 &&
+                ownPending.length === 0 &&
+                previous.some((entry) => entry.mealSlotId === slot.id)
+                  ? {
+                      label: `Copia da ${previousName}`,
+                      onPress: () => void copyFromPrevious(slot.id),
+                    }
+                  : undefined
+              }
               planned={ownPending.map((item) => ({
                 key: item.id,
                 row: (
@@ -405,6 +458,13 @@ const styles = StyleSheet.create({
   dayLabel: {
     flex: 1,
     minHeight: touch.min,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  copyDay: {
+    minHeight: touch.min,
+    borderRadius: radius.button,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -14,6 +14,7 @@ const ICONS = {
   delete: ['M9 6h11v12H9l-6-6z', 'M12 10l4 4M16 10l-4 4'],
   check: ['M5 12l5 5 9-10'],
   plus: ['M12 5v14M5 12h14'],
+  star: ['M12 3l2.8 5.7 6.2.9-4.5 4.4 1 6.2-5.5-2.9-5.5 2.9 1-6.2L3 9.6l6.2-.9z'],
   alert: ['M12 4l9 16H3z', 'M12 10v4M12 17v.01'],
   today: [
     'M6 5h12a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z',
@@ -31,17 +32,19 @@ interface Props {
   name: IconName;
   color: ColorToken;
   size?: number;
+  /** Riempita del colore del tratto: per uno stato attivo, come il preferito. */
+  filled?: boolean;
 }
 
 /** Icona decorativa: chi la usa da sola dà un'etichetta accessibile al pulsante. */
-export function Icon({ name, color, size = 24 }: Props) {
+export function Icon({ name, color, size = 24, filled = false }: Props) {
   const { colors } = useTheme();
   return (
     <Svg
       width={size}
       height={size}
       viewBox="0 0 24 24"
-      fill="none"
+      fill={filled ? colors[color] : 'none'}
       stroke={colors[color]}
       strokeWidth={2}
       strokeLinecap="round"

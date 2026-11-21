@@ -14,6 +14,7 @@ import { TaraText } from '@/components/TaraText';
 import { type FoodDetail, getFood, getVariant } from '@/data/catalogStore';
 import { addEntry, ensureMealSlots, lastQuantity, type MealSlot } from '@/data/diaryStore';
 import { addPlanItem } from '@/data/planStore';
+import { isFavorite, setFavorite } from '@/data/quickStore';
 import { useSession } from '@/data/SessionProvider';
 import type { SqlDatabase } from '@/data/sql';
 import { minutesOfDay, slotForTime, toLocalDate } from '@/domain/diary';
@@ -54,6 +55,9 @@ export default function FoodScreen() {
   const lastKey = `${id}:${slotId ?? ''}`;
   const lastGrams = last?.key === lastKey ? last.grams : null;
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [favorite, setFavoriteState] = useState(false);
+  // Dopo un tocco sulla stella la lettura iniziale, se arriva tardi, non la riporta indietro.
+  const starTouched = useRef(false);
   // Una sola scrittura alla volta: un doppio tocco su "Aggiungi" non registra due voci.
   const saving = useRef(false);
   const date = params.date ?? toLocalDate(new Date());
@@ -91,6 +95,20 @@ export default function FoodScreen() {
       current = false;
     };
   }, [db, userId]);
+
+  useEffect(() => {
+    if (userId === undefined) return undefined;
+    let current = true;
+    starTouched.current = false;
+    void isFavorite(db, userId, id)
+      .then((value) => {
+        if (current && !starTouched.current) setFavoriteState(value);
+      })
+      .catch((error: unknown) => console.error('Preferito non letto', error));
+    return () => {
+      current = false;
+    };
+  }, [db, userId, id]);
 
   // "Ultima volta a pranzo: 300 g" (RF-42): dipende da alimento e pasto.
   useEffect(() => {
@@ -180,7 +198,27 @@ export default function FoodScreen() {
         importantForAccessibility={sheetOpen ? 'no-hide-descendants' : 'auto'}
         accessibilityElementsHidden={sheetOpen}
       >
-        {back}
+        <View style={styles.topBar}>
+          {back}
+          <PressableScale
+            onPress={() => {
+              if (userId === undefined) return;
+              const next = !favorite;
+              starTouched.current = true;
+              setFavoriteState(next);
+              void setFavorite(db, userId, food, next, new Date()).catch((error: unknown) => {
+                console.error('Preferito non salvato', error);
+                setFavoriteState(!next);
+              });
+            }}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: favorite }}
+            accessibilityLabel="Preferito"
+            style={styles.back}
+          >
+            <Icon name="star" color="text" filled={favorite} />
+          </PressableScale>
+        </View>
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.heading}>
             <View style={styles.title}>
@@ -258,6 +296,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', marginRight: space.s },
   content: { padding: space.l, gap: space.l },
   heading: { gap: space.xs },
   title: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: space.s },
