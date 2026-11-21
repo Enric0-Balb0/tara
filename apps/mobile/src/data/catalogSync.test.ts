@@ -148,6 +148,26 @@ describe('syncCatalog', () => {
     error.mockRestore();
   });
 
+  it('se il catalogo nuovo non ha più un ingrediente la ricetta tiene i valori di prima', async () => {
+    await downloadFirstCatalog();
+    const recipe = await createRecipe(
+      db,
+      'utente',
+      {
+        name: 'Frittata',
+        yield: { mode: 'portions', portions: 1 },
+        items: [{ foodId: 'albume-crudo', gramsRaw: 100 }],
+      },
+      FIRST,
+    );
+    const before = (await getFood(db, recipe))?.nutrients;
+    const withoutEggWhite = TEST_FOODS.filter((food) => food.id !== 'albume-crudo');
+    const { fetch } = server(ok(snapshotText(withoutEggWhite, 'v2'), '"v2"'));
+    expect(await sync(fetch, LATER)).toMatchObject({ kind: 'updated', version: 'v2' });
+    expect((await getFood(db, recipe))?.nutrients).toEqual(before);
+    expect(before?.length).toBeGreaterThan(0);
+  });
+
   it('server spento: offline e catalogo intatto', async () => {
     const before = await downloadFirstCatalog();
     const { fetch } = server(networkDown);

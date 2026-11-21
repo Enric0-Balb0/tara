@@ -113,6 +113,14 @@ async function writeValues(db: SqlDatabase, recipeId: string): Promise<void> {
     recipeId,
   );
   if (recipe === null) return;
+  // Un ingrediente sparito dal catalogo: i valori di prima restano, non si azzerano.
+  const missing = await db.getFirstAsync(
+    `SELECT 1 FROM recipe_item AS i
+     WHERE i.recipe_id = ? AND i.deleted_at IS NULL
+       AND NOT EXISTS (SELECT 1 FROM food WHERE id = i.ingredient_food_id)`,
+    recipeId,
+  );
+  if (missing !== null) return;
   // Gli ingredienti si leggono anche se eliminati: la ricetta non perde i valori.
   const rows = await db.getAllAsync<{
     item_id: string;
@@ -350,9 +358,10 @@ export async function recipeDetail(
     food_state: FoodState;
     grams_raw: number;
   }>(
-    `SELECT i.id, i.ingredient_food_id AS food_id, f.name AS food_name, f.state AS food_state,
-            i.grams_raw
-     FROM recipe_item AS i JOIN food AS f ON f.id = i.ingredient_food_id
+    `SELECT i.id, i.ingredient_food_id AS food_id,
+            coalesce(f.name, 'Alimento non più nel catalogo') AS food_name,
+            coalesce(f.state, 'not_applicable') AS food_state, i.grams_raw
+     FROM recipe_item AS i LEFT JOIN food AS f ON f.id = i.ingredient_food_id
      WHERE i.recipe_id = ? AND i.user_id = ? AND i.deleted_at IS NULL
      ORDER BY i.position`,
     id,

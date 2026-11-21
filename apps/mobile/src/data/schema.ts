@@ -262,7 +262,8 @@ export const MIGRATIONS: readonly string[] = [
     id TEXT PRIMARY KEY NOT NULL,
     user_id TEXT NOT NULL,
     recipe_id TEXT NOT NULL REFERENCES recipe (food_id),
-    ingredient_food_id TEXT NOT NULL REFERENCES food (id),
+    -- Senza riferimento a food, come il diario: un nuovo catalogo può non avere più il generico.
+    ingredient_food_id TEXT NOT NULL,
     grams_raw REAL NOT NULL
       CONSTRAINT recipe_item_grams_positive CHECK (grams_raw > 0),
     position INTEGER NOT NULL,

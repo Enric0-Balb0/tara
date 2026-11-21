@@ -256,6 +256,33 @@ describe('ricalcolo dei valori (RF-22)', () => {
   });
 });
 
+describe('catalogo che perde un ingrediente', () => {
+  const withoutEggWhite = TEST_FOODS.filter((food) => food.id !== 'albume-crudo');
+
+  it('il catalogo nuovo si salva anche se manca un generico usato da una ricetta', async () => {
+    await pancake();
+    await expect(
+      replaceCatalog(db, snapshotText(withoutEggWhite, 'v2'), {
+        etag: null,
+        syncedAt: later(5).toISOString(),
+      }),
+    ).resolves.toMatchObject({ version: 'v2' });
+  });
+
+  it('il ricalcolo lascia com’erano i valori di una ricetta con un ingrediente sparito', async () => {
+    const id = await pancake();
+    const before = await valuesOf(id);
+    await replaceCatalog(db, snapshotText(withoutEggWhite, 'v2'), {
+      etag: null,
+      syncedAt: later(5).toISOString(),
+    });
+    await refreshRecipeValues(db);
+    expect(await valuesOf(id)).toEqual(before);
+    const detail = await recipeDetail(db, USER, id);
+    expect(detail?.items.map((item) => item.foodId)).toEqual(['albume-crudo', oats]);
+  });
+});
+
 describe('updateRecipe', () => {
   it('sostituisce nome, resa e ingredienti, e ricalcola', async () => {
     const id = await pancake();
