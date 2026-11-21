@@ -23,7 +23,7 @@ tags:
 - tapOn:
     id: tab-dispensa
     retryTapIfNoChange: true
-- assertVisible: I tuoi alimenti, le ricette e i pasti salvati.
+- assertVisible: Nuovo alimento
 
 # Le tab per id, ritoccando se lo schermo non cambia: a volte il primo tocco si perde.
 - tapOn:
