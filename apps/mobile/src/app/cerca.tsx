@@ -50,6 +50,7 @@ export default function SearchScreen() {
   const { session } = useSession();
   const userId = session?.user.id;
   // Con il campo vuoto: preferiti e recenti, per registrare senza scrivere (RF-44).
+  const [focusCount, setFocusCount] = useState(0);
   const [quick, setQuick] = useState<{ favorites: QuickFood[]; recent: RecentFood[] }>({
     favorites: [],
     recent: [],
@@ -57,6 +58,7 @@ export default function SearchScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      setFocusCount((count) => count + 1);
       if (userId === undefined) return undefined;
       let current = true;
       void Promise.all([loadFavorites(db, userId), recentFoods(db, userId, 10)])
@@ -69,6 +71,19 @@ export default function SearchScreen() {
       };
     }, [db, userId]),
   );
+
+  // Un prodotto che non c'è si crea dalla ricerca, con il nome già scritto (RF-18).
+  const create = () =>
+    router.push({
+      pathname: '/nuovo-alimento',
+      params: {
+        name: query.trim(),
+        from: 'cerca',
+        ...(slot ? { slot } : {}),
+        ...(date ? { date } : {}),
+        ...(plan ? { plan } : {}),
+      },
+    });
 
   const open = (id: string) =>
     router.push({
@@ -102,7 +117,7 @@ export default function SearchScreen() {
 
   useEffect(() => {
     const request = ++latest.current;
-    searchFoods(db, query)
+    searchFoods(db, query, userId ?? null)
       .then((hits) => {
         // Solo l'ultima ricerca conta: una più lenta, arrivata dopo, non copre la nuova.
         if (request === latest.current) setResults({ query, hits });
@@ -110,7 +125,9 @@ export default function SearchScreen() {
       .catch((error: unknown) => console.error('Ricerca non riuscita', error));
     // catalogVersion: se arriva un catalogo mentre la schermata è aperta, si cerca di nuovo,
     // così i risultati della ricerca già scritta compaiono da soli.
-  }, [db, query, catalogVersion]);
+    // focusCount: tornando dalla scheda o dal form un alimento nuovo, cambiato o eliminato
+    // si vede subito.
+  }, [db, query, catalogVersion, userId, focusCount]);
 
   // Senza catalogo sul telefono si riprova una volta da soli: forse la connessione è tornata.
   useEffect(() => {
@@ -158,6 +175,7 @@ export default function SearchScreen() {
             name={item.name}
             state={item.state}
             cooking={item.cooking}
+            brand={item.brand}
             kcalPer100={item.per100.energy_kcal}
             proteinPer100={item.per100.protein_g}
             onPress={() => open(item.id)}
@@ -221,11 +239,33 @@ export default function SearchScreen() {
                   <TaraText variant="bodyStrong">Riprova</TaraText>
                 </PressableScale>
               ) : null}
+              {status.kind === 'no-results' ? <CreateRow query={query} onPress={create} /> : null}
+            </View>
+          ) : status?.kind === 'results' ? (
+            <View style={styles.createAfter}>
+              <CreateRow query={query} onPress={create} />
             </View>
           ) : undefined
         }
       />
     </View>
+  );
+}
+
+/** In fondo ai risultati: il prodotto che non c'è si crea con il nome già scritto. */
+function CreateRow({ query, onPress }: { query: string; onPress: () => void }) {
+  const { colors } = useTheme();
+  return (
+    <PressableScale
+      onPress={onPress}
+      testID="crea-alimento"
+      style={[styles.create, { borderColor: colors.borderStrong }]}
+    >
+      <Icon name="plus" color="text" size={20} />
+      <TaraText variant="bodyStrong" numberOfLines={1} style={styles.createText}>
+        Crea «{query.trim()}»
+      </TaraText>
+    </PressableScale>
   );
 }
 
@@ -277,6 +317,20 @@ const styles = StyleSheet.create({
     gap: space.l,
   },
   message: { textAlign: 'center' },
+  createAfter: { padding: space.l },
+  create: {
+    minHeight: touch.min,
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space.s,
+    paddingHorizontal: space.l,
+    borderRadius: radius.button,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+  },
+  createText: { flexShrink: 1 },
   quick: { gap: space.l, paddingBottom: space.xl },
   quickTitle: { paddingHorizontal: space.l, paddingBottom: space.xs },
   retry: {

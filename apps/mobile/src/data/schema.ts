@@ -217,6 +217,30 @@ export const MIGRATIONS: readonly string[] = [
   CREATE UNIQUE INDEX favorite_food_once
     ON favorite_food (user_id, food_id) WHERE deleted_at IS NULL;
   `,
+  // v8: alimenti personali inseriti a mano (RF-18, RF-02), pronti per la sincronizzazione
+  // come il diario. I nutrienti dell'etichetta ci sono da subito, così un alimento si salva
+  // anche prima del primo download; il catalogo ne aggiorna poi nomi e ordine.
+  `
+  ALTER TABLE food ADD COLUMN brand TEXT;
+  ALTER TABLE food ADD COLUMN created_at TEXT;
+  ALTER TABLE food ADD COLUMN updated_at TEXT
+    CONSTRAINT food_personal_dated
+    CHECK (user_id IS NULL OR (created_at IS NOT NULL AND updated_at IS NOT NULL));
+  ALTER TABLE food ADD COLUMN deleted_at TEXT;
+
+  INSERT INTO nutrient (code, name, unit, display_order) VALUES
+    ('energy_kcal', 'Energia', 'kcal', 0),
+    ('energy_kj', 'Energia', 'kJ', 1),
+    ('protein_g', 'Proteine', 'g', 2),
+    ('carbs_g', 'Carboidrati', 'g', 3),
+    ('sugars_g', 'di cui zuccheri', 'g', 4),
+    ('fat_g', 'Grassi', 'g', 5),
+    ('sat_fat_g', 'di cui saturi', 'g', 6),
+    ('fiber_g', 'Fibre', 'g', 7),
+    ('salt_g', 'Sale', 'g', 8),
+    ('sodium_mg', 'Sodio', 'mg', 9)
+  ON CONFLICT (code) DO NOTHING;
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

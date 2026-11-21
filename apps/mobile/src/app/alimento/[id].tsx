@@ -1,6 +1,6 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -62,23 +62,26 @@ export default function FoodScreen() {
   const saving = useRef(false);
   const date = params.date ?? toLocalDate(new Date());
 
-  useEffect(() => {
-    let current = true;
-    void (async () => {
-      const found = await getFood(db, id);
-      const other =
-        found && found.state !== 'not_applicable'
-          ? await getVariant(db, found.name, found.state === 'raw' ? 'cooked' : 'raw')
-          : null;
-      if (current) {
-        setFood(found);
-        setVariantId(other);
-      }
-    })();
-    return () => {
-      current = false;
-    };
-  }, [db, id]);
+  // Alla scheda si torna anche dal form di modifica: si rilegge a ogni ritorno.
+  useFocusEffect(
+    useCallback(() => {
+      let current = true;
+      void (async () => {
+        const found = await getFood(db, id);
+        const other =
+          found && found.state !== 'not_applicable'
+            ? await getVariant(db, found.name, found.state === 'raw' ? 'cooked' : 'raw')
+            : null;
+        if (current) {
+          setFood(found);
+          setVariantId(other);
+        }
+      })();
+      return () => {
+        current = false;
+      };
+    }, [db, id]),
+  );
 
   useEffect(() => {
     if (userId === undefined) return undefined;
@@ -200,24 +203,37 @@ export default function FoodScreen() {
       >
         <View style={styles.topBar}>
           {back}
-          <PressableScale
-            onPress={() => {
-              if (userId === undefined) return;
-              const next = !favorite;
-              starTouched.current = true;
-              setFavoriteState(next);
-              void setFavorite(db, userId, food, next, new Date()).catch((error: unknown) => {
-                console.error('Preferito non salvato', error);
-                setFavoriteState(!next);
-              });
-            }}
-            accessibilityRole="switch"
-            accessibilityState={{ checked: favorite }}
-            accessibilityLabel="Preferito"
-            style={styles.back}
-          >
-            <Icon name="star" color="text" filled={favorite} />
-          </PressableScale>
+          <View style={styles.topActions}>
+            {food.personal ? (
+              <PressableScale
+                onPress={() =>
+                  router.push({ pathname: '/nuovo-alimento', params: { id: food.id } })
+                }
+                accessibilityLabel="Modifica alimento"
+                style={styles.edit}
+              >
+                <TaraText variant="bodyStrong">Modifica</TaraText>
+              </PressableScale>
+            ) : null}
+            <PressableScale
+              onPress={() => {
+                if (userId === undefined) return;
+                const next = !favorite;
+                starTouched.current = true;
+                setFavoriteState(next);
+                void setFavorite(db, userId, food, next, new Date()).catch((error: unknown) => {
+                  console.error('Preferito non salvato', error);
+                  setFavoriteState(!next);
+                });
+              }}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: favorite }}
+              accessibilityLabel="Preferito"
+              style={styles.back}
+            >
+              <Icon name="star" color="text" filled={favorite} />
+            </PressableScale>
+          </View>
         </View>
         <ScrollView contentContainerStyle={styles.content}>
           <View style={styles.heading}>
@@ -225,13 +241,13 @@ export default function FoodScreen() {
               <TaraText variant="title">{food.name}</TaraText>
               <StateTag state={food.state} />
             </View>
-            {food.cooking !== null ? (
+            {food.brand !== null || food.cooking !== null ? (
               <TaraText variant="caption" color="textSecondary">
-                {food.cooking}
+                {[food.brand, food.cooking].filter((text) => text !== null).join(' · ')}
               </TaraText>
             ) : null}
           </View>
-          <NutritionLabel per100={per100} grams={100} />
+          <NutritionLabel per100={per100} grams={100} unit={food.baseUnit} />
           {source !== null ? (
             <TaraText variant="caption" color="textSecondary">
               Fonte: {source}
@@ -297,6 +313,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   topBar: { flexDirection: 'row', justifyContent: 'space-between', marginRight: space.s },
+  topActions: { flexDirection: 'row', alignItems: 'center' },
+  edit: { minHeight: touch.min, paddingHorizontal: space.m, justifyContent: 'center' },
   content: { padding: space.l, gap: space.l },
   heading: { gap: space.xs },
   title: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: space.s },

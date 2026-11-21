@@ -42,7 +42,7 @@ describe('initDatabase', () => {
     ]);
     const version = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
     expect(version?.user_version).toBe(SCHEMA_VERSION);
-    expect(SCHEMA_VERSION).toBe(7);
+    expect(SCHEMA_VERSION).toBe(8);
   });
 
   it('chi trova il database occupato aspetta invece di fallire subito', async () => {
@@ -55,14 +55,33 @@ describe('initDatabase', () => {
   it('rieseguita non tocca i dati', async () => {
     await db.runAsync(
       'INSERT INTO nutrient (code, name, unit, display_order) VALUES (?, ?, ?, ?)',
-      'protein_g',
-      'Proteine',
-      'g',
-      0,
+      'caffeine_mg',
+      'Caffeina',
+      'mg',
+      24,
     );
     await initDatabase(db);
-    const rows = await db.getAllAsync<{ code: string }>('SELECT code FROM nutrient');
-    expect(rows).toEqual([{ code: 'protein_g' }]);
+    const rows = await db.getAllAsync<{ code: string }>('SELECT code FROM nutrient ORDER BY code');
+    expect(rows).toHaveLength(11);
+    expect(rows).toContainEqual({ code: 'caffeine_mg' });
+  });
+
+  it("ha da subito i nutrienti dell'etichetta, per gli alimenti personali", async () => {
+    const rows = await db.getAllAsync<{ code: string }>(
+      'SELECT code FROM nutrient ORDER BY display_order',
+    );
+    expect(rows.map((row) => row.code)).toEqual([
+      'energy_kcal',
+      'energy_kj',
+      'protein_g',
+      'carbs_g',
+      'sugars_g',
+      'fat_g',
+      'sat_fat_g',
+      'fiber_g',
+      'salt_g',
+      'sodium_mg',
+    ]);
   });
 
   it('rifiuta uno stato non previsto', async () => {
@@ -72,7 +91,7 @@ describe('initDatabase', () => {
   it('rifiuta un valore che non è un numero', async () => {
     await insertEggWhite();
     await db.runAsync(
-      'INSERT INTO nutrient (code, name, unit, display_order) VALUES (?, ?, ?, ?)',
+      'INSERT OR IGNORE INTO nutrient (code, name, unit, display_order) VALUES (?, ?, ?, ?)',
       'protein_g',
       'Proteine',
       'g',
@@ -93,7 +112,7 @@ describe('initDatabase', () => {
   it('rifiuta una confidenza fuori da 0..1', async () => {
     await insertEggWhite();
     await db.runAsync(
-      'INSERT INTO nutrient (code, name, unit, display_order) VALUES (?, ?, ?, ?)',
+      'INSERT OR IGNORE INTO nutrient (code, name, unit, display_order) VALUES (?, ?, ?, ?)',
       'protein_g',
       'Proteine',
       'g',

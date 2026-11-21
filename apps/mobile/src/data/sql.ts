@@ -17,4 +17,10 @@ export interface SqlDatabase {
    * non valgono, quindi l'SQL della transazione non deve dipenderne.
    */
   withExclusiveTransactionAsync(task: (txn: SqlDatabase) => Promise<void>): Promise<void>;
+  /**
+   * Transazione sulla connessione principale, con le sue pragma (foreign_keys e
+   * busy_timeout). Per scritture brevi di più istruzioni: una query fatta altrove mentre è
+   * aperta ci finisce dentro, quindi il compito deve restare corto.
+   */
+  withTransactionAsync(task: () => Promise<void>): Promise<void>;
 }

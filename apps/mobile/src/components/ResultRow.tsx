@@ -14,6 +14,8 @@ interface Props {
   state: FoodState;
   /** Metodo di cottura dei cotti, sotto il nome in secondo piano. */
   cooking?: string | null;
+  /** Marca di un prodotto personale (RF-02), sotto il nome prima della cottura. */
+  brand?: string | null;
   kcalPer100: number | null;
   proteinPer100: number | null;
   onPress: () => void;
@@ -23,15 +25,24 @@ interface Props {
  * Risultato di ricerca: nome, "cotto" se serve (il crudo è il predefinito) con la cottura
  * sotto, kcal e proteine per 100 g.
  */
-export function ResultRow({ name, state, cooking = null, kcalPer100, proteinPer100, onPress }: Props) {
+export function ResultRow({
+  name,
+  state,
+  cooking = null,
+  brand = null,
+  kcalPer100,
+  proteinPer100,
+  onPress,
+}: Props) {
   const { colors } = useTheme();
   const kcal = formatAmount(kcalPer100, 'kcal');
   const protein = formatAmount(proteinPer100, 'macro');
   const label = stateLabel(state, cooking);
+  const detail = [brand, cooking].filter((text) => text !== null).join(' · ');
   return (
     <PressableScale
       onPress={onPress}
-      accessibilityLabel={`${name}${label ? `, ${label}` : ''}, ${kcal} kcal e ${protein} grammi di proteine per 100 grammi`}
+      accessibilityLabel={`${name}${brand ? `, ${brand}` : ''}${label ? `, ${label}` : ''}, ${kcal} kcal e ${protein} grammi di proteine per 100 grammi`}
       style={[styles.row, { borderBottomColor: colors.border }]}
     >
       <View style={styles.text}>
@@ -42,9 +53,9 @@ export function ResultRow({ name, state, cooking = null, kcalPer100, proteinPer1
           </TaraText>
           <StateTag state={state} />
         </View>
-        {cooking !== null ? (
+        {detail !== '' ? (
           <TaraText variant="minimum" color="textSecondary" numberOfLines={1}>
-            {cooking}
+            {detail}
           </TaraText>
         ) : null}
       </View>

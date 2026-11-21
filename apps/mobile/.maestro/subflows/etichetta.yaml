@@ -1,0 +1,16 @@
+# Scrive TESTO nella riga CAMPO dell'etichetta da compilare: la porta sullo schermo (le
+# righe in basso stanno sotto la tastiera), la tocca e scrive con il controllo di scrivi.
+appId: com.enricobalbo.tara
+---
+- scrollUntilVisible:
+    element:
+      id: ${CAMPO}
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: ${CAMPO}
+- runFlow:
+    file: scrivi.yaml
+    env:
+      CAMPO: ${CAMPO}
+      TESTO: ${TESTO}

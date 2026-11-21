@@ -1,0 +1,154 @@
+# Alimenti personali (RF-18, RF-02, RF-15; serve il backend per l'accesso e il primo
+# download): dalla Dispensa copio l'etichetta di uno skyr e le calorie tornano con i macro;
+# dalla ricerca creo il prodotto che non c'è, con il nome già scritto, e la scheda si apre
+# per registrarlo; lo modifico e lo elimino.
+appId: com.enricobalbo.tara
+name: Alimenti personali
+tags:
+  - api
+---
+- runFlow: subflows/avvio.yaml
+- runFlow: subflows/accedi.yaml
+- extendedWaitUntil:
+    visible:
+      id: diario
+    timeout: 30000
+
+# Dalla Dispensa: lo skyr, copiato dall'etichetta.
+- tapOn:
+    id: tab-dispensa
+    retryTapIfNoChange: true
+- tapOn: Nuovo alimento
+- extendedWaitUntil:
+    visible:
+      id: campo-nome
+    timeout: 10000
+- tapOn:
+    id: campo-nome
+- runFlow:
+    file: subflows/scrivi.yaml
+    env:
+      CAMPO: campo-nome
+      TESTO: Skyr bianco
+- tapOn:
+    id: campo-marca
+- runFlow:
+    file: subflows/scrivi.yaml
+    env:
+      CAMPO: campo-marca
+      TESTO: Milbona
+- runFlow:
+    file: subflows/etichetta.yaml
+    env:
+      CAMPO: campo-energy_kcal
+      TESTO: '63'
+- runFlow:
+    file: subflows/etichetta.yaml
+    env:
+      CAMPO: campo-fat_g
+      TESTO: '0.2'
+- runFlow:
+    file: subflows/etichetta.yaml
+    env:
+      CAMPO: campo-carbs_g
+      TESTO: '4'
+- runFlow:
+    file: subflows/etichetta.yaml
+    env:
+      CAMPO: campo-protein_g
+      TESTO: '11'
+- runFlow:
+    file: subflows/etichetta.yaml
+    env:
+      CAMPO: campo-salt_g
+      TESTO: '0.13'
+- scrollUntilVisible:
+    element: 'Le calorie tornano con i macro: 63 dichiarate, 62 calcolate.'
+    direction: DOWN
+- takeScreenshot: screenshots/nuovo-alimento
+- tapOn: Salva nel mio catalogo
+- extendedWaitUntil:
+    visible: I tuoi alimenti
+    timeout: 10000
+- assertVisible: 'Skyr bianco, Milbona, 63 kcal per 100 grammi'
+- takeScreenshot: screenshots/dispensa
+
+# Dalla ricerca: il prodotto che non c'è si crea con il nome già scritto.
+- tapOn:
+    id: tab-oggi
+    retryTapIfNoChange: true
+- tapOn: Cerca un alimento
+- runFlow:
+    file: subflows/scrivi.yaml
+    env:
+      CAMPO: campo-ricerca
+      TESTO: barretta prozis
+# Il primo download comprende circa 3500 alimenti: la ricerca riparte quando arrivano.
+- extendedWaitUntil:
+    visible: Crea «barretta prozis»
+    timeout: 90000
+- tapOn:
+    id: crea-alimento
+- extendedWaitUntil:
+    visible:
+      id: campo-nome
+    timeout: 10000
+- copyTextFrom:
+    id: campo-nome
+- assertTrue: ${maestro.copiedText === 'Barretta prozis'}
+- runFlow:
+    file: subflows/etichetta.yaml
+    env:
+      CAMPO: campo-energy_kcal
+      TESTO: '380'
+- runFlow:
+    file: subflows/etichetta.yaml
+    env:
+      CAMPO: campo-fat_g
+      TESTO: '12'
+- runFlow:
+    file: subflows/etichetta.yaml
+    env:
+      CAMPO: campo-carbs_g
+      TESTO: '30'
+- runFlow:
+    file: subflows/etichetta.yaml
+    env:
+      CAMPO: campo-protein_g
+      TESTO: '35'
+- tapOn: Salva nel mio catalogo
+- extendedWaitUntil:
+    visible: 'Fonte: Inserito a mano'
+    timeout: 10000
+- assertVisible: Barretta prozis
+- assertVisible: Energia 1590 kJ / 380 kcal
+- assertVisible: '.*Aggiungi a .*'
+
+# Modifica: le kcal cambiano, i kJ ricavati le seguono.
+- tapOn: Modifica alimento
+- extendedWaitUntil:
+    visible:
+      id: campo-energy_kcal
+    timeout: 10000
+- tapOn:
+    id: campo-energy_kcal
+- runFlow:
+    file: subflows/scrivi.yaml
+    env:
+      CAMPO: campo-energy_kcal
+      TESTO: '370'
+- tapOn: Salva le modifiche
+- extendedWaitUntil:
+    visible: Energia 1548 kJ / 370 kcal
+    timeout: 10000
+
+# Eliminazione: si torna alla ricerca, dove il prodotto non c'è più.
+- tapOn: Modifica alimento
+- scrollUntilVisible:
+    element: Elimina alimento
+    direction: DOWN
+- tapOn: Elimina alimento
+- tapOn: '(?i)elimina'
+- extendedWaitUntil:
+    visible: Crea «barretta prozis»
+    timeout: 10000
