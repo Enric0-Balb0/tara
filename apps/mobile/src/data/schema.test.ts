@@ -27,10 +27,17 @@ describe('initDatabase', () => {
     const tables = await db.getAllAsync<{ name: string }>(
       "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name",
     );
-    expect(tables.map((t) => t.name)).toEqual(['food', 'nutrient', 'nutrient_value', 'sync_state']);
+    expect(tables.map((t) => t.name)).toEqual([
+      'diary_entry',
+      'food',
+      'meal_slot',
+      'nutrient',
+      'nutrient_value',
+      'sync_state',
+    ]);
     const version = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
     expect(version?.user_version).toBe(SCHEMA_VERSION);
-    expect(SCHEMA_VERSION).toBe(3);
+    expect(SCHEMA_VERSION).toBe(4);
   });
 
   it('rieseguita non tocca i dati', async () => {
@@ -130,7 +137,7 @@ describe('migrazione alla versione 3', () => {
     );
     await initDatabase(old);
     const version = await old.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
-    expect(version?.user_version).toBe(3);
+    expect(version?.user_version).toBe(SCHEMA_VERSION);
     expect(await old.getFirstAsync("SELECT name, cooking FROM food WHERE id = 'f1'")).toEqual({
       name: 'Broccoli',
       cooking: null,
