@@ -1,0 +1,92 @@
+# Voci previste dal piano (RF-130; serve il backend per il primo download): metto 300 g di
+# albume nel Pranzo del piano di Allenamento; in Oggi compare come voce prevista, la confermo
+# a 200 g, il pasto completo si chiude in una riga, lo riapro, elimino la voce e torna prevista.
+appId: com.enricobalbo.tara
+name: Voci previste dal piano
+tags:
+  - api
+---
+- runFlow: subflows/avvio.yaml
+- runFlow: subflows/accedi.yaml
+- extendedWaitUntil:
+    visible:
+      id: diario
+    timeout: 30000
+
+# Il piano: 300 g di albume a pranzo nei giorni di allenamento.
+# Le tab per id, ritoccando se lo schermo non cambia: a volte il primo tocco si perde.
+- tapOn:
+    id: tab-piano
+    retryTapIfNoChange: true
+- extendedWaitUntil:
+    visible:
+      id: piano
+    timeout: 10000
+- scrollUntilVisible:
+    element: 'Aggiungi al piano: Pranzo'
+- tapOn: 'Aggiungi al piano: Pranzo'
+- runFlow:
+    file: subflows/scrivi.yaml
+    env:
+      CAMPO: campo-ricerca
+      TESTO: albume
+- extendedWaitUntil:
+    visible: "Albume d'uovo in polvere"
+    timeout: 90000
+- tapOn:
+    text: "Albume d'uovo"
+    index: 0
+- tapOn: 'Aggiungi al piano: Pranzo'
+- tapOn:
+    id: tasto-3
+- tapOn:
+    id: tasto-0
+- tapOn:
+    id: tasto-0
+- tapOn: Aggiungi 300 grammi
+- extendedWaitUntil:
+    visible:
+      id: piano
+    timeout: 10000
+
+# In Oggi la voce è prevista: si conferma con altri grammi toccando la riga.
+# Le tab per id, ritoccando se lo schermo non cambia: a volte il primo tocco si perde.
+- tapOn:
+    id: tab-oggi
+    retryTapIfNoChange: true
+- extendedWaitUntil:
+    visible: "Albume d'uovo, previsto 300 grammi, 144 kcal, 32,7 grammi di proteine"
+    timeout: 10000
+- assertVisible: 'Pranzo 0 di 1'
+- takeScreenshot: screenshots/oggi-prevista
+- tapOn: "Albume d'uovo, previsto 300 grammi, 144 kcal, 32,7 grammi di proteine"
+- tapOn:
+    id: tasto-delete
+- tapOn:
+    id: tasto-delete
+- tapOn:
+    id: tasto-delete
+- tapOn:
+    id: tasto-2
+- tapOn:
+    id: tasto-0
+- tapOn:
+    id: tasto-0
+- tapOn: Conferma 200 grammi
+
+# Pasto completo come da piano: una riga sola, che si riapre con un tocco.
+- extendedWaitUntil:
+    visible: '.*1 di 1, come da piano.*'
+    timeout: 10000
+- takeScreenshot: screenshots/oggi-pasto-completo
+- tapOn: '.*1 di 1, come da piano.*'
+- extendedWaitUntil:
+    visible: "Albume d'uovo, 200 grammi, 96 kcal, 21,8 grammi di proteine"
+    timeout: 10000
+
+# Eliminata la voce confermata, la voce prevista torna.
+- tapOn: "Albume d'uovo, 200 grammi, 96 kcal, 21,8 grammi di proteine"
+- tapOn: Elimina dal diario
+- extendedWaitUntil:
+    visible: "Albume d'uovo, previsto 300 grammi, 144 kcal, 32,7 grammi di proteine"
+    timeout: 10000

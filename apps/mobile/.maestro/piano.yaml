@@ -1,0 +1,77 @@
+# Piano alimentare (RF-130; serve il backend per il primo download): nel Piano di Allenamento
+# aggiungo 300 g di albume a Pranzo, lo ritrovo nel piano con i valori e il totale, poi lo porto
+# a 250 g. Le voci previste in Oggi sono nel flusso previste.yaml.
+appId: com.enricobalbo.tara
+name: Piano alimentare
+tags:
+  - api
+---
+- runFlow: subflows/avvio.yaml
+- runFlow: subflows/accedi.yaml
+- extendedWaitUntil:
+    visible:
+      id: diario
+    timeout: 30000
+# Le tab per id, ritoccando se lo schermo non cambia: a volte il primo tocco si perde.
+- tapOn:
+    id: tab-piano
+    retryTapIfNoChange: true
+- extendedWaitUntil:
+    visible:
+      id: piano
+    timeout: 10000
+- assertVisible: Piano di Allenamento
+- scrollUntilVisible:
+    element: 'Aggiungi al piano: Pranzo'
+- tapOn: 'Aggiungi al piano: Pranzo'
+- runFlow:
+    file: subflows/scrivi.yaml
+    env:
+      CAMPO: campo-ricerca
+      TESTO: albume
+# Il primo download comprende circa 3500 alimenti: la ricerca riparte quando arrivano.
+- extendedWaitUntil:
+    visible: "Albume d'uovo in polvere"
+    timeout: 90000
+- tapOn:
+    text: "Albume d'uovo"
+    index: 0
+- tapOn: 'Aggiungi al piano: Pranzo'
+- tapOn:
+    id: tasto-3
+- tapOn:
+    id: tasto-0
+- tapOn:
+    id: tasto-0
+- tapOn: Aggiungi 300 grammi
+
+# Di nuovo nel Piano, con la voce e il totale del piano.
+- extendedWaitUntil:
+    visible:
+      id: piano
+    timeout: 10000
+- scrollUntilVisible:
+    element: "Albume d'uovo, 300 grammi, 144 kcal, 32,7 grammi di proteine"
+- scrollUntilVisible:
+    element: Totale del piano
+    direction: UP
+- takeScreenshot: screenshots/piano-albume
+
+# Un tocco sulla voce del piano: si cambiano i grammi.
+- tapOn: "Albume d'uovo, 300 grammi, 144 kcal, 32,7 grammi di proteine"
+- tapOn:
+    id: tasto-delete
+- tapOn:
+    id: tasto-delete
+- tapOn:
+    id: tasto-delete
+- tapOn:
+    id: tasto-2
+- tapOn:
+    id: tasto-5
+- tapOn:
+    id: tasto-0
+- tapOn: Salva 250 grammi
+- extendedWaitUntil:
+    visible: "Albume d'uovo, 250 grammi, 120 kcal, 27,3 grammi di proteine"
+    timeout: 10000

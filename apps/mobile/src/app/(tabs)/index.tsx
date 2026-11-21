@@ -8,6 +8,7 @@ import { DiaryRow } from '@/components/DiaryRow';
 import { GramSheet } from '@/components/GramSheet';
 import { Icon } from '@/components/Icon';
 import { MealSection } from '@/components/MealSection';
+import { PlannedRow } from '@/components/PlannedRow';
 import { PressableScale } from '@/components/PressableScale';
 import { Segmented } from '@/components/Segmented';
 import { TaraText } from '@/components/TaraText';
@@ -19,6 +20,7 @@ import {
   type MealSlot,
   updateEntryQuantity,
 } from '@/data/diaryStore';
+import { confirmPlanItem, pendingPlan, type PlanItem, planFor } from '@/data/planStore';
 import { useSession } from '@/data/SessionProvider';
 import type { SqlDatabase } from '@/data/sql';
 import {
@@ -30,7 +32,15 @@ import {
   setDayType,
   targetOn,
 } from '@/data/targetsStore';
-import { addDays, dayLabel, dayTitle, entryAmount, toLocalDate, totals } from '@/domain/diary';
+import {
+  addDays,
+  dayLabel,
+  dayTitle,
+  entryAmount,
+  mealPlanStatus,
+  toLocalDate,
+  totals,
+} from '@/domain/diary';
 import { space, touch } from '@/theme/layout';
 
 /**
@@ -52,7 +62,14 @@ export default function TodayScreen() {
   const [dayTypes, setDayTypes] = useState<DayType[]>([]);
   const [dayTypeId, setDayTypeId] = useState<string | undefined>(undefined);
   const [target, setTarget] = useState<DayTarget | undefined>(undefined);
+  const [plan, setPlan] = useState<PlanItem[]>([]);
+  const [pending, setPending] = useState<PlanItem[]>([]);
+  // Pasti completi riaperti a mano; gli altri completi restano chiusi in una riga.
+  const [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
+  const [confirming, setConfirming] = useState<PlanItem | null>(null);
   const latest = useRef(0);
+  // Una conferma alla volta: un doppio tocco su "Conferma" non registra due voci.
+  const confirmingNow = useRef(false);
 
   // Dopo mezzanotte, con l'app rimasta aperta, "oggi" va avanti: chi guardava oggi passa
   // al giorno nuovo, chi guardava un altro giorno resta lì.
@@ -86,12 +103,19 @@ export default function TodayScreen() {
       if (dayEntries.length > 0) await keepDayType(db, userId, date, new Date());
       const typeId = await dayTypeFor(db, userId, date);
       const dayTarget = typeId ? await targetOn(db, userId, typeId, date) : undefined;
+      // Il piano vale da oggi in avanti, come i target: un giorno passato non ha voci
+      // previste, e cambiare il piano oggi non riapre i pasti di ieri.
+      const planned = typeId !== undefined && date >= toLocalDate(new Date());
+      const dayPlan = planned ? await planFor(db, userId, typeId) : [];
+      const dayPending = planned ? await pendingPlan(db, userId, date, typeId) : [];
       if (request !== latest.current) return;
       setSlots(mealSlots);
       setEntries(dayEntries);
       setDayTypes(types);
       setDayTypeId(typeId);
       setTarget(dayTarget);
+      setPlan(dayPlan);
+      setPending(dayPending);
     } catch (error: unknown) {
       console.error('Diario non letto', error);
     }
@@ -129,6 +153,30 @@ export default function TodayScreen() {
 
   function remove(entry: DiaryEntry) {
     return write((owner) => deleteEntry(db, owner, entry.id, new Date()));
+  }
+
+  async function confirm(items: readonly PlanItem[], quantity?: number) {
+    if (userId === undefined || confirmingNow.current) return;
+    confirmingNow.current = true;
+    try {
+      for (const item of items) {
+        await confirmPlanItem(db, {
+          userId,
+          date,
+          item,
+          quantity: quantity ?? item.quantity,
+          now: new Date(),
+        });
+      }
+      setConfirming(null);
+    } catch (error: unknown) {
+      console.error('Voce prevista non confermata', error);
+      Alert.alert('Voce non salvata', 'Il telefono non è riuscito a salvarla. Riprova.');
+    } finally {
+      confirmingNow.current = false;
+      // Anche dopo un errore: le voci già salvate non devono restare previste.
+      await load();
+    }
   }
 
   async function chooseDayType(id: string) {
@@ -199,6 +247,7 @@ export default function TodayScreen() {
 
         <DayGoals
           totals={totals(entries)}
+          planned={totals(pending)}
           target={target}
           dayTypeName={dayTypeName}
           onSetTargets={() => router.navigate('/piano')}
@@ -215,12 +264,46 @@ export default function TodayScreen() {
         {slots.map((slot) => {
           const own = entries.filter((entry) => entry.mealSlotId === slot.id);
           const sum = totals(own);
+          const ownPending = pending.filter((item) => item.mealSlotId === slot.id);
+          const status = mealPlanStatus(
+            plan.filter((item) => item.mealSlotId === slot.id).map((item) => item.id),
+            own.map((entry) => entry.planItemId),
+          );
+          const openKey = `${date}:${slot.id}`;
           return (
             <MealSection
               key={slot.id}
               name={slot.name}
               kcal={sum.energy_kcal}
               protein={sum.protein_g}
+              progress={status.progress}
+              collapsed={status.complete && !opened.has(openKey)}
+              onToggle={
+                status.complete
+                  ? () =>
+                      setOpened((current) => {
+                        const next = new Set(current);
+                        if (next.has(openKey)) next.delete(openKey);
+                        else next.add(openKey);
+                        return next;
+                      })
+                  : undefined
+              }
+              onConfirmAll={() => void confirm(ownPending)}
+              planned={ownPending.map((item) => ({
+                key: item.id,
+                row: (
+                  <PlannedRow
+                    name={item.foodName}
+                    quantity={item.quantity}
+                    unit={item.unit}
+                    kcal={entryAmount(item.snapshot, 'energy_kcal', item.quantity)}
+                    protein={entryAmount(item.snapshot, 'protein_g', item.quantity)}
+                    onConfirm={() => void confirm([item])}
+                    onEdit={() => setConfirming(item)}
+                  />
+                ),
+              }))}
               onAdd={() =>
                 router.push({
                   pathname: '/cerca',
@@ -271,6 +354,33 @@ export default function TodayScreen() {
             onConfirm={(quantity) => void saveQuantity(editing, quantity)}
             onDelete={() => void remove(editing)}
             onClose={() => setEditing(null)}
+          />
+        ) : null}
+      </Modal>
+
+      <Modal
+        visible={confirming !== null}
+        transparent
+        animationType="none"
+        statusBarTranslucent
+        navigationBarTranslucent
+        onRequestClose={() => setConfirming(null)}
+      >
+        {confirming ? (
+          <GramSheet
+            visible
+            food={{
+              name: confirming.foodName,
+              state: confirming.foodState,
+              per100: Object.fromEntries(
+                Object.entries(confirming.snapshot).map(([code, value]) => [code, value.amount]),
+              ),
+            }}
+            mealName={slots.find((slot) => slot.id === confirming.mealSlotId)?.name}
+            startGrams={confirming.quantity}
+            confirmVerb="Conferma"
+            onConfirm={(quantity) => void confirm([confirming], quantity)}
+            onClose={() => setConfirming(null)}
           />
         ) : null}
       </Modal>

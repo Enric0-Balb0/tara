@@ -80,6 +80,8 @@ export interface DiaryEntry {
   quantity: number;
   unit: BaseUnit;
   snapshot: NutrientSnapshot;
+  /** La voce del piano che questa voce conferma (RF-130); null se registrata a mano. */
+  planItemId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -94,6 +96,7 @@ interface EntryRow {
   quantity: number;
   unit: BaseUnit;
   nutrients_snapshot: string;
+  plan_item_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -109,6 +112,7 @@ function toEntry(row: EntryRow): DiaryEntry {
     quantity: row.quantity,
     unit: row.unit,
     snapshot: JSON.parse(row.nutrients_snapshot) as NutrientSnapshot,
+    planItemId: row.plan_item_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -137,6 +141,8 @@ export async function addEntry(
     food: EntryFood;
     quantity: number;
     now: Date;
+    /** La voce del piano confermata da questa voce, se c'è. */
+    planItemId?: string;
   },
 ): Promise<DiaryEntry> {
   const stamp = input.now.toISOString();
@@ -150,13 +156,14 @@ export async function addEntry(
     quantity: input.quantity,
     unit: input.food.baseUnit,
     nutrients_snapshot: JSON.stringify(snapshotFrom(input.food.nutrients)),
+    plan_item_id: input.planItemId ?? null,
     created_at: stamp,
     updated_at: stamp,
   };
   await db.runAsync(
     `INSERT INTO diary_entry (id, user_id, date, meal_slot_id, food_id, food_name, food_state,
-       quantity, unit, nutrients_snapshot, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       quantity, unit, nutrients_snapshot, plan_item_id, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     row.id,
     input.userId,
     row.date,
@@ -167,6 +174,7 @@ export async function addEntry(
     row.quantity,
     row.unit,
     row.nutrients_snapshot,
+    row.plan_item_id,
     row.created_at,
     row.updated_at,
   );
@@ -184,7 +192,7 @@ export async function entriesForDay(
 ): Promise<DiaryEntry[]> {
   const rows = await db.getAllAsync<EntryRow>(
     `SELECT e.id, e.date, e.meal_slot_id, e.food_id, e.food_name, e.food_state, e.quantity,
-            e.unit, e.nutrients_snapshot, e.created_at, e.updated_at
+            e.unit, e.nutrients_snapshot, e.plan_item_id, e.created_at, e.updated_at
      FROM diary_entry AS e
        JOIN meal_slot AS s
          ON s.id = e.meal_slot_id AND s.user_id = e.user_id AND s.deleted_at IS NULL

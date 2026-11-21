@@ -165,6 +165,40 @@ export const MIGRATIONS: readonly string[] = [
     SELECT RAISE(ABORT, 'day_type_last_one');
   END;
   `,
+  // v6: piano alimentare per tipo di giornata (RF-130). Ogni alimento del piano porta la copia
+  // dei suoi valori, come una voce del diario; una voce confermata dal piano lo ricorda in
+  // plan_item_id, così quel giorno la voce prevista non compare più.
+  `
+  CREATE TABLE plan_item (
+    id TEXT PRIMARY KEY NOT NULL,
+    user_id TEXT NOT NULL,
+    day_type_id TEXT NOT NULL REFERENCES day_type (id),
+    meal_slot_id TEXT NOT NULL REFERENCES meal_slot (id),
+    food_id TEXT NOT NULL,
+    food_name TEXT NOT NULL,
+    food_state TEXT NOT NULL
+      CONSTRAINT plan_item_food_state_valid
+      CHECK (food_state IN ('raw', 'cooked', 'not_applicable')),
+    quantity REAL NOT NULL
+      CONSTRAINT plan_item_quantity_positive CHECK (quantity > 0),
+    unit TEXT NOT NULL
+      CONSTRAINT plan_item_unit_valid CHECK (unit IN ('g', 'ml')),
+    nutrients_snapshot TEXT NOT NULL
+      CONSTRAINT plan_item_snapshot_json CHECK (json_valid(nutrients_snapshot)),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  ) STRICT;
+
+  CREATE INDEX plan_item_day_type ON plan_item (user_id, day_type_id);
+
+  ALTER TABLE diary_entry ADD COLUMN plan_item_id TEXT;
+
+  -- Una voce del piano si conferma una volta al giorno: un doppio tocco non la raddoppia.
+  CREATE UNIQUE INDEX diary_entry_plan_item_once
+    ON diary_entry (user_id, date, plan_item_id)
+    WHERE plan_item_id IS NOT NULL AND deleted_at IS NULL;
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
