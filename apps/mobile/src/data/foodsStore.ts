@@ -105,7 +105,7 @@ export async function updateFood(
     const { changes } = await db.runAsync(
       `UPDATE food SET name = ?, state = ?, base_unit = ?, search_text = ?, brand = ?,
          updated_at = ?
-       WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
+       WHERE id = ? AND user_id = ? AND source <> 'recipe' AND deleted_at IS NULL`,
       input.name.trim(),
       input.state,
       input.baseUnit,
@@ -146,7 +146,7 @@ export async function deleteFood(
   await db.withTransactionAsync(async () => {
     const { changes } = await db.runAsync(
       `UPDATE food SET deleted_at = ?, updated_at = ?
-       WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
+       WHERE id = ? AND user_id = ? AND source <> 'recipe' AND deleted_at IS NULL`,
       at,
       at,
       id,

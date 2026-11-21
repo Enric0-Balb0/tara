@@ -248,11 +248,28 @@ describe('ricalcolo dei valori (RF-22)', () => {
     expect((await valuesOf(outer)).protein_g?.amountPer100).toBeCloseTo(20, 6);
   });
 
-  it('il ricalcolo di tutte le ricette salta quelle eliminate', async () => {
+  it('il ricalcolo di tutte le ricette non tocca i valori di quelle eliminate', async () => {
     const id = await pancake();
+    const before = await valuesOf(id);
     await deleteRecipe(db, USER, id, later(1));
-    await expect(refreshRecipeValues(db)).resolves.toBeUndefined();
-    expect(await recipes(db, USER)).toEqual([]);
+    await updateFood(
+      db,
+      USER,
+      oats,
+      { ...OATS, values: { energy_kcal: 400, protein_g: 20, carbs_g: 60, fat_g: 7 } },
+      later(2),
+    );
+    await refreshRecipeValues(db);
+    await refreshRecipeValues(db, [id]);
+    const rows = await db.getAllAsync<{ nutrient_code: string; amount_per_100: number }>(
+      'SELECT nutrient_code, amount_per_100 FROM nutrient_value WHERE food_id = ? ORDER BY 1',
+      id,
+    );
+    expect(rows.map((row) => [row.nutrient_code, row.amount_per_100])).toEqual(
+      Object.values(before)
+        .map((n) => [n.code, n.amountPer100] as const)
+        .sort((a, b) => a[0].localeCompare(b[0])),
+    );
   });
 });
 
@@ -280,6 +297,23 @@ describe('catalogo che perde un ingrediente', () => {
     expect(await valuesOf(id)).toEqual(before);
     const detail = await recipeDetail(db, USER, id);
     expect(detail?.items.map((item) => item.foodId)).toEqual(['albume-crudo', oats]);
+  });
+});
+
+describe('updateFood e deleteFood non toccano le ricette', () => {
+  it('updateFood su una ricetta dà false e i valori restano', async () => {
+    const id = await pancake();
+    const before = await valuesOf(id);
+    expect(await updateFood(db, USER, id, { ...OATS, name: 'Rubata' }, later(1))).toBe(false);
+    expect(await valuesOf(id)).toEqual(before);
+    expect((await recipeDetail(db, USER, id))?.name).toBe('Pancake proteici');
+  });
+
+  it('deleteFood su una ricetta non la elimina', async () => {
+    const id = await pancake();
+    await deleteFood(db, USER, id, later(1));
+    expect(await recipes(db, USER)).toHaveLength(1);
+    expect(await getFood(db, id)).not.toBeNull();
   });
 });
 
