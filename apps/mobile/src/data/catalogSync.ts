@@ -14,6 +14,7 @@
 import type { CatalogProgress } from '@/domain/searchStatus';
 
 import { catalogInfo, markChecked, replaceCatalog } from './catalogStore';
+import { refreshRecipeValues } from './recipesStore';
 import type { SqlDatabase } from './sql';
 
 export type SyncResult =
@@ -213,6 +214,13 @@ async function attempt(
       etag,
       syncedAt: now().toISOString(),
     });
+    // I generici sono nuovi: le ricette si ricalcolano. Se fallisce, il catalogo è comunque
+    // salvato e la sincronizzazione riuscita.
+    try {
+      await refreshRecipeValues(db);
+    } catch (error) {
+      console.error('Ricalcolo delle ricette non riuscito', error);
+    }
     return { kind: 'updated', version, foodCount };
   } catch {
     return { kind: 'failed', reason: 'invalid' };

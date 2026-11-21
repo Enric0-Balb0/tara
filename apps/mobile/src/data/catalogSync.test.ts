@@ -2,8 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { CatalogProgress } from '@/domain/searchStatus';
 
-import { catalogInfo } from './catalogStore';
+import { catalogInfo, getFood } from './catalogStore';
 import { FIRST_DOWNLOAD_TIMEOUT_MS, syncCatalog, WAKE_DELAYS_MS } from './catalogSync';
+import { createRecipe } from './recipesStore';
 import { initDatabase } from './schema';
 import type { SqlDatabase } from './sql';
 import { fakeXhr, split } from './testing/fakeXhr';
@@ -39,7 +40,9 @@ const networkDown: Reply = async () => {
 };
 const neverAnswers: Reply = (init) =>
   new Promise((_, reject) => {
-    init?.signal?.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+    init?.signal?.addEventListener('abort', () =>
+      reject(new DOMException('Aborted', 'AbortError')),
+    );
   });
 
 let db: SqlDatabase;
@@ -107,6 +110,42 @@ describe('syncCatalog', () => {
     const { fetch } = server(ok(snapshotText(withoutCoffee, 'v2'), '"v2"'));
     expect(await sync(fetch, LATER)).toEqual({ kind: 'updated', version: 'v2', foodCount: 2 });
     expect(await catalogInfo(db)).toMatchObject({ version: 'v2', syncedAt: LATER.toISOString() });
+  });
+
+  it('con un catalogo nuovo ricalcola i valori delle ricette', async () => {
+    await downloadFirstCatalog();
+    const recipe = await createRecipe(
+      db,
+      'utente',
+      {
+        name: 'Frittata',
+        yield: { mode: 'portions', portions: 1 },
+        items: [{ foodId: 'albume-crudo', gramsRaw: 100 }],
+      },
+      FIRST,
+    );
+    const richer = TEST_FOODS.map((food) =>
+      food.id === 'albume-crudo'
+        ? {
+            ...food,
+            values: { ...food.values, energy_kcal: { ...food.values.energy_kcal!, amount: 60 } },
+          }
+        : food,
+    );
+    const { fetch } = server(ok(snapshotText(richer, 'v2'), '"v2"'));
+    expect(await sync(fetch, LATER)).toMatchObject({ kind: 'updated' });
+    const kcal = (await getFood(db, recipe))?.nutrients.find((n) => n.code === 'energy_kcal');
+    expect(kcal?.amountPer100).toBe(60);
+  });
+
+  it('se il ricalcolo delle ricette fallisce la sincronizzazione riesce lo stesso', async () => {
+    await downloadFirstCatalog();
+    await db.execAsync('DROP TABLE recipe_item; DROP TABLE recipe');
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const { fetch } = server(ok(snapshotText(TEST_FOODS, 'v2'), '"v2"'));
+    expect(await sync(fetch, LATER)).toMatchObject({ kind: 'updated', version: 'v2' });
+    expect(error).toHaveBeenCalled();
+    error.mockRestore();
   });
 
   it('server spento: offline e catalogo intatto', async () => {

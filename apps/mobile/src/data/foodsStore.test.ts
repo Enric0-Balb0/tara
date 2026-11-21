@@ -10,6 +10,7 @@ import {
 } from './foodsStore';
 import { addEntry, ensureMealSlots, entriesForDay } from './diaryStore';
 import { favorites, recentFoods, setFavorite } from './quickStore';
+import { createRecipe } from './recipesStore';
 import { initDatabase } from './schema';
 import type { SqlDatabase } from './sql';
 import { snapshotText } from './testing/snapshot';
@@ -127,6 +128,23 @@ describe('personalFoods', () => {
       expect.objectContaining({ name: 'Bresaola', brand: null, kcal: 63 }),
       expect.objectContaining({ name: 'Skyr bianco', brand: 'Müller', kcal: 63 }),
     ]);
+  });
+});
+
+describe('personalFoods e ricette', () => {
+  it('non include le ricette: hanno il loro elenco', async () => {
+    const skyr = await createFood(db, USER, SKYR, NOW);
+    await createRecipe(
+      db,
+      USER,
+      {
+        name: 'Budino',
+        yield: { mode: 'portions', portions: 1 },
+        items: [{ foodId: skyr, gramsRaw: 150 }],
+      },
+      later(1),
+    );
+    expect((await personalFoods(db, USER)).map((food) => food.name)).toEqual(['Skyr bianco']);
   });
 });
 
