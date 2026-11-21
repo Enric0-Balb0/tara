@@ -8,6 +8,8 @@ import {
   personalFoods,
   updateFood,
 } from './foodsStore';
+import { addEntry, ensureMealSlots, entriesForDay } from './diaryStore';
+import { favorites, recentFoods, setFavorite } from './quickStore';
 import { initDatabase } from './schema';
 import type { SqlDatabase } from './sql';
 import { snapshotText } from './testing/snapshot';
@@ -24,6 +26,7 @@ const SKYR: PersonalFoodInput = {
   state: 'not_applicable',
   baseUnit: 'g',
   values: { energy_kcal: 63, fat_g: 0.2, carbs_g: 4, protein_g: 11, salt_g: 0.13, sodium_mg: 52 },
+  derived: ['sodium_mg'],
 };
 
 let db: SqlDatabase;
@@ -54,7 +57,7 @@ describe('createFood (RF-18)', () => {
       ['carbs_g', 4, 'manual', 1],
       ['fat_g', 0.2, 'manual', 1],
       ['salt_g', 0.13, 'manual', 1],
-      ['sodium_mg', 52, 'manual', 1],
+      ['sodium_mg', 52, 'estimated', 1],
     ]);
   });
 
@@ -167,5 +170,36 @@ describe('updateFood e deleteFood', () => {
     const food = await getFood(db, id);
     expect(food?.name).toBe('Skyr bianco');
     expect(food?.nutrients).toHaveLength(6);
+  });
+});
+
+describe('preferiti e recenti degli alimenti personali', () => {
+  it('rinominato, il preferito mostra il nome nuovo', async () => {
+    const id = await createFood(db, USER, SKYR, NOW);
+    await setFavorite(db, USER, { id, name: 'Skyr bianco', state: 'not_applicable' }, true, NOW);
+    await updateFood(db, USER, id, { ...SKYR, name: 'Skyr greco', state: 'raw' }, later(1));
+    expect((await favorites(db, USER)).map((f) => [f.foodName, f.foodState])).toEqual([
+      ['Skyr greco', 'raw'],
+    ]);
+  });
+
+  it('eliminato, sparisce da preferiti e recenti; il diario resta', async () => {
+    const id = await createFood(db, USER, SKYR, NOW);
+    const food = await getFood(db, id);
+    if (food === null) throw new Error('alimento non salvato');
+    await setFavorite(db, USER, food, true, NOW);
+    const [slot] = await ensureMealSlots(db, USER, NOW);
+    await addEntry(db, {
+      userId: USER,
+      date: '2026-11-21',
+      mealSlotId: slot?.id ?? '',
+      food,
+      quantity: 170,
+      now: NOW,
+    });
+    await deleteFood(db, USER, id, later(1));
+    expect(await favorites(db, USER)).toEqual([]);
+    expect(await recentFoods(db, USER, 10)).toEqual([]);
+    expect(await entriesForDay(db, USER, '2026-11-21')).toHaveLength(1);
   });
 });

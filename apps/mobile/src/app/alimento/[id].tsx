@@ -69,7 +69,9 @@ export default function FoodScreen() {
       void (async () => {
         const found = await getFood(db, id);
         const other =
-          found && found.state !== 'not_applicable'
+          // La variante sta nel catalogo condiviso: per un alimento personale porterebbe a
+          // un generico con lo stesso nome, non a un prodotto dell'utente.
+          found && !found.personal && found.state !== 'not_applicable'
             ? await getVariant(db, found.name, found.state === 'raw' ? 'cooked' : 'raw')
             : null;
         if (current) {

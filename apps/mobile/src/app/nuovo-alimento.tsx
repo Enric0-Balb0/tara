@@ -16,6 +16,7 @@ import { createFood, deleteFood, updateFood } from '@/data/foodsStore';
 import { useSession } from '@/data/SessionProvider';
 import type { SqlDatabase } from '@/data/sql';
 import type { BaseUnit, FoodState } from '@/domain/food';
+import { formatNumber } from '@/domain/format';
 import {
   emptyFoodTexts,
   type FoodTexts,
@@ -68,8 +69,9 @@ export default function NewFoodScreen() {
   const [state, setState] = useState<FoodState>('not_applicable');
   const [unit, setUnit] = useState<BaseUnit>('g');
   const [texts, setTexts] = useState<FoodTexts>(emptyFoodTexts);
-  // In modifica il form si mostra quando l'alimento è letto, per non sovrascriverlo vuoto.
-  const [loaded, setLoaded] = useState(editing === undefined);
+  // In modifica il form si mostra quando l'alimento è letto, per non sovrascriverlo vuoto;
+  // 'missing' se non c'è più (eliminato altrove) o non si legge.
+  const [loaded, setLoaded] = useState<boolean | 'missing'>(editing === undefined);
   // I campi obbligatori si segnalano dopo il primo "Salva", non mentre si inizia a scrivere.
   const [tried, setTried] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -78,17 +80,29 @@ export default function NewFoodScreen() {
   useEffect(() => {
     if (editing === undefined) return undefined;
     let current = true;
-    void getFood(db, editing).then((food) => {
-      if (!current || food === null) return;
-      setName(food.name);
-      setBrand(food.brand ?? '');
-      setState(food.state);
-      setUnit(food.baseUnit);
-      setTexts(
-        foodTextsOf(Object.fromEntries(food.nutrients.map((n) => [n.code, n.amountPer100]))),
-      );
-      setLoaded(true);
-    });
+    void getFood(db, editing)
+      .then((food) => {
+        if (!current) return;
+        if (food === null || !food.personal) {
+          setLoaded('missing');
+          return;
+        }
+        setName(food.name);
+        setBrand(food.brand ?? '');
+        setState(food.state);
+        setUnit(food.baseUnit);
+        setTexts(
+          foodTextsOf(
+            Object.fromEntries(food.nutrients.map((n) => [n.code, n.amountPer100])),
+            food.nutrients.filter((n) => n.provenance === 'estimated').map((n) => n.code),
+          ),
+        );
+        setLoaded(true);
+      })
+      .catch((error: unknown) => {
+        console.error('Alimento non letto', error);
+        if (current) setLoaded('missing');
+      });
     return () => {
       current = false;
     };
@@ -111,10 +125,21 @@ export default function NewFoodScreen() {
     if (!form.ok || userId === undefined || busy.current) return;
     busy.current = true;
     setSaving(true);
-    const input = { name, brand, state, baseUnit: unit, values: form.values };
+    const input = {
+      name,
+      brand,
+      state,
+      baseUnit: unit,
+      values: form.values,
+      derived: form.derived,
+    };
     try {
       if (editing !== undefined) {
-        await updateFood(db, userId, editing, input, new Date());
+        if (!(await updateFood(db, userId, editing, input, new Date()))) {
+          Alert.alert('Modifiche non salvate', "L'alimento non è più nel tuo catalogo.");
+          router.dismiss(2);
+          return;
+        }
         router.back();
         return;
       }
@@ -183,7 +208,12 @@ export default function NewFoodScreen() {
           {editing ? 'Modifica alimento' : 'Nuovo alimento'}
         </TaraText>
       </View>
-      {loaded ? (
+      {loaded === 'missing' ? (
+        <View style={styles.missing}>
+          <TaraText variant="section">Alimento non trovato</TaraText>
+          <Button label="Torna indietro" kind="secondary" onPress={() => router.back()} />
+        </View>
+      ) : loaded ? (
         <>
           <ScrollView
             contentContainerStyle={styles.content}
@@ -256,6 +286,11 @@ export default function NewFoodScreen() {
                 </TaraText>
               </View>
             ) : null}
+            {form.values.sodium_mg !== undefined ? (
+              <TaraText variant="caption" color="textSecondary">
+                Sodio {formatNumber(form.values.sodium_mg, 0)} mg, calcolato dal sale.
+              </TaraText>
+            ) : null}
 
             {editing !== undefined ? (
               <Button label="Elimina alimento" kind="quiet" onPress={confirmDelete} />
@@ -296,6 +331,7 @@ const styles = StyleSheet.create({
   brand: { flex: 2 },
   check: { flexDirection: 'row', gap: space.s, alignItems: 'flex-start' },
   checkText: { flex: 1 },
+  missing: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.l },
   actions: {
     paddingHorizontal: space.l,
     paddingTop: space.m,

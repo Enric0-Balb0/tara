@@ -163,6 +163,7 @@ Idea di Enrico: quando si inserisce un alimento a mano, il modulo ha la forma de
 - **"Aggiungi una voce"** inserisce le righe facoltative al loro posto, rientrate sotto la voce madre (decisione di Enrico): monoinsaturi, polinsaturi, trans e colesterolo sotto i grassi; polioli, amido e lattosio sotto i carboidrati; vitamine e minerali, caffeina e creatina in fondo.
 - Sotto la tabella: il controllo delle calorie contro i macro (RF-15) e il sodio calcolato dal sale (RF-16).
 - Lo stesso componente mostra i valori letti da una foto (RF-13, RF-14): i campi incerti sono evidenziati con `daControllare`.
+- Fatta il 21/11 con le righe fisse *(scelte di progetto)*: sopra la tabella nome e marca affiancati, "Si pesa: Così com'è · Crudo · Cotto" (lo stato n.a. non si nomina) e "Per 100 g · Per 100 ml". "Avanti" sulla tastiera passa alla riga sotto; toccare un valore lo seleziona, per riscriverlo. Se manca una delle due energie si ricava dall'altra e il campo vuoto la suggerisce ("≈ 264"). Gli obbligatori (kcal o kJ, grassi, carboidrati, proteine) si segnalano solo dopo il primo "Salva"; un numero non valido o un "di cui" maggiore del totale subito, sotto la riga, in `erroreEtichetta` (l'errore del tema chiaro, perché la carta è bianca). Il controllo delle calorie avvisa in `daControllare` senza bloccare: polioli e alcol spostano il conto.
 
 ## Schermate
 

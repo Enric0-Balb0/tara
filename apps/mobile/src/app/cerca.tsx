@@ -51,6 +51,7 @@ export default function SearchScreen() {
   const userId = session?.user.id;
   // Con il campo vuoto: preferiti e recenti, per registrare senza scrivere (RF-44).
   const [focusCount, setFocusCount] = useState(0);
+  const focusedOnce = useRef(false);
   const [quick, setQuick] = useState<{ favorites: QuickFood[]; recent: RecentFood[] }>({
     favorites: [],
     recent: [],
@@ -58,7 +59,9 @@ export default function SearchScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      setFocusCount((count) => count + 1);
+      // Al primo focus la ricerca è appena partita: si ripete solo tornando alla schermata.
+      if (focusedOnce.current) setFocusCount((count) => count + 1);
+      focusedOnce.current = true;
       if (userId === undefined) return undefined;
       let current = true;
       void Promise.all([loadFavorites(db, userId), recentFoods(db, userId, 10)])
@@ -148,6 +151,59 @@ export default function SearchScreen() {
           syncing,
         });
 
+  const footer =
+    status?.kind === 'downloading' && status.message ? (
+      <Download headline={status.message} {...downloadProgress(progress)} />
+    ) : status?.kind === 'hint' && (quick.favorites.length > 0 || quick.recent.length > 0) ? (
+      <View style={styles.quick}>
+        {quick.favorites.length > 0 ? (
+          <View>
+            <TaraText variant="bodyStrong" accessibilityRole="header" style={styles.quickTitle}>
+              Preferiti
+            </TaraText>
+            {quick.favorites.map((food) => (
+              <QuickRow
+                key={`p-${food.foodId}`}
+                name={food.foodName}
+                state={food.foodState}
+                onPress={() => open(food.foodId)}
+              />
+            ))}
+          </View>
+        ) : null}
+        {quick.recent.length > 0 ? (
+          <View>
+            <TaraText variant="bodyStrong" accessibilityRole="header" style={styles.quickTitle}>
+              Recenti
+            </TaraText>
+            {quick.recent.map((food) => (
+              <QuickRow
+                key={`r-${food.foodId}`}
+                name={food.foodName}
+                state={food.foodState}
+                detail={`ultima volta ${formatAmount(food.lastQuantity, 'grams')} ${food.unit}`}
+                onPress={() => open(food.foodId)}
+              />
+            ))}
+          </View>
+        ) : null}
+      </View>
+    ) : status?.message ? (
+      <View style={styles.footer}>
+        <TaraText color="textSecondary" style={styles.message}>
+          {status.message}
+        </TaraText>
+        {status.kind === 'offline' ? (
+          <PressableScale
+            onPress={refresh}
+            style={[styles.retry, { borderColor: colors.borderStrong }]}
+          >
+            <TaraText variant="bodyStrong">Riprova</TaraText>
+          </PressableScale>
+        ) : null}
+      </View>
+    ) : null;
+
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <View style={styles.top}>
@@ -182,70 +238,15 @@ export default function SearchScreen() {
           />
         )}
         ListFooterComponent={
-          status?.kind === 'downloading' && status.message ? (
-            <Download headline={status.message} {...downloadProgress(progress)} />
-          ) : status?.kind === 'hint' && (quick.favorites.length > 0 || quick.recent.length > 0) ? (
-            <View style={styles.quick}>
-              {quick.favorites.length > 0 ? (
-                <View>
-                  <TaraText
-                    variant="bodyStrong"
-                    accessibilityRole="header"
-                    style={styles.quickTitle}
-                  >
-                    Preferiti
-                  </TaraText>
-                  {quick.favorites.map((food) => (
-                    <QuickRow
-                      key={`p-${food.foodId}`}
-                      name={food.foodName}
-                      state={food.foodState}
-                      onPress={() => open(food.foodId)}
-                    />
-                  ))}
-                </View>
-              ) : null}
-              {quick.recent.length > 0 ? (
-                <View>
-                  <TaraText
-                    variant="bodyStrong"
-                    accessibilityRole="header"
-                    style={styles.quickTitle}
-                  >
-                    Recenti
-                  </TaraText>
-                  {quick.recent.map((food) => (
-                    <QuickRow
-                      key={`r-${food.foodId}`}
-                      name={food.foodName}
-                      state={food.foodState}
-                      detail={`ultima volta ${formatAmount(food.lastQuantity, 'grams')} ${food.unit}`}
-                      onPress={() => open(food.foodId)}
-                    />
-                  ))}
-                </View>
-              ) : null}
-            </View>
-          ) : status?.message ? (
-            <View style={styles.footer}>
-              <TaraText color="textSecondary" style={styles.message}>
-                {status.message}
-              </TaraText>
-              {status.kind === 'offline' ? (
-                <PressableScale
-                  onPress={refresh}
-                  style={[styles.retry, { borderColor: colors.borderStrong }]}
-                >
-                  <TaraText variant="bodyStrong">Riprova</TaraText>
-                </PressableScale>
-              ) : null}
-              {status.kind === 'no-results' ? <CreateRow query={query} onPress={create} /> : null}
-            </View>
-          ) : status?.kind === 'results' ? (
-            <View style={styles.createAfter}>
-              <CreateRow query={query} onPress={create} />
-            </View>
-          ) : undefined
+          <>
+            {footer}
+            {/* Anche senza il catalogo condiviso: gli alimenti personali non lo richiedono. */}
+            {status !== null && status.kind !== 'hint' && status.kind !== 'pending' ? (
+              <View style={styles.createAfter}>
+                <CreateRow query={query} onPress={create} />
+              </View>
+            ) : null}
+          </>
         }
       />
     </View>

@@ -18,6 +18,8 @@ export interface PersonalFoodInput {
   baseUnit: BaseUnit;
   /** Per 100 g o 100 ml, per codice di nutriente; un nutriente assente manca. */
   values: Readonly<Record<string, number>>;
+  /** I valori calcolati da altri (kcal dai kJ, sodio dal sale): provenienza `estimated`. */
+  derived?: readonly string[];
 }
 
 export interface PersonalFood {
@@ -42,13 +44,21 @@ function brandOf(input: PersonalFoodInput): string | null {
   return brand === '' ? null : brand;
 }
 
-// Valori inseriti a mano: confidenza piena, la fonte è chi legge l'etichetta.
+// Scritti a mano dall'etichetta (`manual`) o calcolati da quelli (`estimated`, così in modifica
+// si ricalcolano); confidenza piena in entrambi i casi: la conversione è esatta.
 async function insertValues(db: SqlDatabase, foodId: string, input: PersonalFoodInput) {
+  const derived = input.derived ?? [];
+  const rows = Object.entries(input.values).map(([code, amount]) => [
+    code,
+    amount,
+    derived.includes(code) ? 'estimated' : 'manual',
+  ]);
   await db.runAsync(
     `INSERT INTO nutrient_value (food_id, nutrient_code, amount_per_100, provenance, confidence)
-     SELECT ?, key, value, 'manual', 1 FROM json_each(?)`,
+     SELECT ?, json_extract(value, '$[0]'), json_extract(value, '$[1]'), json_extract(value, '$[2]'), 1
+     FROM json_each(?)`,
     foodId,
-    JSON.stringify(input.values),
+    JSON.stringify(rows),
   );
 }
 
@@ -107,12 +117,22 @@ export async function updateFood(
     if (changes === 0) return;
     await db.runAsync('DELETE FROM nutrient_value WHERE food_id = ?', id);
     await insertValues(db, id, input);
+    // Il preferito è un rimando, non storia: segue il nome nuovo (il diario no, principio 7).
+    await db.runAsync(
+      `UPDATE favorite_food SET food_name = ?, food_state = ?, updated_at = ?
+       WHERE user_id = ? AND food_id = ? AND deleted_at IS NULL`,
+      input.name.trim(),
+      input.state,
+      now.toISOString(),
+      userId,
+      id,
+    );
     changed = true;
   });
   return changed;
 }
 
-/** Cancellazione logica: il diario resta com'era, con i suoi valori. */
+/** Cancellazione logica, preferito compreso: il diario resta com'era, con i suoi valori. */
 export async function deleteFood(
   db: SqlDatabase,
   userId: string,
@@ -120,14 +140,25 @@ export async function deleteFood(
   now: Date,
 ): Promise<void> {
   const at = now.toISOString();
-  await db.runAsync(
-    `UPDATE food SET deleted_at = ?, updated_at = ?
-     WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
-    at,
-    at,
-    id,
-    userId,
-  );
+  await db.withTransactionAsync(async () => {
+    const { changes } = await db.runAsync(
+      `UPDATE food SET deleted_at = ?, updated_at = ?
+       WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
+      at,
+      at,
+      id,
+      userId,
+    );
+    if (changes === 0) return;
+    await db.runAsync(
+      `UPDATE favorite_food SET deleted_at = ?, updated_at = ?
+       WHERE user_id = ? AND food_id = ? AND deleted_at IS NULL`,
+      at,
+      at,
+      userId,
+      id,
+    );
+  });
 }
 
 /** Il catalogo personale per la Dispensa, in ordine alfabetico. */

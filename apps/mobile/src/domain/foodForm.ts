@@ -57,22 +57,21 @@ export function emptyFoodTexts(): FoodTexts {
   return Object.fromEntries(LABEL_FIELDS.map((field) => [field.code, '']));
 }
 
-/** I valori salvati come testo del form: virgola decimale, niente zeri in coda. */
+/**
+ * I valori salvati come testo del form: virgola decimale, niente zeri in coda. Un valore
+ * ricavato da un altro (`derived`, i kJ dalle kcal) torna vuoto: se cambia quello scritto,
+ * si ricalcola invece di restare quello di prima.
+ */
 export function foodTextsOf(
   values: Readonly<Record<string, number | null | undefined>>,
+  derived: readonly string[],
 ): FoodTexts {
-  // Un'energia salvata perché ricavata dall'altra (readFoodForm) torna vuota: se cambiano
-  // le kcal, i kJ si ricalcolano invece di restare quelli di prima.
-  const { energy_kj: kj, energy_kcal: kcal } = values;
-  let derived: string | null = null;
-  if (kj != null && kcal != null) {
-    if (kj === Math.round(kcal * KJ_PER_KCAL)) derived = 'energy_kj';
-    else if (kcal === Math.round(kj / KJ_PER_KCAL)) derived = 'energy_kcal';
-  }
   return Object.fromEntries(
     LABEL_FIELDS.map((field) => {
       const value = values[field.code];
-      if (value === null || value === undefined || field.code === derived) return [field.code, ''];
+      if (value === null || value === undefined || derived.includes(field.code)) {
+        return [field.code, ''];
+      }
       const decimals = Number.isInteger(value) ? 0 : Number.isInteger(value * 10) ? 1 : 2;
       return [field.code, formatNumber(value, decimals)];
     }),
@@ -91,6 +90,8 @@ export interface FoodForm {
   ok: boolean;
   /** Valori per 100 da salvare: un campo vuoto non c'è (principio 2). */
   values: Record<string, number>;
+  /** I codici dei valori ricavati da altri (kcal dai kJ o viceversa, sodio dal sale). */
+  derived: string[];
   /** Per campo (codice del nutriente), `name` per il nome e `total` per la somma. */
   errors: Record<string, string>;
 }
@@ -103,6 +104,7 @@ const round = (value: number, decimals: number) => {
 export function readFoodForm(name: string, texts: FoodTexts): FoodForm {
   const errors: Record<string, string> = {};
   const values: Record<string, number> = {};
+  const derived: string[] = [];
   if (name.trim() === '') errors.name = 'Scrivi il nome';
 
   for (const field of LABEL_FIELDS) {
@@ -117,9 +119,11 @@ export function readFoodForm(name: string, texts: FoodTexts): FoodForm {
   const { energy_kj: kj, energy_kcal: kcal } = values;
   if (kcal === undefined && kj !== undefined && !errors.energy_kcal) {
     values.energy_kcal = Math.round(kj / KJ_PER_KCAL);
+    derived.push('energy_kcal');
   }
   if (kj === undefined && kcal !== undefined && !errors.energy_kj) {
     values.energy_kj = Math.round(kcal * KJ_PER_KCAL);
+    derived.push('energy_kj');
   }
 
   for (const [code, message] of Object.entries(REQUIRED)) {
@@ -138,9 +142,12 @@ export function readFoodForm(name: string, texts: FoodTexts): FoodForm {
   if (mass > MAX_GRAMS) errors.total = 'Più di 100 g di nutrienti in 100 g: ricontrolla i valori';
 
   // RF-16: le etichette UE riportano il sale, il sodio si ricava.
-  if (values.salt_g !== undefined) values.sodium_mg = round(sodiumMgFromSaltG(values.salt_g), 1);
+  if (values.salt_g !== undefined) {
+    values.sodium_mg = round(sodiumMgFromSaltG(values.salt_g), 1);
+    derived.push('sodium_mg');
+  }
 
-  return { ok: Object.keys(errors).length === 0, values, errors };
+  return { ok: Object.keys(errors).length === 0, values, derived, errors };
 }
 
 /**

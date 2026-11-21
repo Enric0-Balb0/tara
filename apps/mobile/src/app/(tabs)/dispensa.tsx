@@ -26,6 +26,7 @@ export default function PantryScreen() {
   const userId = session?.user.id;
   // undefined: si sta leggendo.
   const [foods, setFoods] = useState<PersonalFood[] | undefined>(undefined);
+  const [failed, setFailed] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -33,9 +34,16 @@ export default function PantryScreen() {
       let current = true;
       void personalFoods(db, userId)
         .then((list) => {
-          if (current) setFoods(list);
+          if (!current) return;
+          setFoods(list);
+          setFailed(false);
         })
-        .catch((error: unknown) => console.error('Dispensa non letta', error));
+        .catch((error: unknown) => {
+          console.error('Dispensa non letta', error);
+          if (!current) return;
+          setFoods([]);
+          setFailed(true);
+        });
       return () => {
         current = false;
       };
@@ -62,8 +70,9 @@ export default function PantryScreen() {
       ListEmptyComponent={
         foods ? (
           <TaraText color="textSecondary" style={styles.empty}>
-            Qui trovi i prodotti che inserisci tu: copi l&apos;etichetta una volta, poi li cerchi
-            come tutti gli altri.
+            {failed
+              ? 'Il telefono non è riuscito a leggere i tuoi alimenti: riprova tornando qui.'
+              : "Qui trovi i prodotti che inserisci tu: copi l'etichetta una volta, poi li cerchi come tutti gli altri."}
           </TaraText>
         ) : undefined
       }

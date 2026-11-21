@@ -52,6 +52,7 @@ describe('readFoodForm', () => {
       salt_g: 0.13,
       sodium_mg: 52,
     });
+    expect(form.derived).toEqual(['sodium_mg']);
   });
 
   it('un valore lasciato vuoto manca, non vale zero (principio 2)', () => {
@@ -71,9 +72,13 @@ describe('readFoodForm', () => {
     });
   });
 
-  it('con i soli kJ le kcal si calcolano, e viceversa', () => {
-    expect(readFoodForm('Skyr', skyr({ energy_kcal: '' })).values.energy_kcal).toBe(64);
-    expect(readFoodForm('Skyr', skyr({ energy_kj: '' })).values.energy_kj).toBe(264);
+  it('con i soli kJ le kcal si calcolano, e viceversa, segnate come ricavate', () => {
+    const fromKj = readFoodForm('Skyr', skyr({ energy_kcal: '' }));
+    expect(fromKj.values.energy_kcal).toBe(64);
+    expect(fromKj.derived).toEqual(['energy_kcal', 'sodium_mg']);
+    const fromKcal = readFoodForm('Skyr', skyr({ energy_kj: '' }));
+    expect(fromKcal.values.energy_kj).toBe(264);
+    expect(fromKcal.derived).toEqual(['energy_kj', 'sodium_mg']);
   });
 
   it('rifiuta un "di cui" più grande del totale', () => {
@@ -116,19 +121,23 @@ describe('kcalCheckText (RF-15)', () => {
 
 describe('foodTextsOf', () => {
   it('riporta nel form i valori salvati, con la virgola', () => {
-    const texts = foodTextsOf({ energy_kcal: 63, fat_g: 0.2, salt_g: 0.13 });
+    const texts = foodTextsOf({ energy_kcal: 63, fat_g: 0.2, salt_g: 0.13 }, []);
     expect(texts.energy_kcal).toBe('63');
     expect(texts.fat_g).toBe('0,2');
     expect(texts.salt_g).toBe('0,13');
     expect(texts.protein_g).toBe('');
   });
 
-  it("l'energia ricavata dall'altra torna vuota, così si ricalcola se cambia", () => {
-    expect(foodTextsOf({ energy_kcal: 63, energy_kj: 264 }).energy_kj).toBe('');
-    expect(foodTextsOf({ energy_kcal: 64, energy_kj: 267 }).energy_kcal).toBe('');
-    expect(foodTextsOf({ energy_kcal: 63, energy_kj: 267 })).toMatchObject({
+  it("un valore ricavato torna vuoto, così si ricalcola se cambia l'altro", () => {
+    // 1000 kJ scritti, 239 kcal ricavate: anche 239 × 4,184 fa 1000, ma conta chi è scritto.
+    expect(foodTextsOf({ energy_kcal: 239, energy_kj: 1000 }, ['energy_kcal'])).toMatchObject({
+      energy_kcal: '',
+      energy_kj: '1000',
+    });
+    expect(foodTextsOf({ energy_kcal: 63, energy_kj: 264 }, ['energy_kj']).energy_kj).toBe('');
+    expect(foodTextsOf({ energy_kcal: 63, energy_kj: 264 }, [])).toMatchObject({
       energy_kcal: '63',
-      energy_kj: '267',
+      energy_kj: '264',
     });
   });
 
