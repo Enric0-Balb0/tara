@@ -48,7 +48,7 @@ tags:
     visible: "Albume d'uovo in polvere"
     timeout: 90000
 - tapOn:
-    text: "Albume d'uovo"
+    text: "Albume d'uovo, .*kcal e .*"
     index: 0
 - extendedWaitUntil:
     visible: Aggiungi alla ricetta
@@ -75,10 +75,10 @@ tags:
       CAMPO: campo-ricerca
       TESTO: fiocchi d'avena
 - extendedWaitUntil:
-    visible: "Fiocchi d'avena"
+    visible: "Fiocchi d'avena, .*kcal e .*"
     timeout: 20000
 - tapOn:
-    text: "Fiocchi d'avena"
+    text: "Fiocchi d'avena, .*kcal e .*"
     index: 0
 - extendedWaitUntil:
     visible: Aggiungi alla ricetta
@@ -147,10 +147,10 @@ tags:
       CAMPO: campo-ricerca
       TESTO: pancake
 - extendedWaitUntil:
-    visible: Pancake
+    visible: 'Pancake, .*kcal e .*'
     timeout: 10000
 - tapOn:
-    text: Pancake
+    text: 'Pancake, .*kcal e .*'
     index: 0
 - extendedWaitUntil:
     visible: Aggiungi a Pranzo
@@ -194,7 +194,7 @@ tags:
     visible: "Albume d'uovo in polvere"
     timeout: 20000
 - tapOn:
-    text: "Albume d'uovo"
+    text: "Albume d'uovo, .*kcal e .*"
     index: 0
 - extendedWaitUntil:
     visible: Aggiungi alla ricetta
