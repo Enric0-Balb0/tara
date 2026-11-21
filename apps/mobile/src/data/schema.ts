@@ -199,6 +199,24 @@ export const MIGRATIONS: readonly string[] = [
     ON diary_entry (user_id, date, plan_item_id)
     WHERE plan_item_id IS NOT NULL AND deleted_at IS NULL;
   `,
+  // v7: alimenti preferiti (RF-44), con nome e stato per mostrarli anche senza il catalogo.
+  `
+  CREATE TABLE favorite_food (
+    id TEXT PRIMARY KEY NOT NULL,
+    user_id TEXT NOT NULL,
+    food_id TEXT NOT NULL,
+    food_name TEXT NOT NULL,
+    food_state TEXT NOT NULL
+      CONSTRAINT favorite_food_state_valid
+      CHECK (food_state IN ('raw', 'cooked', 'not_applicable')),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  ) STRICT;
+
+  CREATE UNIQUE INDEX favorite_food_once
+    ON favorite_food (user_id, food_id) WHERE deleted_at IS NULL;
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
