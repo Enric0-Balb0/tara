@@ -1,4 +1,4 @@
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, FlatList, StyleSheet, View } from 'react-native';
@@ -18,10 +18,14 @@ import { radius, space, touch } from '@/theme/layout';
 import { durations } from '@/theme/motion';
 import { useTheme } from '@/theme/useTheme';
 
-/** "Cerca un alimento": a ogni lettera cerca nel catalogo sul telefono, anche offline. */
+/**
+ * "Cerca un alimento": a ogni lettera cerca nel catalogo sul telefono, anche offline. Pasto e
+ * giorno, se arrivano da "Aggiungi" in Oggi, passano alla scheda per la voce del diario.
+ */
 export default function SearchScreen() {
   const { colors } = useTheme();
   const router = useRouter();
+  const { slot, date } = useLocalSearchParams<{ slot?: string; date?: string }>();
   const db: SqlDatabase = useSQLiteContext();
   const { info, syncing, progress, refresh } = useCatalog();
   const [query, setQuery] = useState('');
@@ -110,7 +114,12 @@ export default function SearchScreen() {
             cooking={item.cooking}
             kcalPer100={item.per100.energy_kcal}
             proteinPer100={item.per100.protein_g}
-            onPress={() => router.push({ pathname: '/alimento/[id]', params: { id: item.id } })}
+            onPress={() =>
+              router.push({
+                pathname: '/alimento/[id]',
+                params: { id: item.id, ...(slot ? { slot } : {}), ...(date ? { date } : {}) },
+              })
+            }
           />
         )}
         ListFooterComponent={

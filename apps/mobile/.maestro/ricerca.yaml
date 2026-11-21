@@ -1,6 +1,7 @@
 # Ricerca e scheda alimento (serve il backend per il primo download: quello locale con la
 # development build, quello su Render con la build preview):
-# cerco albume, vedo i valori giusti e la fonte, calcolo i grammi. Il crudo viene prima del cotto.
+# cerco albume, vedo i valori giusti e la fonte, passo al cotto dal foglio dei grammi. Il crudo
+# viene prima del cotto. L'aggiunta al diario è nel flusso diario.yaml.
 appId: com.enricobalbo.tara
 name: Ricerca e scheda alimento
 tags:
@@ -9,7 +10,8 @@ tags:
 - runFlow: subflows/avvio.yaml
 - runFlow: subflows/accedi.yaml
 - extendedWaitUntil:
-    visible: Diario di oggi
+    visible:
+      id: diario
     timeout: 30000
 - tapOn: Cerca un alimento
 - runFlow:
@@ -34,31 +36,10 @@ tags:
 - assertNotVisible: cotto
 - takeScreenshot: screenshots/scheda-albume
 
-- tapOn: Calcola per i tuoi grammi
-- tapOn:
-    id: tasto-2
-- tapOn:
-    id: tasto-0
-- tapOn:
-    id: tasto-0
-- assertVisible: Usa 200 g
-# Il lettore dello schermo legge i grammi per esteso.
-- assertVisible: Usa 200 grammi
-- assertNotVisible: Aggiungi e continua
-- takeScreenshot: screenshots/foglio-calcolo
-- tapOn: Usa 200 g
-- assertVisible: per 200 g
-- assertVisible: '21,8 g'
-- takeScreenshot: screenshots/scheda-200g
-- tapOn: Calcola per i tuoi grammi
-- assertVisible: 'Ultima volta: 200 g'
-- tapOn: Chiudi
-- assertVisible: Torna a 100 grammi
-- tapOn: Torna a 100 g
-- assertVisible: per 100 g
-
+# Dalla barra di ricerca il pasto è quello con l'orario più vicino: il nome cambia con l'ora.
+- assertVisible: 'Aggiungi a (Colazione|Spuntino|Pranzo|Merenda|Cena)'
 # Il foglio passa alla variante cotta dello stesso alimento.
-- tapOn: Calcola per i tuoi grammi
+- tapOn: 'Aggiungi a (Colazione|Spuntino|Pranzo|Merenda|Cena)'
 - tapOn: Cotto
 - tapOn: Chiudi
 - assertVisible: '10,3 g'

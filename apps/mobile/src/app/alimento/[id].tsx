@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GramSheet } from '@/components/GramSheet';
@@ -11,27 +11,45 @@ import { PressableScale } from '@/components/PressableScale';
 import { StateTag } from '@/components/StateTag';
 import { TaraText } from '@/components/TaraText';
 import { type FoodDetail, getFood, getVariant } from '@/data/catalogStore';
+import { addEntry, ensureMealSlots, lastQuantity, type MealSlot } from '@/data/diaryStore';
+import { useSession } from '@/data/SessionProvider';
 import type { SqlDatabase } from '@/data/sql';
+import { minutesOfDay, slotForTime, toLocalDate } from '@/domain/diary';
+import { formatTime } from '@/domain/format';
 import { sourceLabel } from '@/domain/sources';
 import { radius, space, touch } from '@/theme/layout';
+import { textStyles } from '@/theme/typography';
 import { useTheme } from '@/theme/useTheme';
 
 /**
- * Scheda alimento: etichetta per 100 g con la fonte e il foglio dei grammi. In F0 il foglio
- * calcola soltanto: "Usa 200 g" riporta l'etichetta a 200 g, il diario arriva in F1.
+ * Scheda alimento: etichetta per 100 g con la fonte, il pasto a cui va e il foglio dei
+ * grammi (RF-41). Pasto e giorno arrivano da "Aggiungi" in Oggi; dalla barra di ricerca il
+ * giorno è oggi e il pasto quello con l'orario più vicino, sempre modificabile.
  * L'intestazione nativa è nascosta perché il foglio copra tutta la schermata.
  */
 export default function FoodScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const params = useLocalSearchParams<{ id: string; slot?: string; date?: string }>();
+  const { id } = params;
   const db: SqlDatabase = useSQLiteContext();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
+  const { session } = useSession();
+  const userId = session?.user.id;
   // undefined: si sta leggendo; null: l'alimento non c'è.
   const [food, setFood] = useState<FoodDetail | null | undefined>(undefined);
   const [variantId, setVariantId] = useState<string | null>(null);
-  const [usedGrams, setUsedGrams] = useState<number | null>(null);
+  const [slots, setSlots] = useState<MealSlot[]>([]);
+  const [slotId, setSlotId] = useState<string | undefined>(params.slot);
+  // L'ultima quantità vale solo per l'alimento e il pasto per cui è stata letta: cambiando
+  // pasto, finché non arriva la nuova, la scorciatoia non compare.
+  const [last, setLast] = useState<{ key: string; grams: number | null } | null>(null);
+  const lastKey = `${id}:${slotId ?? ''}`;
+  const lastGrams = last?.key === lastKey ? last.grams : null;
   const [sheetOpen, setSheetOpen] = useState(false);
+  // Una sola scrittura alla volta: un doppio tocco su "Aggiungi" non registra due voci.
+  const saving = useRef(false);
+  const date = params.date ?? toLocalDate(new Date());
 
   useEffect(() => {
     let current = true;
@@ -51,12 +69,37 @@ export default function FoodScreen() {
     };
   }, [db, id]);
 
+  useEffect(() => {
+    if (userId === undefined) return undefined;
+    let current = true;
+    void (async () => {
+      const mealSlots = await ensureMealSlots(db, userId, new Date());
+      if (!current) return;
+      setSlots(mealSlots);
+      setSlotId(
+        (chosen) => chosen ?? slotForTime(mealSlots, minutesOfDay(formatTime(new Date())))?.id,
+      );
+    })();
+    return () => {
+      current = false;
+    };
+  }, [db, userId]);
+
+  // "Ultima volta a pranzo: 300 g" (RF-42): dipende da alimento e pasto.
+  useEffect(() => {
+    if (userId === undefined || slotId === undefined) return undefined;
+    let current = true;
+    const key = `${id}:${slotId}`;
+    void lastQuantity(db, userId, id, slotId).then((grams) => {
+      if (current) setLast({ key, grams });
+    });
+    return () => {
+      current = false;
+    };
+  }, [db, userId, id, slotId]);
+
   const back = (
-    <PressableScale
-      onPress={() => router.back()}
-      accessibilityLabel="Indietro"
-      style={styles.back}
-    >
+    <PressableScale onPress={() => router.back()} accessibilityLabel="Indietro" style={styles.back}>
       <Icon name="chevronLeft" color="text" />
     </PressableScale>
   );
@@ -83,9 +126,27 @@ export default function FoodScreen() {
     );
   }
 
-  const grams = usedGrams ?? 100;
   const per100 = Object.fromEntries(food.nutrients.map((n) => [n.code, n.amountPer100]));
   const source = sourceLabel(food.source);
+  const slot = slots.find((candidate) => candidate.id === slotId);
+
+  async function add(quantity: number, andContinue: boolean) {
+    if (userId === undefined || slot === undefined || !food || saving.current) return;
+    saving.current = true;
+    try {
+      await addEntry(db, { userId, date, mealSlotId: slot.id, food, quantity, now: new Date() });
+    } catch (error: unknown) {
+      saving.current = false;
+      console.error('Voce non salvata', error);
+      Alert.alert('Voce non salvata', 'Il telefono non è riuscito a salvarla. Riprova.');
+      return;
+    }
+    setSheetOpen(false);
+    // "Aggiungi e continua" torna ai risultati per il prossimo alimento dello stesso pasto,
+    // con pasto e giorno scelti qui; altrimenti si torna a Oggi, dove la voce compare.
+    if (andContinue) router.dismissTo({ pathname: '/cerca', params: { slot: slot.id, date } });
+    else router.dismissTo('/');
+  }
 
   return (
     <View style={screenStyle}>
@@ -109,16 +170,7 @@ export default function FoodScreen() {
               </TaraText>
             ) : null}
           </View>
-          <NutritionLabel per100={per100} grams={grams} />
-          {usedGrams !== null ? (
-            <PressableScale
-              onPress={() => setUsedGrams(null)}
-              accessibilityLabel="Torna a 100 grammi"
-              style={[styles.secondary, { borderColor: colors.borderStrong }]}
-            >
-              <TaraText variant="bodyStrong">Torna a 100 g</TaraText>
-            </PressableScale>
-          ) : null}
+          <NutritionLabel per100={per100} grams={100} />
           {source !== null ? (
             <TaraText variant="caption" color="textSecondary">
               Fonte: {source}
@@ -126,12 +178,44 @@ export default function FoodScreen() {
           ) : null}
         </ScrollView>
         <View style={[styles.actions, { paddingBottom: space.l + insets.bottom }]}>
+          {/* Tutti i pasti in vista su una riga, come il selettore crudo/cotto del foglio: un
+              pasto nascosto a destra non si scoprirebbe. */}
+          <View
+            accessibilityRole="radiogroup"
+            accessibilityLabel="Pasto"
+            style={[styles.slots, { backgroundColor: colors.surface }]}
+          >
+            {slots.map((candidate) => {
+              const selected = candidate.id === slotId;
+              return (
+                <PressableScale
+                  key={candidate.id}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: selected }}
+                  accessibilityLabel={candidate.name}
+                  onPress={() => setSlotId(candidate.id)}
+                  style={[styles.slot, selected ? { backgroundColor: colors.action } : null]}
+                >
+                  <TaraText
+                    variant="caption"
+                    color={selected ? 'background' : 'textSecondary'}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    style={selected ? styles.slotSelected : null}
+                  >
+                    {candidate.name}
+                  </TaraText>
+                </PressableScale>
+              );
+            })}
+          </View>
           <PressableScale
             onPress={() => setSheetOpen(true)}
+            disabled={slot === undefined}
             style={[styles.primary, { backgroundColor: colors.action }]}
           >
             <TaraText variant="bodyStrong" color="background">
-              Calcola per i tuoi grammi
+              {slot ? `Aggiungi a ${slot.name}` : 'Aggiungi'}
             </TaraText>
           </PressableScale>
         </View>
@@ -140,12 +224,11 @@ export default function FoodScreen() {
       <GramSheet
         visible={sheetOpen}
         food={{ name: food.name, state: food.state, per100 }}
-        lastGrams={usedGrams ?? undefined}
-        confirmVerb="Usa"
-        onConfirm={(confirmed) => {
-          setUsedGrams(confirmed);
-          setSheetOpen(false);
-        }}
+        mealName={slot?.name}
+        lastGrams={lastGrams ?? undefined}
+        confirmVerb="Aggiungi"
+        onConfirm={(quantity) => void add(quantity, false)}
+        onConfirmAndContinue={(quantity) => void add(quantity, true)}
         onClose={() => setSheetOpen(false)}
         onChangeState={
           variantId === null
@@ -186,7 +269,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignSelf: 'flex-start',
   },
-  actions: { paddingHorizontal: space.l, paddingTop: space.m },
+  actions: { paddingHorizontal: space.l, paddingTop: space.m, gap: space.m },
+  slots: { flexDirection: 'row', borderRadius: radius.key, padding: space.xs, gap: space.xs },
+  // Larghezze uguali: senza minWidth 0 il nome più lungo allarga il suo segmento.
+  slot: {
+    flex: 1,
+    flexBasis: 0,
+    minWidth: 0,
+    minHeight: touch.min,
+    borderRadius: radius.field,
+    paddingHorizontal: space.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  slotSelected: { fontFamily: textStyles.bodyStrong.fontFamily },
   primary: {
     minHeight: touch.primary,
     borderRadius: radius.button,

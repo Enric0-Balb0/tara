@@ -9,7 +9,8 @@ tags:
 - runFlow: subflows/avvio.yaml
 - runFlow: subflows/accedi.yaml
 - extendedWaitUntil:
-    visible: Diario di oggi
+    visible:
+      id: diario
     timeout: 30000
 # Dal menu di sviluppo del profilo, come lo apre una persona.
 - tapOn: Profilo

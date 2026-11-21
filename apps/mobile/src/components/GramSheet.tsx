@@ -40,10 +40,12 @@ export interface SheetFood {
 interface Props {
   visible: boolean;
   food: SheetFood;
-  /** Pasto a cui va la voce; senza, il foglio calcola soltanto (in F0 il diario non c'è). */
+  /** Pasto a cui va la voce, mostrato in alto; senza (catalogo dei componenti) non c'è. */
   mealName?: string;
   lastGrams?: number;
-  /** Verbo del pulsante principale: "Aggiungi" nel diario, "Usa" quando si calcola. */
+  /** Peso da cui parte la lettura, senza la scorciatoia "Ultima volta" (modifica di una voce). */
+  startGrams?: number;
+  /** Verbo del pulsante principale: "Aggiungi" per una voce nuova, "Salva" per modificarla. */
   confirmVerb?: string;
   onConfirm: (grams: number) => void;
   /** Senza, il pulsante "Aggiungi e continua" non c'è. */
@@ -51,6 +53,8 @@ interface Props {
   onClose: () => void;
   /** Passa alla variante cruda o cotta dello stesso alimento (RF-04); senza, il selettore non c'è. */
   onChangeState?: (state: 'raw' | 'cooked') => void;
+  /** Toglie la voce dal diario; senza, il pulsante "Elimina" non c'è. */
+  onDelete?: () => void;
 }
 
 const PREVIEW: readonly { code: string; label: string; color: ColorToken; kcal?: boolean }[] = [
@@ -85,15 +89,17 @@ function OpenSheet({
   food,
   mealName,
   lastGrams,
+  startGrams,
   confirmVerb = 'Aggiungi',
   onConfirm,
   onConfirmAndContinue,
   onClose,
   onChangeState,
+  onDelete,
 }: Props) {
   const { colors, reduceMotion } = useTheme();
   const insets = useSafeAreaInsets();
-  const [entry, setEntry] = useState<GramEntry>(() => startEntry(lastGrams));
+  const [entry, setEntry] = useState<GramEntry>(() => startEntry(startGrams ?? lastGrams));
 
   const fadeIn = FadeIn.duration(durations.quick);
   const fadeOut = FadeOut.duration(durations.quick);
@@ -283,6 +289,17 @@ function OpenSheet({
         />
 
         <View style={styles.actions}>
+          {onDelete ? (
+            <PressableScale
+              onPress={onDelete}
+              accessibilityLabel="Elimina dal diario"
+              style={[styles.action, { borderColor: colors.error, borderWidth: 1 }]}
+            >
+              <TaraText variant="bodyStrong" color="error" style={styles.actionLabel}>
+                Elimina
+              </TaraText>
+            </PressableScale>
+          ) : null}
           {onConfirmAndContinue ? (
             <PressableScale
               disabled={!addable}

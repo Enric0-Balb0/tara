@@ -62,6 +62,50 @@ export const MIGRATIONS: readonly string[] = [
     CONSTRAINT food_cooking_valid
     CHECK (cooking IS NULL OR (length(trim(cooking)) > 0 AND state = 'cooked'));
   `,
+  // v4: diario (RF-40, RF-43). Già pronto per la sincronizzazione: id UUIDv7 creati sul
+  // telefono, updated_at per "vince l'ultima scrittura", deleted_at al posto di DELETE.
+  `
+  CREATE TABLE meal_slot (
+    id TEXT PRIMARY KEY NOT NULL,
+    user_id TEXT NOT NULL,
+    name TEXT NOT NULL
+      CONSTRAINT meal_slot_name_not_blank CHECK (length(trim(name)) > 0),
+    position INTEGER NOT NULL,
+    expected_time TEXT
+      CONSTRAINT meal_slot_expected_time_valid
+      CHECK (expected_time IS NULL OR expected_time GLOB '[0-2][0-9]:[0-5][0-9]'),
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  ) STRICT;
+
+  CREATE TABLE diary_entry (
+    id TEXT PRIMARY KEY NOT NULL,
+    user_id TEXT NOT NULL,
+    date TEXT NOT NULL
+      CONSTRAINT diary_entry_date_valid
+      CHECK (date GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'),
+    meal_slot_id TEXT NOT NULL REFERENCES meal_slot (id),
+    -- Nessun riferimento a food: il catalogo si sostituisce, la voce resta con la sua copia.
+    food_id TEXT NOT NULL,
+    food_name TEXT NOT NULL,
+    food_state TEXT NOT NULL
+      CONSTRAINT diary_entry_food_state_valid
+      CHECK (food_state IN ('raw', 'cooked', 'not_applicable')),
+    quantity REAL NOT NULL
+      CONSTRAINT diary_entry_quantity_positive CHECK (quantity > 0),
+    unit TEXT NOT NULL
+      CONSTRAINT diary_entry_unit_valid CHECK (unit IN ('g', 'ml')),
+    -- Valori per 100 al momento della registrazione (RF-43), solo i nutrienti noti.
+    nutrients_snapshot TEXT NOT NULL
+      CONSTRAINT diary_entry_snapshot_json CHECK (json_valid(nutrients_snapshot)),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  ) STRICT;
+
+  CREATE INDEX diary_entry_day ON diary_entry (user_id, date);
+  CREATE INDEX diary_entry_food_slot ON diary_entry (user_id, food_id, meal_slot_id);
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

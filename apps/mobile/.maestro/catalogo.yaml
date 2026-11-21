@@ -10,7 +10,8 @@ tags:
 - runFlow: subflows/avvio.yaml
 - runFlow: subflows/accedi.yaml
 - extendedWaitUntil:
-    visible: Diario di oggi
+    visible:
+      id: diario
     timeout: 30000
 - tapOn: Profilo
 # Il primo download comprende circa 3500 alimenti: si aspetta con calma.
