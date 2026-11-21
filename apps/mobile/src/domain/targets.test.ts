@@ -6,6 +6,7 @@ import {
   macroKcalCheck,
   parseTargetInput,
   remaining,
+  remainingText,
   targetFor,
 } from './targets';
 
@@ -73,6 +74,13 @@ describe('remaining', () => {
 
   it('senza target non si calcola', () => {
     expect(remaining(null, 1450)).toBeNull();
+  });
+
+  it('remainingText lo dice in parole', () => {
+    expect(remainingText(1350.4, 'kcal')).toBe('mancano 1350');
+    expect(remainingText(-20, 'kcal')).toBe('oltre di 20');
+    expect(remainingText(12.25, 'macro')).toBe('mancano 12,3');
+    expect(remainingText(null, 'kcal')).toBeNull();
   });
 });
 

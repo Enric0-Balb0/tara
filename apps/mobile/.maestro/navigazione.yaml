@@ -14,7 +14,7 @@ tags:
 - takeScreenshot: screenshots/oggi
 
 - tapOn: Piano
-- assertVisible: Pasti, alimenti e grammi per ogni tipo di giornata.
+- assertVisible: Target per tipo di giornata
 
 - tapOn: Dispensa
 - assertVisible: I tuoi alimenti, le ricette e i pasti salvati.

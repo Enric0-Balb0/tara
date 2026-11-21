@@ -43,6 +43,13 @@ describe('initDatabase', () => {
     expect(SCHEMA_VERSION).toBe(5);
   });
 
+  it('chi trova il database occupato aspetta invece di fallire subito', async () => {
+    // Il download del catalogo tiene il database in una transazione esclusiva per qualche
+    // secondo: senza attesa la prima lettura del diario fallisce con SQLITE_BUSY.
+    const row = await db.getFirstAsync<{ timeout: number }>('PRAGMA busy_timeout');
+    expect(row?.timeout).toBeGreaterThanOrEqual(5000);
+  });
+
   it('rieseguita non tocca i dati', async () => {
     await db.runAsync(
       'INSERT INTO nutrient (code, name, unit, display_order) VALUES (?, ?, ?, ?)',

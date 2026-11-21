@@ -161,7 +161,11 @@ export const SCHEMA_VERSION = MIGRATIONS.length;
 
 /** Pragma della connessione e migrazioni fino a `SCHEMA_VERSION`; da `onInit` di SQLiteProvider. */
 export async function initDatabase(db: SqlDatabase): Promise<void> {
-  await db.execAsync('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
+  // busy_timeout: il download del catalogo tiene il database in una transazione esclusiva
+  // per qualche secondo; chi scrive nel frattempo aspetta invece di fallire (SQLITE_BUSY).
+  await db.execAsync(
+    'PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;',
+  );
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
   for (let version = row?.user_version ?? 0; version < SCHEMA_VERSION; version++) {
     const migration = MIGRATIONS[version] ?? '';

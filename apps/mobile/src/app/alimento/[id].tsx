@@ -8,6 +8,7 @@ import { GramSheet } from '@/components/GramSheet';
 import { Icon } from '@/components/Icon';
 import { NutritionLabel } from '@/components/NutritionLabel';
 import { PressableScale } from '@/components/PressableScale';
+import { Segmented } from '@/components/Segmented';
 import { StateTag } from '@/components/StateTag';
 import { TaraText } from '@/components/TaraText';
 import { type FoodDetail, getFood, getVariant } from '@/data/catalogStore';
@@ -18,7 +19,6 @@ import { minutesOfDay, slotForTime, toLocalDate } from '@/domain/diary';
 import { formatTime } from '@/domain/format';
 import { sourceLabel } from '@/domain/sources';
 import { radius, space, touch } from '@/theme/layout';
-import { textStyles } from '@/theme/typography';
 import { useTheme } from '@/theme/useTheme';
 
 /**
@@ -178,37 +178,12 @@ export default function FoodScreen() {
           ) : null}
         </ScrollView>
         <View style={[styles.actions, { paddingBottom: space.l + insets.bottom }]}>
-          {/* Tutti i pasti in vista su una riga, come il selettore crudo/cotto del foglio: un
-              pasto nascosto a destra non si scoprirebbe. */}
-          <View
-            accessibilityRole="radiogroup"
-            accessibilityLabel="Pasto"
-            style={[styles.slots, { backgroundColor: colors.surface }]}
-          >
-            {slots.map((candidate) => {
-              const selected = candidate.id === slotId;
-              return (
-                <PressableScale
-                  key={candidate.id}
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: selected }}
-                  accessibilityLabel={candidate.name}
-                  onPress={() => setSlotId(candidate.id)}
-                  style={[styles.slot, selected ? { backgroundColor: colors.action } : null]}
-                >
-                  <TaraText
-                    variant="caption"
-                    color={selected ? 'background' : 'textSecondary'}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                    style={selected ? styles.slotSelected : null}
-                  >
-                    {candidate.name}
-                  </TaraText>
-                </PressableScale>
-              );
-            })}
-          </View>
+          <Segmented
+            label="Pasto"
+            options={slots.map((candidate) => ({ key: candidate.id, label: candidate.name }))}
+            selectedKey={slotId}
+            onSelect={setSlotId}
+          />
           <PressableScale
             onPress={() => setSheetOpen(true)}
             disabled={slot === undefined}
@@ -270,19 +245,6 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   actions: { paddingHorizontal: space.l, paddingTop: space.m, gap: space.m },
-  slots: { flexDirection: 'row', borderRadius: radius.key, padding: space.xs, gap: space.xs },
-  // Larghezze uguali: senza minWidth 0 il nome più lungo allarga il suo segmento.
-  slot: {
-    flex: 1,
-    flexBasis: 0,
-    minWidth: 0,
-    minHeight: touch.min,
-    borderRadius: radius.field,
-    paddingHorizontal: space.xs,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  slotSelected: { fontFamily: textStyles.bodyStrong.fontFamily },
   primary: {
     minHeight: touch.primary,
     borderRadius: radius.button,

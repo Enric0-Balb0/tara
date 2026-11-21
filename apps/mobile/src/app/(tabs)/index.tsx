@@ -3,12 +3,13 @@ import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Alert, AppState, Modal, ScrollView, StyleSheet, View } from 'react-native';
 
-import { DayTotals } from '@/components/DayTotals';
+import { DayGoals } from '@/components/DayGoals';
 import { DiaryRow } from '@/components/DiaryRow';
 import { GramSheet } from '@/components/GramSheet';
 import { Icon } from '@/components/Icon';
 import { MealSection } from '@/components/MealSection';
 import { PressableScale } from '@/components/PressableScale';
+import { Segmented } from '@/components/Segmented';
 import { TaraText } from '@/components/TaraText';
 import {
   type DiaryEntry,
@@ -20,13 +21,21 @@ import {
 } from '@/data/diaryStore';
 import { useSession } from '@/data/SessionProvider';
 import type { SqlDatabase } from '@/data/sql';
+import {
+  type DayTarget,
+  type DayType,
+  dayTypeFor,
+  ensureDayTypes,
+  setDayType,
+  targetOn,
+} from '@/data/targetsStore';
 import { addDays, dayLabel, dayTitle, entryAmount, toLocalDate, totals } from '@/domain/diary';
 import { space, touch } from '@/theme/layout';
 
 /**
- * Oggi (RF-40, RF-45): i pasti del giorno con le voci registrate e i totali. Si scorre tra i
- * giorni con le frecce; un tocco su una voce la modifica o la elimina. Tipo di giornata,
- * target e voci previste dal piano arrivano con RF-50 e RF-130.
+ * Oggi (RF-40, RF-45, RF-50, RF-51): tipo di giornata, obiettivi contro il target in vigore
+ * quel giorno, e i pasti con le voci registrate. Si scorre tra i giorni con le frecce; un
+ * tocco su una voce la modifica o la elimina. Le voci previste dal piano arrivano con RF-130.
  */
 export default function TodayScreen() {
   const db: SqlDatabase = useSQLiteContext();
@@ -39,6 +48,9 @@ export default function TodayScreen() {
   const [slots, setSlots] = useState<MealSlot[]>([]);
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [editing, setEditing] = useState<DiaryEntry | null>(null);
+  const [dayTypes, setDayTypes] = useState<DayType[]>([]);
+  const [dayTypeId, setDayTypeId] = useState<string | undefined>(undefined);
+  const [target, setTarget] = useState<DayTarget | undefined>(undefined);
   const latest = useRef(0);
 
   // Dopo mezzanotte, con l'app rimasta aperta, "oggi" va avanti: chi guardava oggi passa
@@ -64,13 +76,19 @@ export default function TodayScreen() {
     // arrivata dopo, mostrerebbe le voci di un altro giorno.
     const request = ++latest.current;
     try {
-      const [mealSlots, dayEntries] = await Promise.all([
+      const [mealSlots, dayEntries, types] = await Promise.all([
         ensureMealSlots(db, userId, new Date()),
         entriesForDay(db, userId, date),
+        ensureDayTypes(db, userId, new Date()),
       ]);
+      const typeId = await dayTypeFor(db, userId, date);
+      const dayTarget = typeId ? await targetOn(db, userId, typeId, date) : undefined;
       if (request !== latest.current) return;
       setSlots(mealSlots);
       setEntries(dayEntries);
+      setDayTypes(types);
+      setDayTypeId(typeId);
+      setTarget(dayTarget);
     } catch (error: unknown) {
       console.error('Diario non letto', error);
     }
@@ -109,6 +127,19 @@ export default function TodayScreen() {
   function remove(entry: DiaryEntry) {
     return write((owner) => deleteEntry(db, owner, entry.id, new Date()));
   }
+
+  async function chooseDayType(id: string) {
+    if (userId === undefined || id === dayTypeId) return;
+    setDayTypeId(id);
+    try {
+      await setDayType(db, userId, date, id, new Date());
+    } catch (error: unknown) {
+      console.error('Tipo di giornata non salvato', error);
+    }
+    await load();
+  }
+
+  const dayTypeName = dayTypes.find((type) => type.id === dayTypeId)?.name;
 
   const editingSlot = editing ? slots.find((slot) => slot.id === editing.mealSlotId) : undefined;
 
@@ -153,7 +184,21 @@ export default function TodayScreen() {
           </PressableScale>
         </View>
 
-        <DayTotals totals={totals(entries)} />
+        {dayTypes.length > 1 ? (
+          <Segmented
+            label="Tipo di giornata"
+            options={dayTypes.map((type) => ({ key: type.id, label: type.name }))}
+            selectedKey={dayTypeId}
+            onSelect={(id) => void chooseDayType(id)}
+          />
+        ) : null}
+
+        <DayGoals
+          totals={totals(entries)}
+          target={target}
+          dayTypeName={dayTypeName}
+          onSetTargets={() => router.navigate('/piano')}
+        />
 
         {entries.length > 0 ? (
           <View style={styles.legend}>

@@ -4,7 +4,7 @@
  * cambiare un target non riscrive le giornate passate.
  */
 
-import { formatNumber } from './format';
+import { type AmountKind, formatAmount, formatNumber } from './format';
 import { checkDeclaredKcal } from './nutrition';
 
 /** I tipi creati la prima volta; nomi, numero e target li sceglie l'utente nel Piano. */
@@ -54,6 +54,14 @@ export function formatTargetInput(value: number | null): string {
 /** Quanto manca al target; negativo se superato, null senza target. */
 export function remaining(target: number | null, logged: number): number | null {
   return target === null ? null : target - logged;
+}
+
+/** "mancano 1350" o "oltre di 20"; null senza target. */
+export function remainingText(left: number | null, kind: AmountKind): string | null {
+  if (left === null) return null;
+  return left >= 0
+    ? `mancano ${formatAmount(left, kind)}`
+    : `oltre di ${formatAmount(-left, kind)}`;
 }
 
 /**

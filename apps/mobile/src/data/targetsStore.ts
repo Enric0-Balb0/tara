@@ -36,23 +36,23 @@ export async function ensureDayTypes(
 ): Promise<DayType[]> {
   const existing = await activeTypes(db, userId);
   if (existing.length > 0) return existing;
-  await db.withExclusiveTransactionAsync(async (txn) => {
-    const again = await txn.getFirstAsync<{ n: number }>(
-      'SELECT count(*) AS n FROM day_type WHERE user_id = ? AND deleted_at IS NULL',
-      userId,
-    );
-    if ((again?.n ?? 0) > 0) return;
-    for (const [position, name] of DEFAULT_DAY_TYPES.entries()) {
-      await txn.runAsync(
-        'INSERT INTO day_type (id, user_id, name, position, updated_at) VALUES (?, ?, ?, ?, ?)',
-        newId(now.getTime()),
-        userId,
-        name,
-        position,
-        now.toISOString(),
-      );
-    }
-  });
+  // Una sola istruzione atomica, come per i pasti (diaryStore): niente doppioni, niente
+  // transazione esclusiva durante il download del catalogo.
+  const rows = DEFAULT_DAY_TYPES.map((name, position) => [
+    newId(now.getTime()),
+    userId,
+    name,
+    position,
+    now.toISOString(),
+  ]);
+  await db.runAsync(
+    `INSERT INTO day_type (id, user_id, name, position, updated_at)
+     SELECT column1, column2, column3, column4, column5
+     FROM (VALUES ${rows.map(() => '(?, ?, ?, ?, ?)').join(', ')})
+     WHERE NOT EXISTS (SELECT 1 FROM day_type WHERE user_id = ? AND deleted_at IS NULL)`,
+    ...rows.flat(),
+    userId,
+  );
   return activeTypes(db, userId);
 }
 

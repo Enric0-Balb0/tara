@@ -46,27 +46,27 @@ export async function ensureMealSlots(
 ): Promise<MealSlot[]> {
   const existing = await activeSlots(db, userId);
   if (existing.length > 0) return existing;
-  const stamp = now.toISOString();
-  await db.withExclusiveTransactionAsync(async (txn) => {
-    // Ricontrollo dentro la transazione: due schermate potrebbero chiederli insieme.
-    const again = await txn.getFirstAsync<{ n: number }>(
-      'SELECT count(*) AS n FROM meal_slot WHERE user_id = ? AND deleted_at IS NULL',
-      userId,
-    );
-    if ((again?.n ?? 0) > 0) return;
-    for (const [position, slot] of DEFAULT_MEAL_SLOTS.entries()) {
-      await txn.runAsync(
-        `INSERT INTO meal_slot (id, user_id, name, position, expected_time, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        newId(now.getTime()),
-        userId,
-        slot.name,
-        position,
-        slot.time,
-        stamp,
-      );
-    }
-  });
+  // Una sola istruzione, atomica da sola: se due schermate li chiedono insieme, la seconda
+  // trova già i pasti e non ne aggiunge altri. Niente transazione esclusiva, che durante il
+  // download del catalogo troverebbe il database occupato.
+  const rows = DEFAULT_MEAL_SLOTS.map((slot, position) => [
+    newId(now.getTime()),
+    userId,
+    slot.name,
+    position,
+    slot.time,
+    now.toISOString(),
+  ]);
+  await db.runAsync(
+    `INSERT INTO meal_slot (id, user_id, name, position, expected_time, updated_at)
+     SELECT column1, column2, column3, column4, column5, column6
+     FROM (VALUES ${rows.map(() => '(?, ?, ?, ?, ?, ?)').join(', ')})
+     WHERE NOT EXISTS (
+       SELECT 1 FROM meal_slot WHERE user_id = ? AND deleted_at IS NULL
+     )`,
+    ...rows.flat(),
+    userId,
+  );
   return activeSlots(db, userId);
 }
 

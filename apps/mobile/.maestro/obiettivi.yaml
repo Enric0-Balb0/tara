@@ -1,0 +1,97 @@
+# Tipi di giornata e target (RF-50, RF-51, RF-53; serve il backend per il primo download):
+# imposto i target di Allenamento nel Piano, li ritrovo in Oggi con kcal e barre graduate,
+# registro 200 g di albume e i valori si aggiornano; Riposo, senza target, invita al Piano.
+appId: com.enricobalbo.tara
+name: Obiettivi della giornata
+tags:
+  - api
+---
+- runFlow: subflows/avvio.yaml
+- runFlow: subflows/accedi.yaml
+- extendedWaitUntil:
+    visible:
+      id: diario
+    timeout: 30000
+- assertVisible: Allenamento
+- assertVisible: Riposo
+- assertVisible: 'Nessun target per Allenamento: impostalo nel Piano'
+
+# Dal Piano: i quattro target di Allenamento.
+- tapOn: 'Nessun target per Allenamento: impostalo nel Piano'
+- extendedWaitUntil:
+    visible:
+      id: piano
+    timeout: 10000
+- tapOn:
+    id: tipo-0-kcal
+- runFlow:
+    file: subflows/scrivi.yaml
+    env:
+      CAMPO: tipo-0-kcal
+      TESTO: '2800'
+- tapOn:
+    id: tipo-0-protein_g
+- runFlow:
+    file: subflows/scrivi.yaml
+    env:
+      CAMPO: tipo-0-protein_g
+      TESTO: '240'
+- tapOn:
+    id: tipo-0-carbs_g
+- runFlow:
+    file: subflows/scrivi.yaml
+    env:
+      CAMPO: tipo-0-carbs_g
+      TESTO: '300'
+- tapOn:
+    id: tipo-0-fat_g
+- runFlow:
+    file: subflows/scrivi.yaml
+    env:
+      CAMPO: tipo-0-fat_g
+      TESTO: '70'
+- hideKeyboard
+- tapOn: Salva Allenamento
+- takeScreenshot: screenshots/piano-target
+
+# In Oggi: kcal con quanto manca e le barre dei macro.
+- tapOn: Oggi
+- extendedWaitUntil:
+    visible: '0 kcal di 2800, mancano 2800'
+    timeout: 10000
+- assertVisible: 'Proteine 0 di 240 grammi'
+- tapOn: Aggiungi a Pranzo
+- runFlow:
+    file: subflows/scrivi.yaml
+    env:
+      CAMPO: campo-ricerca
+      TESTO: albume
+- extendedWaitUntil:
+    visible: "Albume d'uovo in polvere"
+    timeout: 90000
+- tapOn:
+    text: "Albume d'uovo"
+    index: 0
+- tapOn: Aggiungi a Pranzo
+- tapOn:
+    id: tasto-2
+- tapOn:
+    id: tasto-0
+- tapOn:
+    id: tasto-0
+- tapOn: Aggiungi 200 grammi
+- extendedWaitUntil:
+    visible: '96 kcal di 2800, mancano 2704'
+    timeout: 10000
+- assertVisible: 'Proteine 22 di 240 grammi'
+- takeScreenshot: screenshots/oggi-obiettivi
+
+# Riposo non ha target: tornano i totali con l'invito al Piano.
+- tapOn: Riposo
+- extendedWaitUntil:
+    visible: 'Nessun target per Riposo: impostalo nel Piano'
+    timeout: 10000
+- tapOn: Allenamento
+- extendedWaitUntil:
+    visible: '96 kcal di 2800, mancano 2704'
+    timeout: 10000
