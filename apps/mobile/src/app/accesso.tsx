@@ -1,5 +1,13 @@
-import { useEffect, useState } from 'react';
-import { BackHandler, KeyboardAvoidingView, ScrollView, StyleSheet, View } from 'react-native';
+import { type ComponentRef, useEffect, useRef, useState } from 'react';
+import {
+  BackHandler,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  type TextInput,
+  View,
+} from 'react-native';
 import Animated, { FadeIn, FadeInRight } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -115,6 +123,15 @@ export default function SignInScreen() {
     }
   }
 
+  // Il campo del passo prende il fuoco a fine animazione, non con autoFocus: la tastiera che si
+  // apre a metà ridimensiona la schermata, e l'animazione d'ingresso di Reanimated a volte
+  // resta ferma con il passo fuori schermo (schermata vuota sotto l'intestazione).
+  const field = useRef<ComponentRef<typeof TextInput>>(null);
+  useEffect(() => {
+    const timer = setTimeout(() => field.current?.focus(), durations.sheetIn + durations.quick);
+    return () => clearTimeout(timer);
+  }, [step]);
+
   // Il passo nuovo entra da destra come una pagina; con il movimento ridotto solo dissolvenza.
   const entering = reduceMotion
     ? FadeIn.duration(durations.quick)
@@ -128,7 +145,8 @@ export default function SignInScreen() {
 
   return (
     <KeyboardAvoidingView
-      behavior="padding"
+      // Su Android la finestra si ridimensiona già da sola con la tastiera.
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={[styles.screen, { backgroundColor: colors.background }]}
     >
       <ScrollView
@@ -173,7 +191,7 @@ export default function SignInScreen() {
                 textContentType="emailAddress"
                 autoCapitalize="none"
                 autoCorrect={false}
-                autoFocus
+                ref={field}
                 returnKeyType="send"
                 onSubmitEditing={() => void sendCode()}
                 invalid={error !== null}
@@ -203,7 +221,7 @@ export default function SignInScreen() {
                 keyboardType="number-pad"
                 autoComplete="one-time-code"
                 textContentType="oneTimeCode"
-                autoFocus
+                ref={field}
                 textAlign="center"
                 returnKeyType="done"
                 onSubmitEditing={() => void verify()}
