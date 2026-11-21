@@ -25,7 +25,11 @@ import { useTheme } from '@/theme/useTheme';
 export default function SearchScreen() {
   const { colors } = useTheme();
   const router = useRouter();
-  const { slot, date } = useLocalSearchParams<{ slot?: string; date?: string }>();
+  const { slot, date, plan } = useLocalSearchParams<{
+    slot?: string;
+    date?: string;
+    plan?: string;
+  }>();
   const db: SqlDatabase = useSQLiteContext();
   const { info, syncing, progress, refresh } = useCatalog();
   const [query, setQuery] = useState('');
@@ -117,7 +121,12 @@ export default function SearchScreen() {
             onPress={() =>
               router.push({
                 pathname: '/alimento/[id]',
-                params: { id: item.id, ...(slot ? { slot } : {}), ...(date ? { date } : {}) },
+                params: {
+                  id: item.id,
+                  ...(slot ? { slot } : {}),
+                  ...(date ? { date } : {}),
+                  ...(plan ? { plan } : {}),
+                },
               })
             }
           />
