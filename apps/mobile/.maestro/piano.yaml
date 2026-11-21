@@ -12,7 +12,10 @@ tags:
     visible:
       id: diario
     timeout: 30000
-- tapOn: Piano
+# Le tab per id, ritoccando se lo schermo non cambia: a volte il primo tocco si perde.
+- tapOn:
+    id: tab-piano
+    retryTapIfNoChange: true
 - extendedWaitUntil:
     visible:
       id: piano

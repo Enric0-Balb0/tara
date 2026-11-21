@@ -55,7 +55,10 @@ tags:
 - takeScreenshot: screenshots/piano-target
 
 # In Oggi: kcal con quanto manca e le barre dei macro.
-- tapOn: Oggi
+# Le tab per id, ritoccando se lo schermo non cambia: a volte il primo tocco si perde.
+- tapOn:
+    id: tab-oggi
+    retryTapIfNoChange: true
 - extendedWaitUntil:
     visible: '0 kcal di 2800, mancano 2800'
     timeout: 10000

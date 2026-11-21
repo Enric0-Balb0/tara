@@ -55,10 +55,16 @@ export function DayGoals({
   onSetTargets,
 }: Props) {
   const { colors } = useTheme();
+  const plannedKcal = planned?.energy_kcal.amount ?? 0;
   if (!hasAnyTarget(target)) {
     return (
       <View style={styles.stack}>
         <DayTotals totals={totals} />
+        {plannedKcal > 0 ? (
+          <TaraText variant="caption" color="textSecondary" style={styles.note}>
+            Previste dal piano: {formatAmount(plannedKcal, 'kcal')} kcal
+          </TaraText>
+        ) : null}
         {onSetTargets ? (
           <PressableScale onPress={onSetTargets} style={styles.link}>
             <TaraText variant="caption" color="textSecondary">
@@ -76,7 +82,6 @@ export function DayGoals({
   // Un target con i macro ma senza kcal: le kcal si mostrano da sole, senza "/ –".
   const kcalTarget = target.kcal === null ? '' : ` / ${formatAmount(target.kcal, 'kcal')}`;
   const left = remaining(target.kcal, kcal.amount);
-  const plannedKcal = planned?.energy_kcal.amount ?? 0;
   const leftText =
     [
       remainingText(left, 'kcal'),
@@ -127,6 +132,7 @@ export function DayGoals({
 const styles = StyleSheet.create({
   stack: { gap: space.xs },
   link: { minHeight: touch.min, justifyContent: 'center', paddingHorizontal: space.xs },
+  note: { paddingHorizontal: space.xs },
   panel: {
     borderRadius: radius.panel,
     borderWidth: 1,

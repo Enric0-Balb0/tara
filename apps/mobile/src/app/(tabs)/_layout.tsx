@@ -55,13 +55,32 @@ export default function TabsLayout() {
     >
       <Tabs.Screen
         name="index"
-        options={{ title: 'Oggi', tabBarIcon: tabIcon('today'), headerRight: ProfileButton }}
+        options={{
+          title: 'Oggi',
+          tabBarIcon: tabIcon('today'),
+          tabBarButtonTestID: 'tab-oggi',
+          headerRight: ProfileButton,
+        }}
       />
-      <Tabs.Screen name="piano" options={{ title: 'Piano', tabBarIcon: tabIcon('plan') }} />
-      <Tabs.Screen name="dispensa" options={{ title: 'Dispensa', tabBarIcon: tabIcon('pantry') }} />
+      <Tabs.Screen
+        name="piano"
+        options={{ title: 'Piano', tabBarIcon: tabIcon('plan'), tabBarButtonTestID: 'tab-piano' }}
+      />
+      <Tabs.Screen
+        name="dispensa"
+        options={{
+          title: 'Dispensa',
+          tabBarIcon: tabIcon('pantry'),
+          tabBarButtonTestID: 'tab-dispensa',
+        }}
+      />
       <Tabs.Screen
         name="andamento"
-        options={{ title: 'Andamento', tabBarIcon: tabIcon('trend') }}
+        options={{
+          title: 'Andamento',
+          tabBarIcon: tabIcon('trend'),
+          tabBarButtonTestID: 'tab-andamento',
+        }}
       />
     </Tabs>
   );

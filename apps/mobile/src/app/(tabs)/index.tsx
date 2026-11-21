@@ -68,6 +68,8 @@ export default function TodayScreen() {
   const [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
   const [confirming, setConfirming] = useState<PlanItem | null>(null);
   const latest = useRef(0);
+  // Una conferma alla volta: un doppio tocco su "Conferma" non registra due voci.
+  const confirmingNow = useRef(false);
 
   // Dopo mezzanotte, con l'app rimasta aperta, "oggi" va avanti: chi guardava oggi passa
   // al giorno nuovo, chi guardava un altro giorno resta lì.
@@ -101,8 +103,11 @@ export default function TodayScreen() {
       if (dayEntries.length > 0) await keepDayType(db, userId, date, new Date());
       const typeId = await dayTypeFor(db, userId, date);
       const dayTarget = typeId ? await targetOn(db, userId, typeId, date) : undefined;
-      const dayPlan = typeId ? await planFor(db, userId, typeId) : [];
-      const dayPending = typeId ? await pendingPlan(db, userId, date, typeId) : [];
+      // Il piano vale da oggi in avanti, come i target: un giorno passato non ha voci
+      // previste, e cambiare il piano oggi non riapre i pasti di ieri.
+      const planned = typeId !== undefined && date >= toLocalDate(new Date());
+      const dayPlan = planned ? await planFor(db, userId, typeId) : [];
+      const dayPending = planned ? await pendingPlan(db, userId, date, typeId) : [];
       if (request !== latest.current) return;
       setSlots(mealSlots);
       setEntries(dayEntries);
@@ -151,7 +156,8 @@ export default function TodayScreen() {
   }
 
   async function confirm(items: readonly PlanItem[], quantity?: number) {
-    if (userId === undefined) return;
+    if (userId === undefined || confirmingNow.current) return;
+    confirmingNow.current = true;
     try {
       for (const item of items) {
         await confirmPlanItem(db, {
@@ -162,13 +168,15 @@ export default function TodayScreen() {
           now: new Date(),
         });
       }
+      setConfirming(null);
     } catch (error: unknown) {
       console.error('Voce prevista non confermata', error);
       Alert.alert('Voce non salvata', 'Il telefono non è riuscito a salvarla. Riprova.');
-      return;
+    } finally {
+      confirmingNow.current = false;
+      // Anche dopo un errore: le voci già salvate non devono restare previste.
+      await load();
     }
-    setConfirming(null);
-    await load();
   }
 
   async function chooseDayType(id: string) {
@@ -258,10 +266,10 @@ export default function TodayScreen() {
           const sum = totals(own);
           const ownPending = pending.filter((item) => item.mealSlotId === slot.id);
           const status = mealPlanStatus(
-            plan.filter((item) => item.mealSlotId === slot.id).length,
-            ownPending.length,
-            own.length,
+            plan.filter((item) => item.mealSlotId === slot.id).map((item) => item.id),
+            own.map((entry) => entry.planItemId),
           );
+          const openKey = `${date}:${slot.id}`;
           return (
             <MealSection
               key={slot.id}
@@ -269,14 +277,14 @@ export default function TodayScreen() {
               kcal={sum.energy_kcal}
               protein={sum.protein_g}
               progress={status.progress}
-              collapsed={status.complete && !opened.has(slot.id)}
+              collapsed={status.complete && !opened.has(openKey)}
               onToggle={
                 status.complete
                   ? () =>
                       setOpened((current) => {
                         const next = new Set(current);
-                        if (next.has(slot.id)) next.delete(slot.id);
-                        else next.add(slot.id);
+                        if (next.has(openKey)) next.delete(openKey);
+                        else next.add(openKey);
                         return next;
                       })
                   : undefined

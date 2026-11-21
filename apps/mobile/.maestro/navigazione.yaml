@@ -13,16 +13,28 @@ tags:
     timeout: 30000
 - takeScreenshot: screenshots/oggi
 
-- tapOn: Piano
-- assertVisible: Target per tipo di giornata
+# Le tab per id, ritoccando se lo schermo non cambia: a volte il primo tocco si perde.
+- tapOn:
+    id: tab-piano
+    retryTapIfNoChange: true
+- assertVisible: Target di Allenamento
 
-- tapOn: Dispensa
+# Le tab per id, ritoccando se lo schermo non cambia: a volte il primo tocco si perde.
+- tapOn:
+    id: tab-dispensa
+    retryTapIfNoChange: true
 - assertVisible: I tuoi alimenti, le ricette e i pasti salvati.
 
-- tapOn: Andamento
+# Le tab per id, ritoccando se lo schermo non cambia: a volte il primo tocco si perde.
+- tapOn:
+    id: tab-andamento
+    retryTapIfNoChange: true
 - assertVisible: Peso con media mobile, misure, foto e check-in settimanale.
 
-- tapOn: Oggi
+# Le tab per id, ritoccando se lo schermo non cambia: a volte il primo tocco si perde.
+- tapOn:
+    id: tab-oggi
+    retryTapIfNoChange: true
 - assertVisible:
     id: diario
 

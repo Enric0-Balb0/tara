@@ -193,6 +193,11 @@ export const MIGRATIONS: readonly string[] = [
   CREATE INDEX plan_item_day_type ON plan_item (user_id, day_type_id);
 
   ALTER TABLE diary_entry ADD COLUMN plan_item_id TEXT;
+
+  -- Una voce del piano si conferma una volta al giorno: un doppio tocco non la raddoppia.
+  CREATE UNIQUE INDEX diary_entry_plan_item_once
+    ON diary_entry (user_id, date, plan_item_id)
+    WHERE plan_item_id IS NOT NULL AND deleted_at IS NULL;
   `,
 ];
 

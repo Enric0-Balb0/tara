@@ -4,13 +4,13 @@ Questo file riassume la conversazione di progettazione del 22 ottobre 2026 (clau
 
 ## Riprendere il lavoro (aggiornato al 21/11/2026)
 
-- **Fase:** F1 (MVP «disinstallo FatSecret»), passo 3 di 9. Dal 21/11 Enrico chiede di completare in autonomia l'MVP lato interfaccia; le funzioni AI vengono dopo. La F0 è chiusa salvo il ruleset (vedi sotto); gate F0 superato il 18/11, autenticazione fatta il 19/11.
+- **Fase:** F1 (MVP «disinstallo FatSecret»), passo 4 di 9. Dal 21/11 Enrico chiede di completare in autonomia l'MVP lato interfaccia; le funzioni AI vengono dopo. La F0 è chiusa salvo il ruleset (vedi sotto); gate F0 superato il 18/11, autenticazione fatta il 19/11.
   - Backend online dall'08/11: ogni merge su `main` con CI verde va online da solo su `https://tara-api-eu.onrender.com`.
 - **Piano della F1** (ordine proposto il 21/11, ogni passo usabile sull'emulatore, con test e flussi Maestro):
   1. ~~**Diario**~~ (RF-40, 41, 42, 43, 45), fatto il 21/11 (#58): pasti predefiniti Colazione, Spuntino, Pranzo, Merenda, Cena (scelta di Enrico, poi modificabili), aggiunta dalla ricerca, totali, modifica ed eliminazione, copia dei valori nella voce.
      Limite noto: il foglio dei grammi dice sempre "g" e "grammi", anche per una voce in ml (le bevande del catalogo); da sistemare quando entrano i prodotti in ml.
   2. ~~Tipi di giornata e target~~ (RF-50, 51, 53), fatto il 21/11: Allenamento e Riposo predefiniti (Enrico li personalizza), target nel Piano validi da oggi in poi, selettore e barre graduate in Oggi. Restano RF-52 (ciclo ricorrente, S) e RF-57 (proteine in g/kg, con il peso del passo 8).
-  3. Piano alimentare per tipo di giornata (RF-130): voci previste da confermare.
+  3. ~~Piano alimentare per tipo di giornata~~ (RF-130), fatto il 21/11: nel Piano, per il tipo scelto, target, totale del piano e pasti con alimenti e grammi; in Oggi le voci previste tratteggiate con "Conferma" (o un tocco per cambiare i grammi), "Registra come da piano" per il pasto, "2 di 3" nell'intestazione, pasto completo chiuso in una riga, previsto tratteggiato nelle barre. Il piano vale da oggi in avanti: i giorni passati non hanno voci previste. Rifinitura possibile: la scheda dei target nel Piano potrebbe ridursi a una riga con "Modifica".
   4. Sincronizzazione con il backend, backup pianificati e ruolo del database senza permessi sullo schema, prima dei diari veri. Al primo sync i pasti predefiniti creati su due telefoni vanno riconciliati.
   5. Velocità: recenti, preferiti, copia di pasto e giornata (RF-44).
   6. Prodotti: inserimento manuale (etichetta da compilare), barcode con Open Food Facts, lettura etichetta.

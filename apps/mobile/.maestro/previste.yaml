@@ -14,7 +14,10 @@ tags:
     timeout: 30000
 
 # Il piano: 300 g di albume a pranzo nei giorni di allenamento.
-- tapOn: Piano
+# Le tab per id, ritoccando se lo schermo non cambia: a volte il primo tocco si perde.
+- tapOn:
+    id: tab-piano
+    retryTapIfNoChange: true
 - extendedWaitUntil:
     visible:
       id: piano
@@ -47,7 +50,10 @@ tags:
     timeout: 10000
 
 # In Oggi la voce è prevista: si conferma con altri grammi toccando la riga.
-- tapOn: Oggi
+# Le tab per id, ritoccando se lo schermo non cambia: a volte il primo tocco si perde.
+- tapOn:
+    id: tab-oggi
+    retryTapIfNoChange: true
 - extendedWaitUntil:
     visible: "Albume d'uovo, previsto 300 grammi, 144 kcal, 32,7 grammi di proteine"
     timeout: 10000

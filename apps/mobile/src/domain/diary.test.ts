@@ -142,16 +142,31 @@ describe('quantità e totali', () => {
 
 describe('mealPlanStatus', () => {
   it('senza piano per il pasto non dice niente', () => {
-    expect(mealPlanStatus(0, 0, 0)).toEqual({ progress: null, complete: false });
+    expect(mealPlanStatus([], [null])).toEqual({ progress: null, complete: false });
   });
 
   it('conta le voci del piano confermate su quelle del piano', () => {
-    expect(mealPlanStatus(3, 1, 2)).toEqual({ progress: '2 di 3', complete: false });
+    expect(mealPlanStatus(['a', 'b', 'c'], ['a', 'b'])).toEqual({
+      progress: '2 di 3',
+      complete: false,
+    });
   });
 
-  it('un pasto è completo se il piano è tutto confermato e non c è altro', () => {
-    expect(mealPlanStatus(3, 0, 3)).toEqual({ progress: '3 di 3, come da piano', complete: true });
+  it('un pasto è completo se ogni voce del piano è confermata una volta e non c è altro', () => {
+    expect(mealPlanStatus(['a', 'b', 'c'], ['a', 'b', 'c'])).toEqual({
+      progress: '3 di 3, come da piano',
+      complete: true,
+    });
     // Una voce in più fuori dal piano: il pasto resta aperto.
-    expect(mealPlanStatus(3, 0, 4)).toEqual({ progress: '3 di 3', complete: false });
+    expect(mealPlanStatus(['a', 'b', 'c'], ['a', 'b', 'c', null])).toEqual({
+      progress: '3 di 3',
+      complete: false,
+    });
+  });
+
+  it('le conferme di un altro piano non contano (tipo di giornata cambiato)', () => {
+    // A e B confermate quando il giorno era Allenamento; ora è Riposo, con il piano C.
+    expect(mealPlanStatus(['c'], ['a', 'b'])).toEqual({ progress: '0 di 1', complete: false });
+    expect(mealPlanStatus(['c'], ['a', 'b', 'c'])).toEqual({ progress: '1 di 1', complete: false });
   });
 });

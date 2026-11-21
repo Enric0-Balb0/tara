@@ -51,6 +51,8 @@ export default function PlanScreen() {
   const { colors } = useTheme();
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
+  // In un ref per load: come dipendenza farebbe rileggere tutto a ogni cambio di tipo.
+  const selected = useRef<string | undefined>(undefined);
   const [editing, setEditing] = useState<PlanItem | null>(null);
   const latest = useRef(0);
 
@@ -66,16 +68,17 @@ export default function PlanScreen() {
         ]);
         const targets: Loaded['targets'] = {};
         for (const type of types) targets[type.id] = await targetOn(db, userId, type.id, today);
-        const chosen = types.find((type) => type.id === (wanted ?? selectedId)) ?? types[0];
+        const chosen = types.find((type) => type.id === (wanted ?? selected.current)) ?? types[0];
         const plan = chosen ? await planFor(db, userId, chosen.id) : [];
         if (request !== latest.current) return;
         setLoaded({ types, targets, slots, plan });
+        selected.current = chosen?.id;
         setSelectedId(chosen?.id);
       } catch (error: unknown) {
         console.error('Piano non letto', error);
       }
     },
-    [db, userId, selectedId],
+    [db, userId],
   );
 
   useFocusEffect(

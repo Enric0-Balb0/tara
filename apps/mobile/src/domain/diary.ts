@@ -179,15 +179,16 @@ export function totals(
  * altre voci, e allora si chiude in una riga ("3 di 3, come da piano").
  */
 export function mealPlanStatus(
-  planned: number,
-  pending: number,
-  logged: number,
+  planIds: readonly string[],
+  entryPlanIds: readonly (string | null)[],
 ): { progress: string | null; complete: boolean } {
-  if (planned === 0) return { progress: null, complete: false };
-  const confirmed = planned - pending;
-  const complete = pending === 0 && logged === confirmed;
+  if (planIds.length === 0) return { progress: null, complete: false };
+  // Una voce del piano conta se una voce del pasto la conferma: si guarda voce per voce, non
+  // per numeri, così le conferme di un altro piano (tipo cambiato) restano voci in più.
+  const confirmed = planIds.filter((id) => entryPlanIds.includes(id)).length;
+  const complete = confirmed === planIds.length && entryPlanIds.length === confirmed;
   return {
-    progress: `${confirmed} di ${planned}${complete ? ', come da piano' : ''}`,
+    progress: `${confirmed} di ${planIds.length}${complete ? ', come da piano' : ''}`,
     complete,
   };
 }

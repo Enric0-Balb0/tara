@@ -252,6 +252,53 @@ describe('voci previste di un giorno', () => {
   });
 });
 
+describe('una voce del piano si conferma una volta sola al giorno', () => {
+  it('il database rifiuta una seconda conferma della stessa voce nello stesso giorno', async () => {
+    const { pranzo, allenamento } = await setup();
+    const riso = await addPlanItem(db, {
+      userId: USER,
+      dayTypeId: allenamento,
+      mealSlotId: pranzo,
+      food: RISO,
+      quantity: 100,
+      now: NOW,
+    });
+    await confirmPlanItem(db, {
+      userId: USER,
+      date: DATE,
+      item: riso,
+      quantity: 100,
+      now: later(1),
+    });
+    await expect(
+      confirmPlanItem(db, { userId: USER, date: DATE, item: riso, quantity: 100, now: later(2) }),
+    ).rejects.toThrow(/diary_entry\.user_id, diary_entry\.date, diary_entry\.plan_item_id/);
+  });
+
+  it('eliminata la conferma, la voce si può confermare di nuovo', async () => {
+    const { pranzo, allenamento } = await setup();
+    const riso = await addPlanItem(db, {
+      userId: USER,
+      dayTypeId: allenamento,
+      mealSlotId: pranzo,
+      food: RISO,
+      quantity: 100,
+      now: NOW,
+    });
+    const first = await confirmPlanItem(db, {
+      userId: USER,
+      date: DATE,
+      item: riso,
+      quantity: 100,
+      now: later(1),
+    });
+    await deleteEntry(db, USER, first.id, later(2));
+    await expect(
+      confirmPlanItem(db, { userId: USER, date: DATE, item: riso, quantity: 120, now: later(3) }),
+    ).resolves.toMatchObject({ quantity: 120 });
+  });
+});
+
 describe('vincoli del database', () => {
   it('rifiuta grammi zero o negativi nel piano', async () => {
     const { pranzo, allenamento } = await setup();
