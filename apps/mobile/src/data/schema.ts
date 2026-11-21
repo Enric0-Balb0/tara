@@ -106,13 +106,76 @@ export const MIGRATIONS: readonly string[] = [
   CREATE INDEX diary_entry_day ON diary_entry (user_id, date);
   CREATE INDEX diary_entry_food_slot ON diary_entry (user_id, food_id, meal_slot_id);
   `,
+  // v5: tipi di giornata, target con storico e tipo assegnato a ogni giorno (RF-50, RF-51,
+  // RF-53). Come il diario, pronti per la sincronizzazione.
+  `
+  CREATE TABLE day_type (
+    id TEXT PRIMARY KEY NOT NULL,
+    user_id TEXT NOT NULL,
+    name TEXT NOT NULL
+      CONSTRAINT day_type_name_not_blank CHECK (length(trim(name)) > 0),
+    position INTEGER NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  ) STRICT;
+
+  -- Un target vale da valid_from fino al successivo dello stesso tipo. NULL = non impostato.
+  CREATE TABLE day_type_target (
+    id TEXT PRIMARY KEY NOT NULL,
+    user_id TEXT NOT NULL,
+    day_type_id TEXT NOT NULL REFERENCES day_type (id),
+    valid_from TEXT NOT NULL
+      CONSTRAINT day_type_target_valid_from_valid
+      CHECK (valid_from GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'),
+    kcal REAL,
+    protein_g REAL,
+    carbs_g REAL,
+    fat_g REAL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT,
+    CONSTRAINT day_type_target_values_non_negative CHECK (
+      coalesce(kcal, 0) >= 0 AND coalesce(protein_g, 0) >= 0
+      AND coalesce(carbs_g, 0) >= 0 AND coalesce(fat_g, 0) >= 0
+    )
+  ) STRICT;
+
+  CREATE UNIQUE INDEX day_type_target_one_per_day
+    ON day_type_target (day_type_id, valid_from) WHERE deleted_at IS NULL;
+
+  CREATE TABLE day_plan (
+    id TEXT PRIMARY KEY NOT NULL,
+    user_id TEXT NOT NULL,
+    date TEXT NOT NULL
+      CONSTRAINT day_plan_date_valid
+      CHECK (date GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'),
+    day_type_id TEXT NOT NULL REFERENCES day_type (id),
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  ) STRICT;
+
+  CREATE UNIQUE INDEX day_plan_one_per_day ON day_plan (user_id, date) WHERE deleted_at IS NULL;
+
+  -- Una giornata ha sempre un tipo: l'ultimo tipo di un utente non si elimina.
+  CREATE TRIGGER day_type_keep_last BEFORE UPDATE OF deleted_at ON day_type
+  WHEN OLD.deleted_at IS NULL AND NEW.deleted_at IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM day_type
+    WHERE user_id = NEW.user_id AND deleted_at IS NULL AND id <> NEW.id
+  )
+  BEGIN
+    SELECT RAISE(ABORT, 'day_type_last_one');
+  END;
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
 
 /** Pragma della connessione e migrazioni fino a `SCHEMA_VERSION`; da `onInit` di SQLiteProvider. */
 export async function initDatabase(db: SqlDatabase): Promise<void> {
-  await db.execAsync('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;');
+  // busy_timeout: il download del catalogo tiene il database in una transazione esclusiva
+  // per qualche secondo; chi scrive nel frattempo aspetta invece di fallire (SQLITE_BUSY).
+  await db.execAsync(
+    'PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;',
+  );
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
   for (let version = row?.user_version ?? 0; version < SCHEMA_VERSION; version++) {
     const migration = MIGRATIONS[version] ?? '';

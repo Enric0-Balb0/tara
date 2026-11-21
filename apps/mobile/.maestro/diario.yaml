@@ -13,7 +13,7 @@ tags:
       id: diario
     timeout: 30000
 - assertVisible: Colazione
-- assertVisible: Cena
+- assertVisible: Pranzo
 
 # Aggiungere a un pasto preciso.
 - tapOn: Aggiungi a Pranzo
@@ -125,8 +125,15 @@ tags:
 - tapOn: Indietro
 - back
 - extendedWaitUntil:
-    visible: "Albume d'uovo, 100 grammi, 48 kcal, 10,9 grammi di proteine"
+    visible:
+      id: diario
     timeout: 10000
+# Cena è in fondo: si scende fino alla voce, poi si torna su.
+- scrollUntilVisible:
+    element: "Albume d'uovo, 100 grammi, 48 kcal, 10,9 grammi di proteine"
+- scrollUntilVisible:
+    element: Giorno precedente
+    direction: UP
 
 # Gli altri giorni.
 - tapOn: Giorno precedente

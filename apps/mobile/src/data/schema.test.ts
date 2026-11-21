@@ -28,6 +28,9 @@ describe('initDatabase', () => {
       "SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name",
     );
     expect(tables.map((t) => t.name)).toEqual([
+      'day_plan',
+      'day_type',
+      'day_type_target',
       'diary_entry',
       'food',
       'meal_slot',
@@ -37,7 +40,14 @@ describe('initDatabase', () => {
     ]);
     const version = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
     expect(version?.user_version).toBe(SCHEMA_VERSION);
-    expect(SCHEMA_VERSION).toBe(4);
+    expect(SCHEMA_VERSION).toBe(5);
+  });
+
+  it('chi trova il database occupato aspetta invece di fallire subito', async () => {
+    // Il download del catalogo tiene il database in una transazione esclusiva per qualche
+    // secondo: senza attesa la prima lettura del diario fallisce con SQLITE_BUSY.
+    const row = await db.getFirstAsync<{ timeout: number }>('PRAGMA busy_timeout');
+    expect(row?.timeout).toBeGreaterThanOrEqual(5000);
   });
 
   it('rieseguita non tocca i dati', async () => {
