@@ -80,7 +80,7 @@ Un nuovo prodotto entra nel catalogo da barcode, foto dell'etichetta o inserimen
 | RF-15 | Controllo di coerenza: kcal dichiarate confrontate con 4 kcal/g per proteine e carboidrati, 9 per i grassi, 2 per le fibre; avviso oltre una tolleranza da tarare (proposta 10%). | M | F1 |
 | RF-16 | Conversione del sale in sodio (sodio = sale ÷ 2,5). | M | F1 |
 | RF-17 | Proposta automatica dell'alimento generico di riferimento, da confermare. | S | F1 |
-| RF-18 | Inserimento manuale completo con gli stessi campi e controlli dell'etichetta, nella forma della tabella nutrizionale; con le voci facoltative dell'etichetta (monoinsaturi, polinsaturi, trans, colesterolo, polioli, amido, lattosio, vitamine e minerali, caffeina, creatina), che richiedono nuovi nutrienti. | M | F1 |
+| RF-18 | Inserimento manuale completo con gli stessi campi e controlli dell'etichetta, nella forma della tabella nutrizionale; con le voci facoltative dell'etichetta (monoinsaturi, polinsaturi, trans, colesterolo, polioli, amido, lattosio, vitamine e minerali, caffeina, creatina), che richiedono nuovi nutrienti. Prima parte fatta il 21/11: le righe obbligatorie dell'etichetta UE (energia, grassi, saturi, carboidrati, zuccheri, fibre, proteine, sale); le voci facoltative restano da fare. | M | F1 |
 
 ## Ricette e pasti salvati
 
@@ -331,7 +331,10 @@ food                 id, user_id (null = catalogo condiviso), name, brand, categ
                      state (raw|cooked|not_applicable), cooking (solo cotti), parent_food_id,
                      source (ciqual|usda|open_food_facts|label|manual|recipe),
                      source_code (codice nella fonte; obbligatorio nel catalogo condiviso,
-                     unico per fonte e catalogo), created_at, updated_at
+                     unico per fonte e catalogo), created_at, updated_at, deleted_at
+                     (sul telefono: date obbligatorie per gli alimenti personali, vincolo
+                     food_personal_dated; i valori ricavati da altri, come le kcal dai kJ o
+                     il sodio dal sale, hanno provenance estimated)
 food_name            id, food_id, lang (it|fr|en), name, origin (source|llm|reviewed|user)
 category             code, name_it, parent_code
 nutrient             code, name_it, unit, display_order

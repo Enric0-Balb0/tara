@@ -11,10 +11,17 @@ interface Props {
   per100: Readonly<Record<string, number | null | undefined>>;
   /** Quantità a cui riportare i valori; senza, i valori sono per 100 g. */
   grams?: number;
+  /** Unità dei valori: i prodotti liquidi sono per 100 ml. */
+  unit?: 'g' | 'ml';
 }
 
 /** Etichetta nutrizionale: sempre carta bianca e inchiostro nero, come un foglio vero. */
-export function NutritionLabel({ title = 'Valori nutrizionali', per100, grams = 100 }: Props) {
+export function NutritionLabel({
+  title = 'Valori nutrizionali',
+  per100,
+  grams = 100,
+  unit = 'g',
+}: Props) {
   const rows = labelRows(per100, grams);
   return (
     <View style={styles.label}>
@@ -23,7 +30,7 @@ export function NutritionLabel({ title = 'Valori nutrizionali', per100, grams = 
           {title}
         </TaraText>
         <TaraText variant="caption" color="secondary">
-          per {grams} g
+          per {grams} {unit}
         </TaraText>
       </View>
       <View style={styles.thick} />

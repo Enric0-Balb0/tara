@@ -60,7 +60,13 @@ export const colors: Record<Scheme, Record<ColorToken, string>> = {
 };
 
 /** L'etichetta nutrizionale è un foglio: uguale in entrambi i temi. */
-export const labelColors = { paper: '#FFFFFF', ink: '#000000', secondary: '#4D545A' } as const;
+// labelError: l'errore del tema chiaro, perché la carta è bianca anche nel tema scuro.
+export const labelColors = {
+  paper: '#FFFFFF',
+  ink: '#000000',
+  secondary: '#4D545A',
+  labelError: '#B5470F',
+} as const;
 export type LabelColorToken = keyof typeof labelColors;
 
 export const MACRO_TOKENS = ['protein', 'carbs', 'fat', 'fiber'] as const;

@@ -32,6 +32,8 @@ export async function recentFoods(
      FROM diary_entry AS e
        JOIN meal_slot AS s ON s.id = e.meal_slot_id AND s.user_id = e.user_id AND s.deleted_at IS NULL
      WHERE e.user_id = ? AND e.deleted_at IS NULL
+       -- Un alimento personale eliminato non si propone più (il diario lo tiene com'era).
+       AND NOT EXISTS (SELECT 1 FROM food AS f WHERE f.id = e.food_id AND f.deleted_at IS NOT NULL)
        AND e.id = (
          SELECT latest.id FROM diary_entry AS latest
          WHERE latest.user_id = e.user_id AND latest.food_id = e.food_id

@@ -227,6 +227,8 @@ export interface FoodHit {
   /** Metodo di cottura dei cotti, se la fonte lo precisa ("al vapore"). */
   cooking: string | null;
   baseUnit: BaseUnit;
+  /** Solo per i prodotti di marca personali (RF-02). */
+  brand: string | null;
   /** Un macro sconosciuto è null, non zero (principio 2). */
   per100: {
     energy_kcal: number | null;
@@ -253,6 +255,9 @@ export interface FoodDetail {
   baseUnit: BaseUnit;
   /** Da dove vengono i valori; null per un catalogo scaricato prima del formato 2. */
   source: FoodSource | null;
+  brand: string | null;
+  /** Alimento del catalogo personale: si modifica e si elimina (RF-18). */
+  personal: boolean;
   /** Solo i nutrienti noti, nell'ordine di visualizzazione. */
   nutrients: FoodNutrient[];
 }
@@ -263,6 +268,7 @@ interface FoodRow {
   state: FoodState;
   cooking: string | null;
   base_unit: BaseUnit;
+  brand: string | null;
 }
 
 function escapeLike(text: string): string {
@@ -283,21 +289,31 @@ function macroColumn(code: keyof FoodHit['per100']): string {
  * Il nome uguale sta al posto della somiglianza: è ciò che permette a un alias del
  * catalogo ("uovo", "pasta") di portare in cima l'alimento di tutti i giorni.
  */
-export async function searchFoods(db: SqlDatabase, query: string, limit = 20): Promise<FoodHit[]> {
+export async function searchFoods(
+  db: SqlDatabase,
+  query: string,
+  userId: string | null,
+  limit = 20,
+): Promise<FoodHit[]> {
   const words = searchWords(query);
   const key = words.join(' ');
   if (key.length < MIN_QUERY_LENGTH) return [];
+  // Il catalogo condiviso più quello personale dell'utente; a parità d'inizio i suoi
+  // prodotti vengono prima dei generici (RF-07).
   const rows = await db.getAllAsync<FoodRow & FoodHit['per100']>(
-    `SELECT f.id, f.name, f.state, f.cooking, f.base_unit,
+    `SELECT f.id, f.name, f.state, f.cooking, f.base_unit, f.brand,
             ${macroColumn('energy_kcal')}, ${macroColumn('protein_g')},
             ${macroColumn('carbs_g')}, ${macroColumn('fat_g')}
      FROM food AS f
-     WHERE ${words.map(() => "f.search_text LIKE ? ESCAPE '\\'").join(' AND ')}
+     WHERE (f.user_id IS NULL OR f.user_id = ?) AND f.deleted_at IS NULL
+       AND ${words.map(() => "f.search_text LIKE ? ESCAPE '\\'").join(' AND ')}
      ORDER BY (char(10) || f.search_text) LIKE ? ESCAPE '\\' DESC,
+              f.user_id IS NOT NULL DESC,
               f.state = 'raw' DESC,
               (char(10) || f.search_text || char(10)) LIKE ? ESCAPE '\\' DESC,
               length(f.name), f.name, f.cooking IS NOT NULL, f.cooking
      LIMIT ?`,
+    userId,
     ...words.map((word) => `%${escapeLike(word)}%`),
     `%\n${escapeLike(key)}%`,
     `%\n${escapeLike(key)}\n%`,
@@ -309,6 +325,7 @@ export async function searchFoods(db: SqlDatabase, query: string, limit = 20): P
     state: row.state,
     cooking: row.cooking,
     baseUnit: row.base_unit,
+    brand: row.brand,
     per100: {
       energy_kcal: row.energy_kcal,
       protein_g: row.protein_g,
@@ -319,8 +336,11 @@ export async function searchFoods(db: SqlDatabase, query: string, limit = 20): P
 }
 
 export async function getFood(db: SqlDatabase, id: string): Promise<FoodDetail | null> {
-  const food = await db.getFirstAsync<FoodRow & { source: FoodSource | null }>(
-    'SELECT id, name, state, cooking, base_unit, source FROM food WHERE id = ?',
+  const food = await db.getFirstAsync<
+    FoodRow & { source: FoodSource | null; user_id: string | null }
+  >(
+    `SELECT id, name, state, cooking, base_unit, brand, source, user_id
+     FROM food WHERE id = ? AND deleted_at IS NULL`,
     id,
   );
   if (food === null) return null;
@@ -339,6 +359,8 @@ export async function getFood(db: SqlDatabase, id: string): Promise<FoodDetail |
     cooking: food.cooking,
     baseUnit: food.base_unit,
     source: food.source,
+    brand: food.brand,
+    personal: food.user_id !== null,
     nutrients,
   };
 }

@@ -161,8 +161,8 @@ describe('replaceCatalog', () => {
   it('non tocca gli alimenti personali', async () => {
     await replaceV1();
     await db.runAsync(
-      `INSERT INTO food (id, user_id, name, state, base_unit, search_text)
-       VALUES ('mio', 'u1', 'Pancake proteico', 'cooked', 'g', 'pancake proteico')`,
+      `INSERT INTO food (id, user_id, name, state, base_unit, search_text, created_at, updated_at)
+       VALUES ('mio', 'u1', 'Pancake proteico', 'cooked', 'g', 'pancake proteico', 't', 't')`,
     );
     await db.runAsync(
       `INSERT INTO nutrient_value (food_id, nutrient_code, amount_per_100, provenance, confidence)
@@ -194,8 +194,8 @@ describe('clearCatalog', () => {
   it('non tocca gli alimenti personali', async () => {
     await replaceV1();
     await db.runAsync(
-      `INSERT INTO food (id, user_id, name, state, base_unit, search_text)
-       VALUES ('mio', 'u1', 'Pancake proteico', 'cooked', 'g', 'pancake proteico')`,
+      `INSERT INTO food (id, user_id, name, state, base_unit, search_text, created_at, updated_at)
+       VALUES ('mio', 'u1', 'Pancake proteico', 'cooked', 'g', 'pancake proteico', 't', 't')`,
     );
     await db.runAsync(
       `INSERT INTO nutrient_value (food_id, nutrient_code, amount_per_100, provenance, confidence)

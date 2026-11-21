@@ -19,7 +19,9 @@ export function openTestDatabase(): SqlDatabase {
   function connection(isTransaction: boolean): SqlDatabase {
     const guard = () => {
       if (transactionOpen && !isTransaction) {
-        throw new Error('Query sul database principale con una transazione aperta: va fatta su txn');
+        throw new Error(
+          'Query sul database principale con una transazione aperta: va fatta su txn',
+        );
       }
     };
     return {
@@ -58,6 +60,17 @@ export function openTestDatabase(): SqlDatabase {
         } finally {
           transactionOpen = false;
           sqlite.exec(`PRAGMA foreign_keys = ${foreign_keys}`);
+        }
+      },
+      async withTransactionAsync(task) {
+        guard();
+        sqlite.exec('BEGIN');
+        try {
+          await task();
+          sqlite.exec('COMMIT');
+        } catch (error) {
+          sqlite.exec('ROLLBACK');
+          throw error;
         }
       },
     };

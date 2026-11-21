@@ -88,7 +88,13 @@ describe('colors', () => {
   });
 
   it("l'etichetta è carta bianca con inchiostro nero e testo secondario leggibile", () => {
-    expect(labelColors).toEqual({ paper: '#FFFFFF', ink: '#000000', secondary: '#4D545A' });
+    expect(labelColors).toEqual({
+      paper: '#FFFFFF',
+      ink: '#000000',
+      secondary: '#4D545A',
+      labelError: '#B5470F',
+    });
     expect(contrastRatio(labelColors.secondary, labelColors.paper)).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(labelColors.labelError, labelColors.paper)).toBeGreaterThanOrEqual(4.5);
   });
 });

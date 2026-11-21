@@ -52,6 +52,7 @@ function Screens() {
         <Stack.Screen name="profilo" options={{ title: 'Profilo' }} />
         <Stack.Screen name="cerca" options={{ title: 'Cerca un alimento' }} />
         <Stack.Screen name="alimento/[id]" options={{ headerShown: false }} />
+        <Stack.Screen name="nuovo-alimento" options={{ headerShown: false }} />
         <Stack.Screen name="design" options={{ title: 'Componenti' }} />
       </Stack.Protected>
       <Stack.Protected guard={!signedIn}>

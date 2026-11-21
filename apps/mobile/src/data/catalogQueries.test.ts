@@ -30,7 +30,7 @@ const names = (hits: { name: string }[]) => hits.map((hit) => hit.name);
 
 describe('searchFoods', () => {
   it("trova l'albume e mette il crudo prima del cotto", async () => {
-    const hits = await searchFoods(db, 'albume');
+    const hits = await searchFoods(db, 'albume', null);
     expect(hits).toEqual([
       {
         id: 'albume-crudo',
@@ -38,6 +38,7 @@ describe('searchFoods', () => {
         state: 'raw',
         cooking: null,
         baseUnit: 'g',
+        brand: null,
         per100: { energy_kcal: 48.1, protein_g: 10.9, carbs_g: 0.73, fat_g: 0.17 },
       },
       {
@@ -46,32 +47,36 @@ describe('searchFoods', () => {
         state: 'cooked',
         cooking: null,
         baseUnit: 'g',
+        brand: null,
         per100: { energy_kcal: 47.3, protein_g: 10.3, carbs_g: 1.12, fat_g: 0.17 },
       },
     ]);
   });
 
   it('ignora accenti e maiuscole', async () => {
-    expect(names(await searchFoods(db, 'CAFFE'))).toEqual(['Caffè espresso']);
-    expect(names(await searchFoods(db, 'caffè'))).toEqual(['Caffè espresso']);
+    expect(names(await searchFoods(db, 'CAFFE', null))).toEqual(['Caffè espresso']);
+    expect(names(await searchFoods(db, 'caffè', null))).toEqual(['Caffè espresso']);
   });
 
   it('cerca anche nei nomi aggiuntivi', async () => {
-    expect(names(await searchFoods(db, 'espresso'))).toEqual(['Caffè espresso']);
+    expect(names(await searchFoods(db, 'espresso', null))).toEqual(['Caffè espresso']);
   });
 
   it('un macro sconosciuto resta mancante', async () => {
-    const [coffee] = await searchFoods(db, 'caffe');
+    const [coffee] = await searchFoods(db, 'caffe', null);
     expect(coffee?.per100).toEqual({ energy_kcal: 2, protein_g: 0.1, carbs_g: null, fat_g: null });
   });
 
   it('ogni parola deve comparire', async () => {
-    expect(await searchFoods(db, 'albume caffè')).toEqual([]);
-    expect(names(await searchFoods(db, 'uovo albume'))).toEqual(["Albume d'uovo", "Albume d'uovo"]);
+    expect(await searchFoods(db, 'albume caffè', null)).toEqual([]);
+    expect(names(await searchFoods(db, 'uovo albume', null))).toEqual([
+      "Albume d'uovo",
+      "Albume d'uovo",
+    ]);
   });
 
   it('prima i nomi che iniziano con la ricerca', async () => {
-    expect(names(await searchFoods(db, 'uovo'))).toEqual([
+    expect(names(await searchFoods(db, 'uovo', null))).toEqual([
       'Uovo intero',
       "Albume d'uovo",
       "Albume d'uovo",
@@ -95,31 +100,37 @@ describe('searchFoods', () => {
       { etag: '"v2"', syncedAt: '2026-11-14T22:00:00.000Z' },
     );
 
-    expect(names(await searchFoods(db, 'uovo')).slice(0, 2)).toEqual([
+    expect(names(await searchFoods(db, 'uovo', null)).slice(0, 2)).toEqual([
       'Uovo di gallina',
       'Uovo di oca',
     ]);
-    expect(names(await searchFoods(db, 'Uova'))).toEqual(['Uovo di gallina', 'Uovo di oca']);
+    expect(names(await searchFoods(db, 'Uova', null))).toEqual(['Uovo di gallina', 'Uovo di oca']);
   });
 
   it('i caratteri speciali valgono alla lettera', async () => {
-    expect(names(await searchFoods(db, "d'uovo"))).toEqual(["Albume d'uovo", "Albume d'uovo"]);
-    expect(await searchFoods(db, '%%')).toEqual([]);
-    expect(await searchFoods(db, '_a')).toEqual([]);
-    expect(await searchFoods(db, '\\\\')).toEqual([]);
+    expect(names(await searchFoods(db, "d'uovo", null))).toEqual([
+      "Albume d'uovo",
+      "Albume d'uovo",
+    ]);
+    expect(await searchFoods(db, '%%', null)).toEqual([]);
+    expect(await searchFoods(db, '_a', null)).toEqual([]);
+    expect(await searchFoods(db, '\\\\', null)).toEqual([]);
   });
 
   it('una ricerca di un carattere non restituisce nulla', async () => {
-    expect(await searchFoods(db, 'a')).toEqual([]);
-    expect(await searchFoods(db, '  ')).toEqual([]);
+    expect(await searchFoods(db, 'a', null)).toEqual([]);
+    expect(await searchFoods(db, '  ', null)).toEqual([]);
   });
 
   it("l'apostrofo tipografico trova l'albume", async () => {
-    expect(names(await searchFoods(db, 'albume d’uovo'))).toEqual(["Albume d'uovo", "Albume d'uovo"]);
+    expect(names(await searchFoods(db, 'albume d’uovo', null))).toEqual([
+      "Albume d'uovo",
+      "Albume d'uovo",
+    ]);
   });
 
   it('rispetta il limite', async () => {
-    expect(await searchFoods(db, 'albume', 1)).toHaveLength(1);
+    expect(await searchFoods(db, 'albume', null, 1)).toHaveLength(1);
   });
 });
 
@@ -133,11 +144,41 @@ describe('getFood', () => {
       cooking: null,
       baseUnit: 'g',
       source: 'ciqual',
+      brand: null,
+      personal: false,
       nutrients: [
-        { code: 'energy_kcal', name: 'Energia', unit: 'kcal', amountPer100: 48.1, provenance: 'reference', confidence: 1 },
-        { code: 'fat_g', name: 'Grassi', unit: 'g', amountPer100: 0.17, provenance: 'reference', confidence: 1 },
-        { code: 'carbs_g', name: 'Carboidrati', unit: 'g', amountPer100: 0.73, provenance: 'reference', confidence: 1 },
-        { code: 'protein_g', name: 'Proteine', unit: 'g', amountPer100: 10.9, provenance: 'reference', confidence: 0.9 },
+        {
+          code: 'energy_kcal',
+          name: 'Energia',
+          unit: 'kcal',
+          amountPer100: 48.1,
+          provenance: 'reference',
+          confidence: 1,
+        },
+        {
+          code: 'fat_g',
+          name: 'Grassi',
+          unit: 'g',
+          amountPer100: 0.17,
+          provenance: 'reference',
+          confidence: 1,
+        },
+        {
+          code: 'carbs_g',
+          name: 'Carboidrati',
+          unit: 'g',
+          amountPer100: 0.73,
+          provenance: 'reference',
+          confidence: 1,
+        },
+        {
+          code: 'protein_g',
+          name: 'Proteine',
+          unit: 'g',
+          amountPer100: 10.9,
+          provenance: 'reference',
+          confidence: 0.9,
+        },
       ],
     });
   });
@@ -225,7 +266,7 @@ describe('cottura', () => {
   });
 
   it('a parità di nome il cotto senza cottura precisata viene prima', async () => {
-    const hits = await searchFoods(db, 'broccoli');
+    const hits = await searchFoods(db, 'broccoli', null);
     expect(hits.map((hit) => [hit.id, hit.cooking])).toEqual([
       ['broccoli-crudi', null],
       ['broccoli-cotti', null],
@@ -235,7 +276,7 @@ describe('cottura', () => {
   });
 
   it('si cerca anche per cottura', async () => {
-    expect((await searchFoods(db, 'broccoli vapore')).map((hit) => hit.id)).toEqual([
+    expect((await searchFoods(db, 'broccoli vapore', null)).map((hit) => hit.id)).toEqual([
       'broccoli-vapore',
     ]);
   });
@@ -254,7 +295,7 @@ describe('cottura', () => {
       ]),
       { etag: null, syncedAt: '2026-10-31T10:00:00.000Z' },
     );
-    expect((await searchFoods(db, 'arrosto')).map((hit) => hit.id)).toEqual([
+    expect((await searchFoods(db, 'arrosto', null)).map((hit) => hit.id)).toEqual([
       'arrosto-manzo',
       'aglio-arrosto',
     ]);

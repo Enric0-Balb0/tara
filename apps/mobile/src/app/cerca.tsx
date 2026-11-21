@@ -50,6 +50,8 @@ export default function SearchScreen() {
   const { session } = useSession();
   const userId = session?.user.id;
   // Con il campo vuoto: preferiti e recenti, per registrare senza scrivere (RF-44).
+  const [focusCount, setFocusCount] = useState(0);
+  const focusedOnce = useRef(false);
   const [quick, setQuick] = useState<{ favorites: QuickFood[]; recent: RecentFood[] }>({
     favorites: [],
     recent: [],
@@ -57,6 +59,9 @@ export default function SearchScreen() {
 
   useFocusEffect(
     useCallback(() => {
+      // Al primo focus la ricerca è appena partita: si ripete solo tornando alla schermata.
+      if (focusedOnce.current) setFocusCount((count) => count + 1);
+      focusedOnce.current = true;
       if (userId === undefined) return undefined;
       let current = true;
       void Promise.all([loadFavorites(db, userId), recentFoods(db, userId, 10)])
@@ -69,6 +74,19 @@ export default function SearchScreen() {
       };
     }, [db, userId]),
   );
+
+  // Un prodotto che non c'è si crea dalla ricerca, con il nome già scritto (RF-18).
+  const create = () =>
+    router.push({
+      pathname: '/nuovo-alimento',
+      params: {
+        name: query.trim(),
+        from: 'cerca',
+        ...(slot ? { slot } : {}),
+        ...(date ? { date } : {}),
+        ...(plan ? { plan } : {}),
+      },
+    });
 
   const open = (id: string) =>
     router.push({
@@ -102,7 +120,7 @@ export default function SearchScreen() {
 
   useEffect(() => {
     const request = ++latest.current;
-    searchFoods(db, query)
+    searchFoods(db, query, userId ?? null)
       .then((hits) => {
         // Solo l'ultima ricerca conta: una più lenta, arrivata dopo, non copre la nuova.
         if (request === latest.current) setResults({ query, hits });
@@ -110,7 +128,9 @@ export default function SearchScreen() {
       .catch((error: unknown) => console.error('Ricerca non riuscita', error));
     // catalogVersion: se arriva un catalogo mentre la schermata è aperta, si cerca di nuovo,
     // così i risultati della ricerca già scritta compaiono da soli.
-  }, [db, query, catalogVersion]);
+    // focusCount: tornando dalla scheda o dal form un alimento nuovo, cambiato o eliminato
+    // si vede subito.
+  }, [db, query, catalogVersion, userId, focusCount]);
 
   // Senza catalogo sul telefono si riprova una volta da soli: forse la connessione è tornata.
   useEffect(() => {
@@ -130,6 +150,59 @@ export default function SearchScreen() {
           catalogSize,
           syncing,
         });
+
+  const footer =
+    status?.kind === 'downloading' && status.message ? (
+      <Download headline={status.message} {...downloadProgress(progress)} />
+    ) : status?.kind === 'hint' && (quick.favorites.length > 0 || quick.recent.length > 0) ? (
+      <View style={styles.quick}>
+        {quick.favorites.length > 0 ? (
+          <View>
+            <TaraText variant="bodyStrong" accessibilityRole="header" style={styles.quickTitle}>
+              Preferiti
+            </TaraText>
+            {quick.favorites.map((food) => (
+              <QuickRow
+                key={`p-${food.foodId}`}
+                name={food.foodName}
+                state={food.foodState}
+                onPress={() => open(food.foodId)}
+              />
+            ))}
+          </View>
+        ) : null}
+        {quick.recent.length > 0 ? (
+          <View>
+            <TaraText variant="bodyStrong" accessibilityRole="header" style={styles.quickTitle}>
+              Recenti
+            </TaraText>
+            {quick.recent.map((food) => (
+              <QuickRow
+                key={`r-${food.foodId}`}
+                name={food.foodName}
+                state={food.foodState}
+                detail={`ultima volta ${formatAmount(food.lastQuantity, 'grams')} ${food.unit}`}
+                onPress={() => open(food.foodId)}
+              />
+            ))}
+          </View>
+        ) : null}
+      </View>
+    ) : status?.message ? (
+      <View style={styles.footer}>
+        <TaraText color="textSecondary" style={styles.message}>
+          {status.message}
+        </TaraText>
+        {status.kind === 'offline' ? (
+          <PressableScale
+            onPress={refresh}
+            style={[styles.retry, { borderColor: colors.borderStrong }]}
+          >
+            <TaraText variant="bodyStrong">Riprova</TaraText>
+          </PressableScale>
+        ) : null}
+      </View>
+    ) : null;
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
@@ -158,74 +231,42 @@ export default function SearchScreen() {
             name={item.name}
             state={item.state}
             cooking={item.cooking}
+            brand={item.brand}
             kcalPer100={item.per100.energy_kcal}
             proteinPer100={item.per100.protein_g}
             onPress={() => open(item.id)}
           />
         )}
         ListFooterComponent={
-          status?.kind === 'downloading' && status.message ? (
-            <Download headline={status.message} {...downloadProgress(progress)} />
-          ) : status?.kind === 'hint' && (quick.favorites.length > 0 || quick.recent.length > 0) ? (
-            <View style={styles.quick}>
-              {quick.favorites.length > 0 ? (
-                <View>
-                  <TaraText
-                    variant="bodyStrong"
-                    accessibilityRole="header"
-                    style={styles.quickTitle}
-                  >
-                    Preferiti
-                  </TaraText>
-                  {quick.favorites.map((food) => (
-                    <QuickRow
-                      key={`p-${food.foodId}`}
-                      name={food.foodName}
-                      state={food.foodState}
-                      onPress={() => open(food.foodId)}
-                    />
-                  ))}
-                </View>
-              ) : null}
-              {quick.recent.length > 0 ? (
-                <View>
-                  <TaraText
-                    variant="bodyStrong"
-                    accessibilityRole="header"
-                    style={styles.quickTitle}
-                  >
-                    Recenti
-                  </TaraText>
-                  {quick.recent.map((food) => (
-                    <QuickRow
-                      key={`r-${food.foodId}`}
-                      name={food.foodName}
-                      state={food.foodState}
-                      detail={`ultima volta ${formatAmount(food.lastQuantity, 'grams')} ${food.unit}`}
-                      onPress={() => open(food.foodId)}
-                    />
-                  ))}
-                </View>
-              ) : null}
-            </View>
-          ) : status?.message ? (
-            <View style={styles.footer}>
-              <TaraText color="textSecondary" style={styles.message}>
-                {status.message}
-              </TaraText>
-              {status.kind === 'offline' ? (
-                <PressableScale
-                  onPress={refresh}
-                  style={[styles.retry, { borderColor: colors.borderStrong }]}
-                >
-                  <TaraText variant="bodyStrong">Riprova</TaraText>
-                </PressableScale>
-              ) : null}
-            </View>
-          ) : undefined
+          <>
+            {footer}
+            {/* Anche senza il catalogo condiviso: gli alimenti personali non lo richiedono. */}
+            {status !== null && status.kind !== 'hint' && status.kind !== 'pending' ? (
+              <View style={styles.createAfter}>
+                <CreateRow query={query} onPress={create} />
+              </View>
+            ) : null}
+          </>
         }
       />
     </View>
+  );
+}
+
+/** In fondo ai risultati: il prodotto che non c'è si crea con il nome già scritto. */
+function CreateRow({ query, onPress }: { query: string; onPress: () => void }) {
+  const { colors } = useTheme();
+  return (
+    <PressableScale
+      onPress={onPress}
+      testID="crea-alimento"
+      style={[styles.create, { borderColor: colors.borderStrong }]}
+    >
+      <Icon name="plus" color="text" size={20} />
+      <TaraText variant="bodyStrong" numberOfLines={1} style={styles.createText}>
+        Crea «{query.trim()}»
+      </TaraText>
+    </PressableScale>
   );
 }
 
@@ -277,6 +318,20 @@ const styles = StyleSheet.create({
     gap: space.l,
   },
   message: { textAlign: 'center' },
+  createAfter: { padding: space.l },
+  create: {
+    minHeight: touch.min,
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space.s,
+    paddingHorizontal: space.l,
+    borderRadius: radius.button,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+  },
+  createText: { flexShrink: 1 },
   quick: { gap: space.l, paddingBottom: space.xl },
   quickTitle: { paddingHorizontal: space.l, paddingBottom: space.xs },
   retry: {
