@@ -35,7 +35,12 @@ export function MealSection({ name, kcal, protein, entries, onAdd }: Props) {
   return (
     <Animated.View layout={layout} style={styles.section}>
       <View style={styles.header}>
-        <TaraText variant="section" numberOfLines={1} accessibilityRole="header" style={styles.name}>
+        <TaraText
+          variant="section"
+          numberOfLines={1}
+          accessibilityRole="header"
+          style={styles.name}
+        >
           {name}
         </TaraText>
         {empty ? null : (
@@ -75,12 +80,8 @@ export function MealSection({ name, kcal, protein, entries, onAdd }: Props) {
           ))}
         </View>
       )}
-      <PressableScale
-        onPress={onAdd}
-        accessibilityLabel={`Aggiungi a ${name}`}
-        style={styles.add}
-      >
-        <Icon name="plus" color="textSecondary" size={18} />
+      <PressableScale onPress={onAdd} accessibilityLabel={`Aggiungi a ${name}`} style={styles.add}>
+        <Icon name="plus" color="textSecondary" />
         <TaraText variant="bodyStrong" color="textSecondary">
           Aggiungi
         </TaraText>
@@ -96,7 +97,7 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
     gap: columns.gap,
     paddingHorizontal: space.m,
-    minHeight: 32,
+    minHeight: space.xxxl,
   },
   name: { flex: 1 },
   weight: { width: columns.weight },

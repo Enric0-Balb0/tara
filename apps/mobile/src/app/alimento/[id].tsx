@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GramSheet } from '@/components/GramSheet';
@@ -18,6 +18,7 @@ import { minutesOfDay, slotForTime, toLocalDate } from '@/domain/diary';
 import { formatTime } from '@/domain/format';
 import { sourceLabel } from '@/domain/sources';
 import { radius, space, touch } from '@/theme/layout';
+import { textStyles } from '@/theme/typography';
 import { useTheme } from '@/theme/useTheme';
 
 /**
@@ -40,8 +41,14 @@ export default function FoodScreen() {
   const [variantId, setVariantId] = useState<string | null>(null);
   const [slots, setSlots] = useState<MealSlot[]>([]);
   const [slotId, setSlotId] = useState<string | undefined>(params.slot);
-  const [lastGrams, setLastGrams] = useState<number | null>(null);
+  // L'ultima quantità vale solo per l'alimento e il pasto per cui è stata letta: cambiando
+  // pasto, finché non arriva la nuova, la scorciatoia non compare.
+  const [last, setLast] = useState<{ key: string; grams: number | null } | null>(null);
+  const lastKey = `${id}:${slotId ?? ''}`;
+  const lastGrams = last?.key === lastKey ? last.grams : null;
   const [sheetOpen, setSheetOpen] = useState(false);
+  // Una sola scrittura alla volta: un doppio tocco su "Aggiungi" non registra due voci.
+  const saving = useRef(false);
   const date = params.date ?? toLocalDate(new Date());
 
   useEffect(() => {
@@ -70,8 +77,7 @@ export default function FoodScreen() {
       if (!current) return;
       setSlots(mealSlots);
       setSlotId(
-        (chosen) =>
-          chosen ?? slotForTime(mealSlots, minutesOfDay(formatTime(new Date())))?.id,
+        (chosen) => chosen ?? slotForTime(mealSlots, minutesOfDay(formatTime(new Date())))?.id,
       );
     })();
     return () => {
@@ -83,8 +89,9 @@ export default function FoodScreen() {
   useEffect(() => {
     if (userId === undefined || slotId === undefined) return undefined;
     let current = true;
+    const key = `${id}:${slotId}`;
     void lastQuantity(db, userId, id, slotId).then((grams) => {
-      if (current) setLastGrams(grams);
+      if (current) setLast({ key, grams });
     });
     return () => {
       current = false;
@@ -92,11 +99,7 @@ export default function FoodScreen() {
   }, [db, userId, id, slotId]);
 
   const back = (
-    <PressableScale
-      onPress={() => router.back()}
-      accessibilityLabel="Indietro"
-      style={styles.back}
-    >
+    <PressableScale onPress={() => router.back()} accessibilityLabel="Indietro" style={styles.back}>
       <Icon name="chevronLeft" color="text" />
     </PressableScale>
   );
@@ -128,12 +131,20 @@ export default function FoodScreen() {
   const slot = slots.find((candidate) => candidate.id === slotId);
 
   async function add(quantity: number, andContinue: boolean) {
-    if (userId === undefined || slot === undefined || !food) return;
-    await addEntry(db, { userId, date, mealSlotId: slot.id, food, quantity, now: new Date() });
+    if (userId === undefined || slot === undefined || !food || saving.current) return;
+    saving.current = true;
+    try {
+      await addEntry(db, { userId, date, mealSlotId: slot.id, food, quantity, now: new Date() });
+    } catch (error: unknown) {
+      saving.current = false;
+      console.error('Voce non salvata', error);
+      Alert.alert('Voce non salvata', 'Il telefono non è riuscito a salvarla. Riprova.');
+      return;
+    }
     setSheetOpen(false);
-    // "Aggiungi e continua" torna ai risultati per il prossimo alimento dello stesso pasto;
-    // altrimenti si torna a Oggi, dove la voce compare.
-    if (andContinue) router.back();
+    // "Aggiungi e continua" torna ai risultati per il prossimo alimento dello stesso pasto,
+    // con pasto e giorno scelti qui; altrimenti si torna a Oggi, dove la voce compare.
+    if (andContinue) router.dismissTo({ pathname: '/cerca', params: { slot: slot.id, date } });
     else router.dismissTo('/');
   }
 
@@ -167,12 +178,12 @@ export default function FoodScreen() {
           ) : null}
         </ScrollView>
         <View style={[styles.actions, { paddingBottom: space.l + insets.bottom }]}>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
+          {/* Tutti i pasti in vista su una riga, come il selettore crudo/cotto del foglio: un
+              pasto nascosto a destra non si scoprirebbe. */}
+          <View
             accessibilityRole="radiogroup"
             accessibilityLabel="Pasto"
-            contentContainerStyle={styles.slots}
+            style={[styles.slots, { backgroundColor: colors.surface }]}
           >
             {slots.map((candidate) => {
               const selected = candidate.id === slotId;
@@ -181,21 +192,23 @@ export default function FoodScreen() {
                   key={candidate.id}
                   accessibilityRole="radio"
                   accessibilityState={{ checked: selected }}
+                  accessibilityLabel={candidate.name}
                   onPress={() => setSlotId(candidate.id)}
-                  style={[
-                    styles.slot,
-                    selected
-                      ? { backgroundColor: colors.text, borderColor: colors.text }
-                      : { borderColor: colors.borderStrong },
-                  ]}
+                  style={[styles.slot, selected ? { backgroundColor: colors.action } : null]}
                 >
-                  <TaraText variant="bodyStrong" color={selected ? 'background' : 'textSecondary'}>
+                  <TaraText
+                    variant="caption"
+                    color={selected ? 'background' : 'textSecondary'}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    style={selected ? styles.slotSelected : null}
+                  >
                     {candidate.name}
                   </TaraText>
                 </PressableScale>
               );
             })}
-          </ScrollView>
+          </View>
           <PressableScale
             onPress={() => setSheetOpen(true)}
             disabled={slot === undefined}
@@ -257,15 +270,19 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   actions: { paddingHorizontal: space.l, paddingTop: space.m, gap: space.m },
-  slots: { gap: space.s },
+  slots: { flexDirection: 'row', borderRadius: radius.key, padding: space.xs, gap: space.xs },
+  // Larghezze uguali: senza minWidth 0 il nome più lungo allarga il suo segmento.
   slot: {
+    flex: 1,
+    flexBasis: 0,
+    minWidth: 0,
     minHeight: touch.min,
     borderRadius: radius.field,
-    borderWidth: 1,
-    paddingHorizontal: space.m,
+    paddingHorizontal: space.xs,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  slotSelected: { fontFamily: textStyles.bodyStrong.fontFamily },
   primary: {
     minHeight: touch.primary,
     borderRadius: radius.button,

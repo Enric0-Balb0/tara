@@ -1,15 +1,15 @@
-import { useFocusEffect, useNavigation, useRouter } from "expo-router";
-import { useSQLiteContext } from "expo-sqlite";
-import { useCallback, useLayoutEffect, useState } from "react";
-import { Modal, ScrollView, StyleSheet, View } from "react-native";
+import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
+import { useSQLiteContext } from 'expo-sqlite';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Alert, AppState, Modal, ScrollView, StyleSheet, View } from 'react-native';
 
-import { DayTotals } from "@/components/DayTotals";
-import { DiaryRow } from "@/components/DiaryRow";
-import { GramSheet } from "@/components/GramSheet";
-import { Icon } from "@/components/Icon";
-import { MealSection } from "@/components/MealSection";
-import { PressableScale } from "@/components/PressableScale";
-import { TaraText } from "@/components/TaraText";
+import { DayTotals } from '@/components/DayTotals';
+import { DiaryRow } from '@/components/DiaryRow';
+import { GramSheet } from '@/components/GramSheet';
+import { Icon } from '@/components/Icon';
+import { MealSection } from '@/components/MealSection';
+import { PressableScale } from '@/components/PressableScale';
+import { TaraText } from '@/components/TaraText';
 import {
   type DiaryEntry,
   deleteEntry,
@@ -17,18 +17,11 @@ import {
   entriesForDay,
   type MealSlot,
   updateEntryQuantity,
-} from "@/data/diaryStore";
-import { useSession } from "@/data/SessionProvider";
-import type { SqlDatabase } from "@/data/sql";
-import {
-  addDays,
-  dayLabel,
-  dayTitle,
-  entryAmount,
-  toLocalDate,
-  totals,
-} from "@/domain/diary";
-import { space, touch } from "@/theme/layout";
+} from '@/data/diaryStore';
+import { useSession } from '@/data/SessionProvider';
+import type { SqlDatabase } from '@/data/sql';
+import { addDays, dayLabel, dayTitle, entryAmount, toLocalDate, totals } from '@/domain/diary';
+import { space, touch } from '@/theme/layout';
 
 /**
  * Oggi (RF-40, RF-45): i pasti del giorno con le voci registrate e i totali. Si scorre tra i
@@ -41,57 +34,90 @@ export default function TodayScreen() {
   const userId = session?.user.id;
   const router = useRouter();
   const navigation = useNavigation();
-  const today = toLocalDate(new Date());
+  const [today, setToday] = useState(() => toLocalDate(new Date()));
   const [date, setDate] = useState(today);
   const [slots, setSlots] = useState<MealSlot[]>([]);
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [editing, setEditing] = useState<DiaryEntry | null>(null);
+  const latest = useRef(0);
+
+  // Dopo mezzanotte, con l'app rimasta aperta, "oggi" va avanti: chi guardava oggi passa
+  // al giorno nuovo, chi guardava un altro giorno resta lì.
+  const refreshToday = useCallback(() => {
+    const now = toLocalDate(new Date());
+    setToday((previous) => {
+      if (previous !== now) setDate((shown) => (shown === previous ? now : shown));
+      return now;
+    });
+  }, []);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') refreshToday();
+    });
+    return () => subscription.remove();
+  }, [refreshToday]);
 
   const load = useCallback(async () => {
     if (userId === undefined) return;
-    const [mealSlots, dayEntries] = await Promise.all([
-      ensureMealSlots(db, userId, new Date()),
-      entriesForDay(db, userId, date),
-    ]);
-    setSlots(mealSlots);
-    setEntries(dayEntries);
+    // Solo l'ultima lettura conta: con le frecce toccate in fretta una lettura più lenta,
+    // arrivata dopo, mostrerebbe le voci di un altro giorno.
+    const request = ++latest.current;
+    try {
+      const [mealSlots, dayEntries] = await Promise.all([
+        ensureMealSlots(db, userId, new Date()),
+        entriesForDay(db, userId, date),
+      ]);
+      if (request !== latest.current) return;
+      setSlots(mealSlots);
+      setEntries(dayEntries);
+    } catch (error: unknown) {
+      console.error('Diario non letto', error);
+    }
   }, [db, userId, date]);
 
   // Si ricarica ogni volta che si torna qui, per esempio dopo aver aggiunto una voce.
   useFocusEffect(
     useCallback(() => {
+      refreshToday();
       void load();
-    }, [load]),
+    }, [load, refreshToday]),
   );
 
   useLayoutEffect(() => {
     navigation.setOptions({ headerTitle: dayTitle(date, today) });
   }, [navigation, date, today]);
 
-  async function saveQuantity(entry: DiaryEntry, quantity: number) {
+  // Il foglio si chiude solo a scrittura riuscita; se non riesce lo dice e resta aperto.
+  async function write(change: (owner: string) => Promise<void>) {
     if (userId === undefined) return;
+    try {
+      await change(userId);
+    } catch (error: unknown) {
+      console.error('Diario non salvato', error);
+      Alert.alert('Modifica non salvata', 'Il telefono non è riuscito a salvarla. Riprova.');
+      return;
+    }
     setEditing(null);
-    await updateEntryQuantity(db, userId, entry.id, quantity, new Date());
     await load();
   }
 
-  async function remove(entry: DiaryEntry) {
-    if (userId === undefined) return;
-    setEditing(null);
-    await deleteEntry(db, userId, entry.id, new Date());
-    await load();
+  function saveQuantity(entry: DiaryEntry, quantity: number) {
+    return write((owner) => updateEntryQuantity(db, owner, entry.id, quantity, new Date()));
   }
 
-  const editingSlot = editing
-    ? slots.find((slot) => slot.id === editing.mealSlotId)
-    : undefined;
+  function remove(entry: DiaryEntry) {
+    return write((owner) => deleteEntry(db, owner, entry.id, new Date()));
+  }
+
+  const editingSlot = editing ? slots.find((slot) => slot.id === editing.mealSlotId) : undefined;
 
   return (
     <View style={styles.screen}>
       <ScrollView
         testID="diario"
         contentContainerStyle={styles.content}
-        importantForAccessibility={editing ? "no-hide-descendants" : "auto"}
+        importantForAccessibility={editing ? 'no-hide-descendants' : 'auto'}
         accessibilityElementsHidden={editing !== null}
       >
         <View style={styles.dayNav}>
@@ -148,7 +174,7 @@ export default function TodayScreen() {
               protein={sum.protein_g}
               onAdd={() =>
                 router.push({
-                  pathname: "/cerca",
+                  pathname: '/cerca',
                   params: { slot: slot.id, date },
                 })
               }
@@ -160,16 +186,8 @@ export default function TodayScreen() {
                     state={entry.foodState}
                     quantity={entry.quantity}
                     unit={entry.unit}
-                    kcal={entryAmount(
-                      entry.snapshot,
-                      "energy_kcal",
-                      entry.quantity,
-                    )}
-                    protein={entryAmount(
-                      entry.snapshot,
-                      "protein_g",
-                      entry.quantity,
-                    )}
+                    kcal={entryAmount(entry.snapshot, 'energy_kcal', entry.quantity)}
+                    protein={entryAmount(entry.snapshot, 'protein_g', entry.quantity)}
                     onPress={() => setEditing(entry)}
                   />
                 ),
@@ -195,10 +213,7 @@ export default function TodayScreen() {
               name: editing.foodName,
               state: editing.foodState,
               per100: Object.fromEntries(
-                Object.entries(editing.snapshot).map(([code, value]) => [
-                  code,
-                  value.amount,
-                ]),
+                Object.entries(editing.snapshot).map(([code, value]) => [code, value.amount]),
               ),
             }}
             mealName={editingSlot?.name}
@@ -218,24 +233,24 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   content: { padding: space.l, gap: space.l, paddingBottom: space.xxxl },
   dayNav: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   dayButton: {
     width: touch.min,
     height: touch.min,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   dayLabel: {
     flex: 1,
     minHeight: touch.min,
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   legend: {
-    alignItems: "flex-end",
+    alignItems: 'flex-end',
     paddingHorizontal: space.m,
     marginBottom: -space.s,
   },

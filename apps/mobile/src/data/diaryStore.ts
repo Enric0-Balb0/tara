@@ -5,7 +5,12 @@
  */
 
 import type { BaseUnit, FoodState } from '@/domain/food';
-import { DEFAULT_MEAL_SLOTS, type NutrientSnapshot, snapshotFrom, type SlotRef } from '@/domain/diary';
+import {
+  DEFAULT_MEAL_SLOTS,
+  type NutrientSnapshot,
+  snapshotFrom,
+  type SlotRef,
+} from '@/domain/diary';
 import { newId } from '@/domain/ids';
 
 import type { SqlDatabase } from './sql';
@@ -168,7 +173,10 @@ export async function addEntry(
   return toEntry(row);
 }
 
-/** Le voci di un giorno, nell'ordine dei pasti e poi di inserimento. */
+/**
+ * Le voci di un giorno, nell'ordine dei pasti e poi di inserimento. Le voci di un pasto
+ * eliminato restano fuori: non comparirebbero in nessun pasto ma conterebbero nei totali.
+ */
 export async function entriesForDay(
   db: SqlDatabase,
   userId: string,
@@ -177,7 +185,9 @@ export async function entriesForDay(
   const rows = await db.getAllAsync<EntryRow>(
     `SELECT e.id, e.date, e.meal_slot_id, e.food_id, e.food_name, e.food_state, e.quantity,
             e.unit, e.nutrients_snapshot, e.created_at, e.updated_at
-     FROM diary_entry AS e JOIN meal_slot AS s ON s.id = e.meal_slot_id
+     FROM diary_entry AS e
+       JOIN meal_slot AS s
+         ON s.id = e.meal_slot_id AND s.user_id = e.user_id AND s.deleted_at IS NULL
      WHERE e.user_id = ? AND e.date = ? AND e.deleted_at IS NULL
      ORDER BY s.position, e.created_at, e.id`,
     userId,

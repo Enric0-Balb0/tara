@@ -40,12 +40,12 @@ export interface SheetFood {
 interface Props {
   visible: boolean;
   food: SheetFood;
-  /** Pasto a cui va la voce; senza, il foglio calcola soltanto (in F0 il diario non c'è). */
+  /** Pasto a cui va la voce, mostrato in alto; senza (catalogo dei componenti) non c'è. */
   mealName?: string;
   lastGrams?: number;
   /** Peso da cui parte la lettura, senza la scorciatoia "Ultima volta" (modifica di una voce). */
   startGrams?: number;
-  /** Verbo del pulsante principale: "Aggiungi" nel diario, "Usa" quando si calcola. */
+  /** Verbo del pulsante principale: "Aggiungi" per una voce nuova, "Salva" per modificarla. */
   confirmVerb?: string;
   onConfirm: (grams: number) => void;
   /** Senza, il pulsante "Aggiungi e continua" non c'è. */

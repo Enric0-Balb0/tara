@@ -89,7 +89,11 @@ describe('voci del diario', () => {
       quantity: 300,
       unit: 'g',
     });
-    expect(entry.snapshot.protein_g).toEqual({ amount: 10.9, provenance: 'reference', confidence: 1 });
+    expect(entry.snapshot.protein_g).toEqual({
+      amount: 10.9,
+      provenance: 'reference',
+      confidence: 1,
+    });
     expect(await entriesForDay(db, USER, '2026-11-21')).toEqual([entry]);
   });
 
@@ -126,6 +130,24 @@ describe('voci del diario', () => {
     expect(ids).toEqual([b1.id, b2.id, c1.id]);
   });
 
+  it('le voci di un pasto eliminato non contano più: non si vedrebbero in nessun pasto', async () => {
+    const merenda = await slotNamed('Merenda');
+    await addEntry(db, {
+      userId: USER,
+      date: '2026-11-21',
+      mealSlotId: merenda.id,
+      food: ALBUME,
+      quantity: 100,
+      now: NOW,
+    });
+    await db.runAsync(
+      'UPDATE meal_slot SET deleted_at = ? WHERE id = ?',
+      later(1).toISOString(),
+      merenda.id,
+    );
+    expect(await entriesForDay(db, USER, '2026-11-21')).toEqual([]);
+  });
+
   it('updateEntryQuantity cambia il peso e aggiorna updated_at', async () => {
     const pranzo = await slotNamed('Pranzo');
     const entry = await addEntry(db, {
@@ -142,7 +164,7 @@ describe('voci del diario', () => {
     expect(updated?.updatedAt).toBe(later(2).toISOString());
   });
 
-  it("deleteEntry nasconde la voce ma la tiene per la sincronizzazione; un altro utente non può", async () => {
+  it('deleteEntry nasconde la voce ma la tiene per la sincronizzazione; un altro utente non può', async () => {
     const pranzo = await slotNamed('Pranzo');
     const entry = await addEntry(db, {
       userId: USER,

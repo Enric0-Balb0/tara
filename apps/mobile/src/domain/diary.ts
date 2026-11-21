@@ -34,7 +34,10 @@ export function minutesOfDay(time: string): number {
  * Il pasto a cui va una voce aggiunta senza sceglierlo: quello con l'orario più vicino.
  * A parità di distanza vince il successivo, perché si sta andando verso quel pasto.
  */
-export function slotForTime<T extends SlotRef>(slots: readonly T[], minutes: number): T | undefined {
+export function slotForTime<T extends SlotRef>(
+  slots: readonly T[],
+  minutes: number,
+): T | undefined {
   let best: T | undefined;
   let bestDistance = Infinity;
   for (const slot of slots) {

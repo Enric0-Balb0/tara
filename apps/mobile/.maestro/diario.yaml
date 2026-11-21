@@ -96,6 +96,38 @@ tags:
     notVisible: "Albume d'uovo, 250 grammi, 120 kcal, 27,3 grammi di proteine"
     timeout: 10000
 
+# "Aggiungi e continua" torna ai risultati con il pasto scelto sulla scheda.
+- tapOn: Aggiungi a Pranzo
+- runFlow:
+    file: subflows/scrivi.yaml
+    env:
+      CAMPO: campo-ricerca
+      TESTO: albume
+- tapOn:
+    text: "Albume d'uovo"
+    index: 0
+- tapOn: Cena
+- tapOn: Aggiungi a Cena
+- tapOn:
+    id: tasto-1
+- tapOn:
+    id: tasto-0
+- tapOn:
+    id: tasto-0
+- tapOn: Aggiungi e continua
+- extendedWaitUntil:
+    visible: "Albume d'uovo in polvere"
+    timeout: 10000
+- tapOn:
+    text: "Albume d'uovo"
+    index: 0
+- assertVisible: Aggiungi a Cena
+- tapOn: Indietro
+- back
+- extendedWaitUntil:
+    visible: "Albume d'uovo, 100 grammi, 48 kcal, 10,9 grammi di proteine"
+    timeout: 10000
+
 # Gli altri giorni.
 - tapOn: Giorno precedente
 - assertVisible: Ieri

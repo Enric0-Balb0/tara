@@ -15,8 +15,20 @@ const CELLS: readonly {
   color: ColorToken;
 }[] = [
   { code: 'energy_kcal', label: 'kcal', unit: '', spoken: 'kcal', color: 'text' },
-  { code: 'protein_g', label: 'Proteine', unit: ' g', spoken: 'grammi di proteine', color: 'protein' },
-  { code: 'carbs_g', label: 'Carboidrati', unit: ' g', spoken: 'grammi di carboidrati', color: 'carbs' },
+  {
+    code: 'protein_g',
+    label: 'Proteine',
+    unit: ' g',
+    spoken: 'grammi di proteine',
+    color: 'protein',
+  },
+  {
+    code: 'carbs_g',
+    label: 'Carboidrati',
+    unit: ' g',
+    spoken: 'grammi di carboidrati',
+    color: 'carbs',
+  },
   { code: 'fat_g', label: 'Grassi', unit: ' g', spoken: 'grammi di grassi', color: 'fat' },
 ];
 
@@ -34,7 +46,10 @@ export function DayTotals({ totals }: { totals: Record<DiaryNutrient, Total> }) 
     >
       <View style={styles.cells}>
         {CELLS.map((cell) => {
-          const value = formatTotal(totals[cell.code], cell.code === 'energy_kcal' ? 'kcal' : 'macro');
+          const value = formatTotal(
+            totals[cell.code],
+            cell.code === 'energy_kcal' ? 'kcal' : 'macro',
+          );
           return (
             <View
               key={cell.code}
@@ -73,5 +88,5 @@ const styles = StyleSheet.create({
     gap: space.s,
   },
   cells: { flexDirection: 'row', gap: space.m },
-  cell: { flex: 1, gap: 2 },
+  cell: { flex: 1, gap: space.xs },
 });
