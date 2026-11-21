@@ -63,9 +63,9 @@ describe('recenti', () => {
       now: later(2),
     });
     const recent = await recentFoods(db, USER, 10);
-    expect(recent.map((r) => [r.foodId, r.foodName, r.lastQuantity])).toEqual([
-      ['riso', 'Riso', 100],
-      ['pollo', 'Petto di pollo', 200],
+    expect(recent.map((r) => [r.foodId, r.foodName, r.lastQuantity, r.unit])).toEqual([
+      ['riso', 'Riso', 100, 'g'],
+      ['pollo', 'Petto di pollo', 200, 'g'],
     ]);
   });
 
@@ -107,6 +107,34 @@ describe('recenti', () => {
     });
     expect((await recentFoods(db, USER, 10)).map((r) => r.foodId)).toEqual(['pollo', 'riso']);
     expect((await recentFoods(db, USER, 1)).map((r) => r.foodId)).toEqual(['pollo']);
+  });
+});
+
+describe('recenti e pasti eliminati', () => {
+  it('le voci di un pasto eliminato non contano tra i recenti', async () => {
+    const { pranzo, cena } = await slots();
+    await addEntry(db, {
+      userId: USER,
+      date: '2026-11-21',
+      mealSlotId: cena,
+      food: AVENA,
+      quantity: 50,
+      now: NOW,
+    });
+    await addEntry(db, {
+      userId: USER,
+      date: '2026-11-21',
+      mealSlotId: pranzo,
+      food: RISO,
+      quantity: 80,
+      now: later(1),
+    });
+    await db.runAsync(
+      'UPDATE meal_slot SET deleted_at = ? WHERE id = ?',
+      later(2).toISOString(),
+      cena,
+    );
+    expect((await recentFoods(db, USER, 10)).map((r) => r.foodId)).toEqual(['riso']);
   });
 });
 

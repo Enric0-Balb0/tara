@@ -75,6 +75,8 @@ export default function TodayScreen() {
   const latest = useRef(0);
   // Una conferma alla volta: un doppio tocco su "Conferma" non registra due voci.
   const confirmingNow = useRef(false);
+  // Una copia alla volta: un doppio tocco non copia due volte.
+  const copying = useRef(false);
 
   // Dopo mezzanotte, con l'app rimasta aperta, "oggi" va avanti: chi guardava oggi passa
   // al giorno nuovo, chi guardava un altro giorno resta lì.
@@ -188,7 +190,8 @@ export default function TodayScreen() {
 
   // Copia dal giorno prima, un pasto o la giornata intera, come voci nuove (RF-44).
   async function copyFromPrevious(mealSlotId?: string) {
-    if (userId === undefined) return;
+    if (userId === undefined || copying.current) return;
+    copying.current = true;
     try {
       await copyEntries(db, {
         userId,
@@ -200,11 +203,14 @@ export default function TodayScreen() {
     } catch (error: unknown) {
       console.error('Voci non copiate', error);
       Alert.alert('Voci non copiate', 'Il telefono non è riuscito a copiarle. Riprova.');
+    } finally {
+      copying.current = false;
     }
     await load();
   }
 
-  const previousName = date === today ? 'ieri' : dayLabel(addDays(date, -1));
+  const previousName =
+    date === today ? 'ieri' : addDays(date, -1) === today ? 'oggi' : dayLabel(addDays(date, -1));
 
   async function chooseDayType(id: string) {
     if (userId === undefined || id === dayTypeId) return;
@@ -280,7 +286,8 @@ export default function TodayScreen() {
           onSetTargets={() => router.navigate('/piano')}
         />
 
-        {entries.length === 0 && previous.length > 0 ? (
+        {/* Con voci previste dal piano la copia registrerebbe il pasto due volte. */}
+        {entries.length === 0 && previous.length > 0 && pending.length === 0 ? (
           <PressableScale
             onPress={() => void copyFromPrevious()}
             style={[styles.copyDay, { borderColor: colors.borderStrong }]}
@@ -327,7 +334,9 @@ export default function TodayScreen() {
               }
               onConfirmAll={() => void confirm(ownPending)}
               copy={
-                own.length === 0 && previous.some((entry) => entry.mealSlotId === slot.id)
+                own.length === 0 &&
+                ownPending.length === 0 &&
+                previous.some((entry) => entry.mealSlotId === slot.id)
                   ? {
                       label: `Copia da ${previousName}`,
                       onPress: () => void copyFromPrevious(slot.id),

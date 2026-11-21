@@ -56,6 +56,8 @@ export default function FoodScreen() {
   const lastGrams = last?.key === lastKey ? last.grams : null;
   const [sheetOpen, setSheetOpen] = useState(false);
   const [favorite, setFavoriteState] = useState(false);
+  // Dopo un tocco sulla stella la lettura iniziale, se arriva tardi, non la riporta indietro.
+  const starTouched = useRef(false);
   // Una sola scrittura alla volta: un doppio tocco su "Aggiungi" non registra due voci.
   const saving = useRef(false);
   const date = params.date ?? toLocalDate(new Date());
@@ -97,9 +99,12 @@ export default function FoodScreen() {
   useEffect(() => {
     if (userId === undefined) return undefined;
     let current = true;
-    void isFavorite(db, userId, id).then((value) => {
-      if (current) setFavoriteState(value);
-    });
+    starTouched.current = false;
+    void isFavorite(db, userId, id)
+      .then((value) => {
+        if (current && !starTouched.current) setFavoriteState(value);
+      })
+      .catch((error: unknown) => console.error('Preferito non letto', error));
     return () => {
       current = false;
     };
@@ -199,6 +204,7 @@ export default function FoodScreen() {
             onPress={() => {
               if (userId === undefined) return;
               const next = !favorite;
+              starTouched.current = true;
               setFavoriteState(next);
               void setFavorite(db, userId, food, next, new Date()).catch((error: unknown) => {
                 console.error('Preferito non salvato', error);

@@ -3,7 +3,7 @@
  * giorno. Copiare conta più che digitare: chi mangia sempre le stesse cose registra in un tocco.
  */
 
-import type { FoodState } from '@/domain/food';
+import type { BaseUnit, FoodState } from '@/domain/food';
 import { newId } from '@/domain/ids';
 
 import type { SqlDatabase } from './sql';
@@ -16,6 +16,7 @@ export interface QuickFood {
 
 export interface RecentFood extends QuickFood {
   lastQuantity: number;
+  unit: BaseUnit;
 }
 
 /** Gli ultimi alimenti registrati, uno per alimento, con l'ultimo peso usato. */
@@ -27,8 +28,9 @@ export async function recentFoods(
   // Per ogni alimento la voce più recente; poi gli alimenti dal più recente.
   return db.getAllAsync<RecentFood>(
     `SELECT e.food_id AS foodId, e.food_name AS foodName, e.food_state AS foodState,
-            e.quantity AS lastQuantity
+            e.quantity AS lastQuantity, e.unit AS unit
      FROM diary_entry AS e
+       JOIN meal_slot AS s ON s.id = e.meal_slot_id AND s.user_id = e.user_id AND s.deleted_at IS NULL
      WHERE e.user_id = ? AND e.deleted_at IS NULL
        AND e.id = (
          SELECT latest.id FROM diary_entry AS latest
@@ -123,21 +125,23 @@ export async function copyEntries(
     input.mealSlotId ?? null,
     input.mealSlotId ?? null,
   );
-  // Un millisecondo in più per voce: l'ordine di inserimento resta quello di partenza.
-  for (const [index, { id }] of source.entries()) {
-    const stamp = new Date(input.now.getTime() + index).toISOString();
-    await db.runAsync(
-      `INSERT INTO diary_entry (id, user_id, date, meal_slot_id, food_id, food_name, food_state,
-         quantity, unit, nutrients_snapshot, plan_item_id, created_at, updated_at)
-       SELECT ?, user_id, ?, meal_slot_id, food_id, food_name, food_state, quantity, unit,
-              nutrients_snapshot, NULL, ?, ?
-       FROM diary_entry WHERE id = ?`,
-      newId(input.now.getTime() + index),
-      input.toDate,
-      stamp,
-      stamp,
-      id,
-    );
-  }
+  if (source.length === 0) return 0;
+  // Una sola istruzione, atomica: una copia riesce tutta o per niente, così "Riprova" dopo un
+  // errore non duplica le voci già copiate. Un millisecondo in più per voce tiene l'ordine.
+  const rows = source.map(({ id }, index) => [
+    newId(input.now.getTime() + index),
+    id,
+    new Date(input.now.getTime() + index).toISOString(),
+  ]);
+  await db.runAsync(
+    `INSERT INTO diary_entry (id, user_id, date, meal_slot_id, food_id, food_name, food_state,
+       quantity, unit, nutrients_snapshot, plan_item_id, created_at, updated_at)
+     SELECT v.column1, e.user_id, ?, e.meal_slot_id, e.food_id, e.food_name, e.food_state,
+            e.quantity, e.unit, e.nutrients_snapshot, NULL, v.column3, v.column3
+     FROM (VALUES ${rows.map(() => '(?, ?, ?)').join(', ')}) AS v
+       JOIN diary_entry AS e ON e.id = v.column2`,
+    input.toDate,
+    ...rows.flat(),
+  );
   return source.length;
 }

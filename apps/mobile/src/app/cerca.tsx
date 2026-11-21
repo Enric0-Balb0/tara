@@ -201,7 +201,7 @@ export default function SearchScreen() {
                       key={`r-${food.foodId}`}
                       name={food.foodName}
                       state={food.foodState}
-                      detail={`ultima volta ${formatAmount(food.lastQuantity, 'grams')} g`}
+                      detail={`ultima volta ${formatAmount(food.lastQuantity, 'grams')} ${food.unit}`}
                       onPress={() => open(food.foodId)}
                     />
                   ))}
