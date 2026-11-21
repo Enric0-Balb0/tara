@@ -29,6 +29,8 @@ interface Props {
   onAdd: () => void;
   /** Etichetta per il lettore dello schermo; di base "Aggiungi a Pranzo". */
   addLabel?: string;
+  /** Copia il pasto da un altro giorno (RF-44), es. "Copia da ieri"; senza, niente pulsante. */
+  copy?: { label: string; onPress: () => void };
 }
 
 /**
@@ -48,6 +50,7 @@ export function MealSection({
   onToggle,
   onAdd,
   addLabel,
+  copy,
 }: Props) {
   const { colors, reduceMotion } = useTheme();
   // "voce": la riga nuova compare e le altre si spostano; con il movimento ridotto solo
@@ -168,16 +171,29 @@ export function MealSection({
           <TaraText variant="bodyStrong">Registra come da piano</TaraText>
         </PressableScale>
       ) : null}
-      <PressableScale
-        onPress={onAdd}
-        accessibilityLabel={addLabel ?? `Aggiungi a ${name}`}
-        style={styles.add}
-      >
-        <Icon name="plus" color="textSecondary" />
-        <TaraText variant="bodyStrong" color="textSecondary">
-          Aggiungi
-        </TaraText>
-      </PressableScale>
+      <View style={styles.actions}>
+        <PressableScale
+          onPress={onAdd}
+          accessibilityLabel={addLabel ?? `Aggiungi a ${name}`}
+          style={styles.add}
+        >
+          <Icon name="plus" color="textSecondary" />
+          <TaraText variant="bodyStrong" color="textSecondary">
+            Aggiungi
+          </TaraText>
+        </PressableScale>
+        {copy ? (
+          <PressableScale
+            onPress={copy.onPress}
+            accessibilityLabel={`${copy.label}: ${name}`}
+            style={styles.add}
+          >
+            <TaraText variant="bodyStrong" color="textSecondary">
+              {copy.label}
+            </TaraText>
+          </PressableScale>
+        ) : null}
+      </View>
     </Animated.View>
   );
 }
@@ -212,6 +228,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: space.s },
   add: {
     minHeight: touch.min,
     flexDirection: 'row',

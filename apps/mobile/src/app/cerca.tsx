@@ -1,18 +1,27 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, FlatList, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
 import { Icon } from '@/components/Icon';
 import { PressableScale } from '@/components/PressableScale';
 import { ProgressTrack } from '@/components/ProgressTrack';
+import { QuickRow } from '@/components/QuickRow';
 import { ResultRow } from '@/components/ResultRow';
 import { SearchField } from '@/components/SearchField';
 import { TaraText } from '@/components/TaraText';
 import { useCatalog } from '@/data/CatalogProvider';
 import { type FoodHit, searchFoods } from '@/data/catalogStore';
+import {
+  favorites as loadFavorites,
+  type QuickFood,
+  type RecentFood,
+  recentFoods,
+} from '@/data/quickStore';
+import { useSession } from '@/data/SessionProvider';
 import type { SqlDatabase } from '@/data/sql';
+import { formatAmount } from '@/domain/format';
 import { catalogReadyNotice, downloadProgress, searchStatus } from '@/domain/searchStatus';
 import { radius, space, touch } from '@/theme/layout';
 import { durations } from '@/theme/motion';
@@ -38,6 +47,39 @@ export default function SearchScreen() {
   const latest = useRef(0);
   const retried = useRef(false);
   const catalogSize = info?.foodCount;
+  const { session } = useSession();
+  const userId = session?.user.id;
+  // Con il campo vuoto: preferiti e recenti, per registrare senza scrivere (RF-44).
+  const [quick, setQuick] = useState<{ favorites: QuickFood[]; recent: RecentFood[] }>({
+    favorites: [],
+    recent: [],
+  });
+
+  useFocusEffect(
+    useCallback(() => {
+      if (userId === undefined) return undefined;
+      let current = true;
+      void Promise.all([loadFavorites(db, userId), recentFoods(db, userId, 10)])
+        .then(([favorites, recent]) => {
+          if (current) setQuick({ favorites, recent });
+        })
+        .catch((error: unknown) => console.error('Recenti non letti', error));
+      return () => {
+        current = false;
+      };
+    }, [db, userId]),
+  );
+
+  const open = (id: string) =>
+    router.push({
+      pathname: '/alimento/[id]',
+      params: {
+        id,
+        ...(slot ? { slot } : {}),
+        ...(date ? { date } : {}),
+        ...(plan ? { plan } : {}),
+      },
+    });
   const catalogVersion = info?.version;
 
   // Se la schermata ha visto il telefono senza alimenti, quando arrivano lo dice: l'avviso
@@ -118,22 +160,54 @@ export default function SearchScreen() {
             cooking={item.cooking}
             kcalPer100={item.per100.energy_kcal}
             proteinPer100={item.per100.protein_g}
-            onPress={() =>
-              router.push({
-                pathname: '/alimento/[id]',
-                params: {
-                  id: item.id,
-                  ...(slot ? { slot } : {}),
-                  ...(date ? { date } : {}),
-                  ...(plan ? { plan } : {}),
-                },
-              })
-            }
+            onPress={() => open(item.id)}
           />
         )}
         ListFooterComponent={
           status?.kind === 'downloading' && status.message ? (
             <Download headline={status.message} {...downloadProgress(progress)} />
+          ) : status?.kind === 'hint' && (quick.favorites.length > 0 || quick.recent.length > 0) ? (
+            <View style={styles.quick}>
+              {quick.favorites.length > 0 ? (
+                <View>
+                  <TaraText
+                    variant="bodyStrong"
+                    accessibilityRole="header"
+                    style={styles.quickTitle}
+                  >
+                    Preferiti
+                  </TaraText>
+                  {quick.favorites.map((food) => (
+                    <QuickRow
+                      key={`p-${food.foodId}`}
+                      name={food.foodName}
+                      state={food.foodState}
+                      onPress={() => open(food.foodId)}
+                    />
+                  ))}
+                </View>
+              ) : null}
+              {quick.recent.length > 0 ? (
+                <View>
+                  <TaraText
+                    variant="bodyStrong"
+                    accessibilityRole="header"
+                    style={styles.quickTitle}
+                  >
+                    Recenti
+                  </TaraText>
+                  {quick.recent.map((food) => (
+                    <QuickRow
+                      key={`r-${food.foodId}`}
+                      name={food.foodName}
+                      state={food.foodState}
+                      detail={`ultima volta ${formatAmount(food.lastQuantity, 'grams')} g`}
+                      onPress={() => open(food.foodId)}
+                    />
+                  ))}
+                </View>
+              ) : null}
+            </View>
           ) : status?.message ? (
             <View style={styles.footer}>
               <TaraText color="textSecondary" style={styles.message}>
@@ -203,6 +277,8 @@ const styles = StyleSheet.create({
     gap: space.l,
   },
   message: { textAlign: 'center' },
+  quick: { gap: space.l, paddingBottom: space.xl },
+  quickTitle: { paddingHorizontal: space.l, paddingBottom: space.xs },
   retry: {
     minHeight: touch.min,
     borderRadius: radius.button,

@@ -1,0 +1,61 @@
+# Velocità di registrazione (RF-44; serve il backend per il primo download): ieri a pranzo
+# registro 200 g di albume e lo segno tra i preferiti; oggi copio il pranzo da ieri; la
+# ricerca vuota mostra l'albume tra i preferiti e tra i recenti con l'ultimo peso.
+appId: com.enricobalbo.tara
+name: Recenti, preferiti e copia da ieri
+tags:
+  - api
+---
+- runFlow: subflows/avvio.yaml
+- runFlow: subflows/accedi.yaml
+- extendedWaitUntil:
+    visible:
+      id: diario
+    timeout: 30000
+
+# Ieri: albume a pranzo, segnato come preferito.
+- tapOn: Giorno precedente
+- assertVisible: Ieri
+- tapOn: Aggiungi a Pranzo
+- runFlow:
+    file: subflows/scrivi.yaml
+    env:
+      CAMPO: campo-ricerca
+      TESTO: albume
+# Il primo download comprende circa 3500 alimenti: la ricerca riparte quando arrivano.
+- extendedWaitUntil:
+    visible: "Albume d'uovo in polvere"
+    timeout: 90000
+- tapOn:
+    text: "Albume d'uovo"
+    index: 0
+- tapOn: Preferito
+- tapOn: Aggiungi a Pranzo
+- tapOn:
+    id: tasto-2
+- tapOn:
+    id: tasto-0
+- tapOn:
+    id: tasto-0
+- tapOn: Aggiungi 200 grammi
+- extendedWaitUntil:
+    visible: "Albume d'uovo, 200 grammi, 96 kcal, 21,8 grammi di proteine"
+    timeout: 10000
+
+# Oggi è vuoto: si copia il pranzo da ieri.
+- tapOn: '.*torna a oggi'
+- assertVisible: Copia la giornata di ieri
+- tapOn: 'Copia da ieri: Pranzo'
+- extendedWaitUntil:
+    visible: "Albume d'uovo, 200 grammi, 96 kcal, 21,8 grammi di proteine"
+    timeout: 10000
+- takeScreenshot: screenshots/copia-da-ieri
+
+# La ricerca vuota: preferiti e recenti.
+- tapOn: Cerca un alimento
+- extendedWaitUntil:
+    visible: Preferiti
+    timeout: 10000
+- assertVisible: Recenti
+- assertVisible: "Albume d'uovo, ultima volta 200 g"
+- takeScreenshot: screenshots/ricerca-vuota
