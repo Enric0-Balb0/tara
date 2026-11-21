@@ -13,6 +13,7 @@ import { StateTag } from '@/components/StateTag';
 import { TaraText } from '@/components/TaraText';
 import { type FoodDetail, getFood, getVariant } from '@/data/catalogStore';
 import { addEntry, ensureMealSlots, lastQuantity, type MealSlot } from '@/data/diaryStore';
+import { addItem as addRecipeItem } from '@/data/recipeDraft';
 import { addPlanItem } from '@/data/planStore';
 import { isFavorite, setFavorite } from '@/data/quickStore';
 import { useSession } from '@/data/SessionProvider';
@@ -31,11 +32,13 @@ import { useTheme } from '@/theme/useTheme';
  */
 export default function FoodScreen() {
   // plan: id del tipo di giornata quando si aggiunge al piano invece che al diario (RF-130).
+  // ricetta: si sta scegliendo un ingrediente per la ricetta in modifica (RF-20).
   const params = useLocalSearchParams<{
     id: string;
     slot?: string;
     date?: string;
     plan?: string;
+    ricetta?: string;
   }>();
   const { id } = params;
   const db: SqlDatabase = useSQLiteContext();
@@ -160,6 +163,14 @@ export default function FoodScreen() {
   const source = sourceLabel(food.source);
   const slot = slots.find((candidate) => candidate.id === slotId);
 
+  // Ingrediente di una ricetta: va nella bozza in memoria, non nel database.
+  function addToRecipe(quantity: number) {
+    if (!food) return;
+    addRecipeItem({ id: food.id, name: food.name, state: food.state }, quantity);
+    setSheetOpen(false);
+    router.dismissTo('/ricetta');
+  }
+
   async function add(quantity: number, andContinue: boolean) {
     if (userId === undefined || slot === undefined || !food || saving.current) return;
     saving.current = true;
@@ -257,23 +268,28 @@ export default function FoodScreen() {
           ) : null}
         </ScrollView>
         <View style={[styles.actions, { paddingBottom: space.l + insets.bottom }]}>
-          <Segmented
-            label="Pasto"
-            options={slots.map((candidate) => ({ key: candidate.id, label: candidate.name }))}
-            selectedKey={slotId}
-            onSelect={setSlotId}
-          />
+          {params.ricetta ? null : (
+            <Segmented
+              label="Pasto"
+              options={slots.map((candidate) => ({ key: candidate.id, label: candidate.name }))}
+              selectedKey={slotId}
+              onSelect={setSlotId}
+            />
+          )}
           <PressableScale
             onPress={() => setSheetOpen(true)}
-            disabled={slot === undefined}
+            disabled={slot === undefined && !params.ricetta}
+            testID="aggiungi-alimento"
             style={[styles.primary, { backgroundColor: colors.action }]}
           >
             <TaraText variant="bodyStrong" color="background">
-              {slot
-                ? params.plan
-                  ? `Aggiungi al piano: ${slot.name}`
-                  : `Aggiungi a ${slot.name}`
-                : 'Aggiungi'}
+              {params.ricetta
+                ? 'Aggiungi alla ricetta'
+                : slot
+                  ? params.plan
+                    ? `Aggiungi al piano: ${slot.name}`
+                    : `Aggiungi a ${slot.name}`
+                  : 'Aggiungi'}
             </TaraText>
           </PressableScale>
         </View>
@@ -282,11 +298,13 @@ export default function FoodScreen() {
       <GramSheet
         visible={sheetOpen}
         food={{ name: food.name, state: food.state, per100 }}
-        mealName={slot?.name}
-        lastGrams={lastGrams ?? undefined}
+        mealName={params.ricetta ? undefined : slot?.name}
+        lastGrams={params.ricetta ? undefined : (lastGrams ?? undefined)}
         confirmVerb="Aggiungi"
-        onConfirm={(quantity) => void add(quantity, false)}
-        onConfirmAndContinue={(quantity) => void add(quantity, true)}
+        onConfirm={(quantity) =>
+          params.ricetta ? addToRecipe(quantity) : void add(quantity, false)
+        }
+        onConfirmAndContinue={params.ricetta ? undefined : (quantity) => void add(quantity, true)}
         onClose={() => setSheetOpen(false)}
         onChangeState={
           variantId === null

@@ -11,6 +11,7 @@ import {
   type RecipeInput,
   recipeDetail,
   recipes,
+  recipesContaining,
   refreshRecipeValues,
   updateRecipe,
 } from './recipesStore';
@@ -435,5 +436,73 @@ describe('recipeDetail e recipes', () => {
       'Pancake proteici',
     ]);
     expect((await recipes(db, USER))[0]?.kcalPer100).toBeNull();
+  });
+});
+
+describe('recipesContaining (nessun giro nelle ricette)', () => {
+  it('trova le ricette che contengono quella, direttamente e a catena', async () => {
+    const inner = await pancake();
+    const middle = await createRecipe(
+      db,
+      USER,
+      {
+        name: 'Colazione',
+        yield: { mode: 'portions', portions: 1 },
+        items: [{ foodId: inner, gramsRaw: 100 }],
+      },
+      NOW,
+    );
+    const outer = await createRecipe(
+      db,
+      USER,
+      {
+        name: 'Settimana',
+        yield: { mode: 'portions', portions: 1 },
+        items: [{ foodId: middle, gramsRaw: 100 }],
+      },
+      NOW,
+    );
+    expect((await recipesContaining(db, inner)).sort()).toEqual([middle, outer].sort());
+    expect(await recipesContaining(db, outer)).toEqual([]);
+  });
+
+  it('ignora gli ingredienti tolti e non si perde in un giro già presente', async () => {
+    const a = await pancake();
+    const b = await createRecipe(
+      db,
+      USER,
+      { name: 'B', yield: { mode: 'portions', portions: 1 }, items: [{ foodId: a, gramsRaw: 10 }] },
+      NOW,
+    );
+    expect(await recipesContaining(db, a)).toEqual([b]);
+    // Tolta dalla ricetta B, A non la contiene più.
+    await updateRecipe(
+      db,
+      USER,
+      b,
+      {
+        name: 'B',
+        yield: { mode: 'portions', portions: 1 },
+        items: [{ foodId: oats, gramsRaw: 10 }],
+      },
+      later(1),
+    );
+    expect(await recipesContaining(db, a)).toEqual([]);
+    // Un giro (A in B e B in A) che il database non vieta: la ricerca termina.
+    await updateRecipe(
+      db,
+      USER,
+      b,
+      { name: 'B', yield: { mode: 'portions', portions: 1 }, items: [{ foodId: a, gramsRaw: 10 }] },
+      later(2),
+    );
+    await db.runAsync(
+      `INSERT INTO recipe_item (id, user_id, recipe_id, ingredient_food_id, grams_raw, position, created_at, updated_at)
+       VALUES ('loop', ?, ?, ?, 5, 9, 'a', 'a')`,
+      USER,
+      a,
+      b,
+    );
+    expect((await recipesContaining(db, a)).sort()).toEqual([a, b].sort());
   });
 });

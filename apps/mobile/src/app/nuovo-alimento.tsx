@@ -51,6 +51,7 @@ export default function NewFoodScreen() {
     slot?: string;
     date?: string;
     plan?: string;
+    ricetta?: string;
   }>();
   const editing = params.id;
   const db: SqlDatabase = useSQLiteContext();
@@ -153,6 +154,7 @@ export default function NewFoodScreen() {
             ...(params.slot ? { slot: params.slot } : {}),
             ...(params.date ? { date: params.date } : {}),
             ...(params.plan ? { plan: params.plan } : {}),
+            ...(params.ricetta ? { ricetta: params.ricetta } : {}),
           },
         });
       } else router.back();

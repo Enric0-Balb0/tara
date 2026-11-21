@@ -216,6 +216,25 @@ export async function refreshRecipeValues(
   });
 }
 
+/**
+ * Le ricette che contengono questa, direttamente o dentro altre ricette: non si possono
+ * offrire come suoi ingredienti, o si chiuderebbe un giro. UNION ferma anche un giro già
+ * presente nei dati.
+ */
+export async function recipesContaining(db: SqlDatabase, recipeId: string): Promise<string[]> {
+  const rows = await db.getAllAsync<{ id: string }>(
+    `WITH RECURSIVE parents(id) AS (
+       SELECT recipe_id FROM recipe_item WHERE ingredient_food_id = ? AND deleted_at IS NULL
+       UNION
+       SELECT i.recipe_id FROM recipe_item AS i JOIN parents AS p ON i.ingredient_food_id = p.id
+       WHERE i.deleted_at IS NULL
+     )
+     SELECT id FROM parents`,
+    recipeId,
+  );
+  return rows.map((row) => row.id);
+}
+
 export async function createRecipe(
   db: SqlDatabase,
   userId: string,
