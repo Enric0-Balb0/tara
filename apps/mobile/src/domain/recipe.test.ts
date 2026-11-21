@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { recipeValues } from './recipe';
+import { portionShortcuts, recipeValues } from './recipe';
 
 const EGG_WHITE = { energy_kcal: 48.1, protein_g: 10.9, carbs_g: 0.73, fat_g: 0.17, fiber_g: 0 };
 const OATS = { energy_kcal: 372, protein_g: 13.5, carbs_g: 60, fat_g: 7, fiber_g: 10 };
@@ -78,5 +78,25 @@ describe('recipeValues', () => {
       per100: {},
       perServing: null,
     });
+  });
+});
+
+describe('portionShortcuts', () => {
+  it('propone una e due porzioni con i grammi corrispondenti', () => {
+    expect(portionShortcuts(85)).toEqual([
+      { label: '1 porzione · 85 g', grams: 85 },
+      { label: '2 porzioni · 170 g', grams: 170 },
+    ]);
+  });
+
+  it('arrotonda i grammi come la lettura del foglio', () => {
+    expect(portionShortcuts(112.5)).toEqual([
+      { label: '1 porzione · 113 g', grams: 112.5 },
+      { label: '2 porzioni · 225 g', grams: 225 },
+    ]);
+  });
+
+  it('non propone nulla se la porzione non pesa', () => {
+    expect(portionShortcuts(0)).toEqual([]);
   });
 });

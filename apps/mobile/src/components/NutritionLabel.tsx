@@ -1,5 +1,6 @@
 import { StyleSheet, View } from 'react-native';
 
+import { formatAmount } from '@/domain/format';
 import { labelRows } from '@/domain/label';
 import { labelColors } from '@/theme/colors';
 import { radius, space } from '@/theme/layout';
@@ -30,7 +31,7 @@ export function NutritionLabel({
           {title}
         </TaraText>
         <TaraText variant="caption" color="secondary">
-          per {grams} {unit}
+          per {formatAmount(grams, 'grams')} {unit}
         </TaraText>
       </View>
       <View style={styles.thick} />

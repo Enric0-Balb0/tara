@@ -55,6 +55,10 @@ interface Props {
   onChangeState?: (state: 'raw' | 'cooked') => void;
   /** Toglie la voce dal diario; senza, il pulsante "Elimina" non c'è. */
   onDelete?: () => void;
+  /** Quantità pronte accanto a "Ultima volta", come "1 porzione · 85 g" (RF-21). */
+  shortcuts?: readonly { label: string; grams: number }[];
+  /** Unità della quantità: i prodotti liquidi si pesano in millilitri. */
+  unit?: 'g' | 'ml';
 }
 
 const PREVIEW: readonly { code: string; label: string; color: ColorToken; kcal?: boolean }[] = [
@@ -96,6 +100,8 @@ function OpenSheet({
   onClose,
   onChangeState,
   onDelete,
+  shortcuts,
+  unit = 'g',
 }: Props) {
   const { colors, reduceMotion } = useTheme();
   const insets = useSafeAreaInsets();
@@ -114,6 +120,7 @@ function OpenSheet({
   const tooMuchTare = tareExceedsWeight(entry);
   const addable = canAdd(entry);
   const netText = formatAmount(net, 'grams');
+  const unitWord = unit === 'ml' ? 'millilitri' : 'grammi';
   const lastLabel = mealName ? `Ultima volta a ${mealName.toLowerCase()}:` : 'Ultima volta:';
 
   function confirm(andContinue: boolean) {
@@ -176,7 +183,7 @@ function OpenSheet({
               {food.name}
             </TaraText>
             <TaraText variant="caption" color="textSecondary">
-              per 100 g: {formatAmount(food.per100.energy_kcal ?? null, 'kcal')} kcal,{' '}
+              per 100 {unit}: {formatAmount(food.per100.energy_kcal ?? null, 'kcal')} kcal,{' '}
               {formatAmount(food.per100.protein_g ?? null, 'macro')} g di proteine
             </TaraText>
           </View>
@@ -224,7 +231,7 @@ function OpenSheet({
                   variant="minimum"
                   color={entry.editing === 'tare' ? 'text' : 'textSecondary'}
                 >
-                  tara {formatAmount(Number(entry.tare || '0'), 'grams')} g
+                  tara {formatAmount(Number(entry.tare || '0'), 'grams')} {unit}
                 </TaraText>
               ) : null}
             </View>
@@ -232,7 +239,7 @@ function OpenSheet({
               <TaraText
                 variant="readout"
                 color={addable ? 'text' : 'textSecondary'}
-                accessibilityLabel={`${netText} grammi`}
+                accessibilityLabel={`${netText} ${unitWord}`}
                 accessibilityLiveRegion="polite"
                 adjustsFontSizeToFit
                 numberOfLines={1}
@@ -242,7 +249,7 @@ function OpenSheet({
                 {netText}
               </TaraText>
               <TaraText variant="section" color="textSecondary">
-                g
+                {unit}
               </TaraText>
             </View>
             {tooMuchTare ? (
@@ -252,16 +259,30 @@ function OpenSheet({
                   La tara supera il peso
                 </TaraText>
               </View>
-            ) : lastGrams !== undefined ? (
-              <PressableScale
-                onPress={() => setEntry(startEntry(lastGrams))}
-                accessibilityLabel={`${lastLabel} ${formatAmount(lastGrams, 'grams')} grammi`}
-                style={[styles.lastUsed, { borderColor: colors.borderStrong }]}
-              >
-                <TaraText variant="caption">
-                  {lastLabel} {formatAmount(lastGrams, 'grams')} g
-                </TaraText>
-              </PressableScale>
+            ) : lastGrams !== undefined || (shortcuts?.length ?? 0) > 0 ? (
+              <View style={styles.chips}>
+                {lastGrams !== undefined ? (
+                  <PressableScale
+                    onPress={() => setEntry(startEntry(lastGrams))}
+                    accessibilityLabel={`${lastLabel} ${formatAmount(lastGrams, 'grams')} ${unitWord}`}
+                    style={[styles.lastUsed, { borderColor: colors.borderStrong }]}
+                  >
+                    <TaraText variant="caption">
+                      {lastLabel} {formatAmount(lastGrams, 'grams')} {unit}
+                    </TaraText>
+                  </PressableScale>
+                ) : null}
+                {shortcuts?.map((shortcut) => (
+                  <PressableScale
+                    key={shortcut.label}
+                    onPress={() => setEntry(startEntry(shortcut.grams))}
+                    accessibilityLabel={shortcut.label}
+                    style={[styles.lastUsed, { borderColor: colors.borderStrong }]}
+                  >
+                    <TaraText variant="caption">{shortcut.label}</TaraText>
+                  </PressableScale>
+                ))}
+              </View>
             ) : null}
           </View>
 
@@ -319,7 +340,7 @@ function OpenSheet({
           <PressableScale
             disabled={!addable}
             onPress={() => confirm(false)}
-            accessibilityLabel={addable ? `${confirmVerb} ${netText} grammi` : confirmVerb}
+            accessibilityLabel={addable ? `${confirmVerb} ${netText} ${unitWord}` : confirmVerb}
             style={[styles.action, { backgroundColor: colors.action }]}
           >
             <TaraText
@@ -329,7 +350,7 @@ function OpenSheet({
               adjustsFontSizeToFit
               style={styles.actionLabel}
             >
-              {addable ? `${confirmVerb} ${netText} g` : confirmVerb}
+              {addable ? `${confirmVerb} ${netText} ${unit}` : confirmVerb}
             </TaraText>
           </PressableScale>
         </View>
@@ -390,6 +411,7 @@ const styles = StyleSheet.create({
     gap: space.s,
   },
   error: { flexDirection: 'row', alignItems: 'center', gap: space.s, minHeight: 32 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: space.s },
   lastUsed: {
     alignSelf: 'flex-start',
     minHeight: touch.min,
