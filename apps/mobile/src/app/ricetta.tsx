@@ -179,7 +179,7 @@ export default function RecipeScreen() {
           return;
         }
       } else await createRecipe(db, userId, input, new Date());
-      clearDraft();
+      // La bozza la butta lo smontaggio: toglierla ora svuoterebbe la schermata che sta uscendo.
       router.back();
     } catch (error: unknown) {
       console.error('Ricetta non salvata', error);

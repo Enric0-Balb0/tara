@@ -165,7 +165,8 @@ export default function FoodScreen() {
 
   // Ingrediente di una ricetta: va nella bozza in memoria, non nel database.
   function addToRecipe(quantity: number) {
-    if (!food) return;
+    if (!food || saving.current) return;
+    saving.current = true;
     addRecipeItem({ id: food.id, name: food.name, state: food.state }, quantity);
     setSheetOpen(false);
     router.dismissTo('/ricetta');
