@@ -6,6 +6,7 @@ import {
   dayLabel,
   dayTitle,
   entryAmount,
+  formatTotal,
   minutesOfDay,
   slotForTime,
   snapshotFrom,
@@ -113,6 +114,12 @@ describe('quantità e totali', () => {
     expect(result.protein_g.amount).toBeCloseTo(52.7);
     expect(result.fat_g.amount).toBeCloseTo(0.6);
     expect(result.fat_g.incomplete).toBe(true);
+  });
+
+  it('formatTotal mette "≥" davanti a un totale incompleto', () => {
+    expect(formatTotal({ amount: 52.73, incomplete: false }, 'macro')).toBe('52,7');
+    expect(formatTotal({ amount: 0.6, incomplete: true }, 'macro')).toBe('≥ 0,6');
+    expect(formatTotal({ amount: 1243.6, incomplete: false }, 'kcal')).toBe('1244');
   });
 
   it('una giornata vuota ha totali a zero e completi', () => {

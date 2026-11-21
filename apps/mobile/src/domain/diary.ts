@@ -1,3 +1,5 @@
+import { formatAmount } from './format';
+
 /**
  * Diario (RF-40, RF-43, RF-45): pasti del giorno, date locali, quantità e totali.
  * Ogni voce porta con sé una copia dei valori per 100 del momento in cui è stata
@@ -144,6 +146,11 @@ export interface Total {
   amount: number;
   /** Almeno una voce non ha questo valore: il totale è un minimo, non il valore vero. */
   incomplete: boolean;
+}
+
+/** "≥" quando qualche voce non ha il valore: il totale è un minimo (principio 2). */
+export function formatTotal(total: Total, kind: 'kcal' | 'macro'): string {
+  return `${total.incomplete ? '≥ ' : ''}${formatAmount(total.amount, kind)}`;
 }
 
 export function totals(
