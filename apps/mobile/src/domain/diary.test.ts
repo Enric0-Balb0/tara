@@ -7,6 +7,7 @@ import {
   dayTitle,
   entryAmount,
   formatTotal,
+  mealPlanStatus,
   minutesOfDay,
   slotForTime,
   snapshotFrom,
@@ -136,5 +137,21 @@ describe('quantità e totali', () => {
       protein_g: { amount: 10.9, provenance: 'reference', confidence: 1 },
       fat_g: { amount: 0, provenance: 'reference', confidence: 0.5 },
     });
+  });
+});
+
+describe('mealPlanStatus', () => {
+  it('senza piano per il pasto non dice niente', () => {
+    expect(mealPlanStatus(0, 0, 0)).toEqual({ progress: null, complete: false });
+  });
+
+  it('conta le voci del piano confermate su quelle del piano', () => {
+    expect(mealPlanStatus(3, 1, 2)).toEqual({ progress: '2 di 3', complete: false });
+  });
+
+  it('un pasto è completo se il piano è tutto confermato e non c è altro', () => {
+    expect(mealPlanStatus(3, 0, 3)).toEqual({ progress: '3 di 3, come da piano', complete: true });
+    // Una voce in più fuori dal piano: il pasto resta aperto.
+    expect(mealPlanStatus(3, 0, 4)).toEqual({ progress: '3 di 3', complete: false });
   });
 });

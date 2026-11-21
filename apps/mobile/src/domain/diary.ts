@@ -172,3 +172,22 @@ export function totals(
   }
   return result;
 }
+
+/**
+ * Un pasto rispetto al piano (RF-130, docs/design.md "Intestazione del pasto"): "2 di 3" le
+ * voci del piano confermate; completo quando il piano è tutto confermato e il pasto non ha
+ * altre voci, e allora si chiude in una riga ("3 di 3, come da piano").
+ */
+export function mealPlanStatus(
+  planned: number,
+  pending: number,
+  logged: number,
+): { progress: string | null; complete: boolean } {
+  if (planned === 0) return { progress: null, complete: false };
+  const confirmed = planned - pending;
+  const complete = pending === 0 && logged === confirmed;
+  return {
+    progress: `${confirmed} di ${planned}${complete ? ', come da piano' : ''}`,
+    complete,
+  };
+}

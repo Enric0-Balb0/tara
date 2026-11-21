@@ -24,6 +24,8 @@ const MACROS: readonly {
 
 interface Props {
   totals: Record<DiaryNutrient, Total>;
+  /** Ancora previsto dal piano: tratteggio nelle barre (RF-130). */
+  planned?: Record<DiaryNutrient, Total>;
   /** Il target in vigore quel giorno per il tipo di giornata; undefined se non c'è. */
   target: MacroTargets | undefined;
   /** Per il lettore dello schermo: di base "Obiettivi della giornata". */
@@ -46,6 +48,7 @@ function hasAnyTarget(target: MacroTargets | undefined): target is MacroTargets 
  */
 export function DayGoals({
   totals,
+  planned,
   target,
   label = 'Obiettivi della giornata',
   dayTypeName,
@@ -73,7 +76,14 @@ export function DayGoals({
   // Un target con i macro ma senza kcal: le kcal si mostrano da sole, senza "/ –".
   const kcalTarget = target.kcal === null ? '' : ` / ${formatAmount(target.kcal, 'kcal')}`;
   const left = remaining(target.kcal, kcal.amount);
-  const leftText = remainingText(left, 'kcal');
+  const plannedKcal = planned?.energy_kcal.amount ?? 0;
+  const leftText =
+    [
+      remainingText(left, 'kcal'),
+      plannedKcal > 0 ? `previste ${formatAmount(plannedKcal, 'kcal')}` : null,
+    ]
+      .filter(Boolean)
+      .join(' · ') || null;
   const incomplete = Object.values(totals).some((total) => total.incomplete);
   return (
     <View
@@ -101,6 +111,7 @@ export function DayGoals({
           macro={macro.token}
           label={macro.label}
           logged={totals[macro.code].amount}
+          planned={planned?.[macro.code].amount ?? 0}
           target={target[macro.code]}
         />
       ))}
