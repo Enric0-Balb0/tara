@@ -53,6 +53,12 @@ describe('parseTargetInput', () => {
     expect(parseTargetInput('   ')).toBeNull();
   });
 
+  it('arrotonda a un decimale, come il campo lo mostra', () => {
+    // Altrimenti 82,25 tornerebbe come "82,3" e Salva si accenderebbe senza modifiche.
+    expect(parseTargetInput('82,25')).toBe(82.3);
+    expect(parseTargetInput('82,24')).toBe(82.2);
+  });
+
   it('rifiuta testo, negativi e numeri assurdi', () => {
     expect(parseTargetInput('tanti')).toBeUndefined();
     expect(parseTargetInput('-5')).toBeUndefined();

@@ -349,10 +349,10 @@ diary_entry          id, user_id, date, meal_slot_id, food_id, quantity, unit,
                      nutrients_snapshot (jsonb), is_estimated, is_planned, created_at
 diet_phase           id, user_id, kind (bulk|cut|maintenance|reverse|minicut|diet_break),
                      start_date, end_date, goal_weight_kg, target_rate_pct_week, cardio_target_json
-day_type             id, user_id, name, session_label
-day_type_target      day_type_id, valid_from, kcal, protein_g, carbs_g, fat_g, fiber_g,
-                     sodium_mg, potassium_mg, caffeine_mg, water_ml, steps
-day_plan             user_id, date, day_type_id
+day_type             id, user_id, name, position
+day_type_target      id, day_type_id, valid_from, kcal, protein_g, carbs_g, fat_g
+                     (poi: fiber_g, sodium_mg, potassium_mg, caffeine_mg, water_ml, steps)
+day_plan             id, user_id, date, day_type_id
 water_entry          id, user_id, date, ml, created_at
 
 -- Integratori

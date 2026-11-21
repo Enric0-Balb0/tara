@@ -5,6 +5,7 @@ import type { SqlDatabase } from './sql';
 import {
   addDayType,
   dayTypeFor,
+  keepDayType,
   deleteDayType,
   ensureDayTypes,
   renameDayType,
@@ -86,6 +87,34 @@ describe('tipo assegnato a un giorno (RF-51)', () => {
     expect(await dayTypeFor(db, USER, '2026-11-22')).toBe(allenamento.id);
   });
 
+  it('keepDayType fissa il tipo del giorno: eliminare il primo tipo non riscrive il passato', async () => {
+    const allenamento = await typeNamed('Allenamento');
+    await keepDayType(db, USER, '2026-11-10', NOW);
+    await addDayType(db, USER, 'High', later(1));
+    await deleteDayType(db, USER, allenamento.id, later(2));
+    // Allenamento non c'è più, quindi il giorno passa a un altro tipo: ma solo perché il suo
+    // tipo è stato eliminato. Un giorno fissato a un tipo che resta non cambia.
+    const riposo = await typeNamed('Riposo');
+    await setDayType(db, USER, '2026-11-11', riposo.id, later(3));
+    await keepDayType(db, USER, '2026-11-11', later(4));
+    await deleteDayType(db, USER, (await typeNamed('High')).id, later(5));
+    expect(await dayTypeFor(db, USER, '2026-11-11')).toBe(riposo.id);
+  });
+
+  it('keepDayType non tocca un giorno già assegnato', async () => {
+    const riposo = await typeNamed('Riposo');
+    await setDayType(db, USER, '2026-11-21', riposo.id, NOW);
+    await keepDayType(db, USER, '2026-11-21', later(1));
+    expect(await dayTypeFor(db, USER, '2026-11-21')).toBe(riposo.id);
+  });
+
+  it('un giorno non si assegna al tipo di un altro utente', async () => {
+    const theirs = await typeNamed('Riposo', OTHER);
+    await ensureDayTypes(db, USER, NOW);
+    await setDayType(db, USER, '2026-11-21', theirs.id, NOW);
+    expect(await dayTypeFor(db, USER, '2026-11-21')).not.toBe(theirs.id);
+  });
+
   it('un giorno assegnato a un tipo eliminato torna al primo tipo', async () => {
     const riposo = await typeNamed('Riposo');
     await setDayType(db, USER, '2026-11-21', riposo.id, NOW);
@@ -130,6 +159,13 @@ describe('target con storico (RF-50, RF-53)', () => {
     });
   });
 
+  it('non si scrive un target sul tipo di un altro utente', async () => {
+    const theirs = await typeNamed('Allenamento', OTHER);
+    await setTarget(db, USER, theirs.id, '2026-11-21', FULL, NOW);
+    const rows = await db.getAllAsync('SELECT id FROM day_type_target');
+    expect(rows).toEqual([]);
+  });
+
   it('i target di un altro utente non si vedono', async () => {
     const allenamento = await typeNamed('Allenamento');
     await setTarget(db, USER, allenamento.id, '2026-11-21', FULL, NOW);
@@ -149,6 +185,49 @@ describe('vincoli del database', () => {
         NOW.toISOString(),
       ),
     ).rejects.toThrow(/day_type_target_values_non_negative/);
+  });
+
+  it('rifiuta una data di inizio che non è AAAA-MM-GG', async () => {
+    const allenamento = await typeNamed('Allenamento');
+    await expect(setTarget(db, USER, allenamento.id, '21/11/2026', FULL, NOW)).rejects.toThrow(
+      /day_type_target_valid_from_valid/,
+    );
+  });
+
+  it('un tipo ha un solo target per giorno', async () => {
+    const allenamento = await typeNamed('Allenamento');
+    await setTarget(db, USER, allenamento.id, '2026-11-21', FULL, NOW);
+    await expect(
+      db.runAsync(
+        `INSERT INTO day_type_target (id, user_id, day_type_id, valid_from, kcal, updated_at)
+         VALUES ('doppio', ?, ?, '2026-11-21', 1, ?)`,
+        USER,
+        allenamento.id,
+        NOW.toISOString(),
+      ),
+    ).rejects.toThrow(/day_type_target\.day_type_id, day_type_target\.valid_from|UNIQUE/);
+  });
+
+  it('un giorno ha un solo tipo', async () => {
+    const allenamento = await typeNamed('Allenamento');
+    await setDayType(db, USER, '2026-11-21', allenamento.id, NOW);
+    await expect(
+      db.runAsync(
+        `INSERT INTO day_plan (id, user_id, date, day_type_id, updated_at)
+         VALUES ('doppio', ?, '2026-11-21', ?, ?)`,
+        USER,
+        allenamento.id,
+        NOW.toISOString(),
+      ),
+    ).rejects.toThrow(/day_plan\.user_id, day_plan\.date|UNIQUE/);
+  });
+
+  it("il database rifiuta di eliminare l'ultimo tipo, anche senza passare dallo store", async () => {
+    const [allenamento, riposo] = await ensureDayTypes(db, USER, NOW);
+    await db.runAsync('UPDATE day_type SET deleted_at = ? WHERE id = ?', 'x', riposo?.id ?? '');
+    await expect(
+      db.runAsync('UPDATE day_type SET deleted_at = ? WHERE id = ?', 'x', allenamento?.id ?? ''),
+    ).rejects.toThrow(/day_type_last_one/);
   });
 
   it('rifiuta un tipo di giornata senza nome', async () => {

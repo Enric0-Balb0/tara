@@ -154,6 +154,16 @@ export const MIGRATIONS: readonly string[] = [
   ) STRICT;
 
   CREATE UNIQUE INDEX day_plan_one_per_day ON day_plan (user_id, date) WHERE deleted_at IS NULL;
+
+  -- Una giornata ha sempre un tipo: l'ultimo tipo di un utente non si elimina.
+  CREATE TRIGGER day_type_keep_last BEFORE UPDATE OF deleted_at ON day_type
+  WHEN OLD.deleted_at IS NULL AND NEW.deleted_at IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM day_type
+    WHERE user_id = NEW.user_id AND deleted_at IS NULL AND id <> NEW.id
+  )
+  BEGIN
+    SELECT RAISE(ABORT, 'day_type_last_one');
+  END;
   `,
 ];
 

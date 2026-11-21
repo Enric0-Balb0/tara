@@ -65,9 +65,16 @@ export default function PlanScreen() {
   async function save(type: DayType, name: string, values: MacroTargets) {
     if (userId === undefined) return;
     const now = new Date();
+    const current = loaded?.targets[type.id];
+    // Un target nuovo solo se i valori cambiano: rinominare non aggiunge storia (RF-53).
+    const changed = current
+      ? (['kcal', 'protein_g', 'carbs_g', 'fat_g'] as const).some(
+          (key) => values[key] !== current[key],
+        )
+      : Object.values(values).some((value) => value !== null);
     try {
       if (name !== type.name) await renameDayType(db, userId, type.id, name, now);
-      await setTarget(db, userId, type.id, toLocalDate(now), values, now);
+      if (changed) await setTarget(db, userId, type.id, toLocalDate(now), values, now);
     } catch (error: unknown) {
       console.error('Target non salvato', error);
       Alert.alert('Target non salvato', 'Il telefono non è riuscito a salvarlo. Riprova.');
@@ -76,13 +83,15 @@ export default function PlanScreen() {
     await load();
   }
 
-  function remove(type: DayType, first: DayType | undefined) {
+  function remove(type: DayType, types: readonly DayType[]) {
     if (userId === undefined) return;
+    // I giorni di questo tipo passano al primo tipo che resta.
+    const fallback = types.find((candidate) => candidate.id !== type.id);
     Alert.alert(
       `Eliminare ${type.name}?`,
-      first && first.id !== type.id
-        ? `I giorni segnati come ${type.name} passano a ${first.name}. Il diario resta com'è.`
-        : "Il diario resta com'è.",
+      fallback
+        ? `I giorni segnati come ${type.name} passano a ${fallback.name}, con i suoi target. Le voci del diario restano com'erano.`
+        : "Le voci del diario restano com'erano.",
       [
         { text: 'Annulla', style: 'cancel' },
         {
@@ -109,7 +118,6 @@ export default function PlanScreen() {
   }
 
   if (loaded === null) return <View style={styles.screen} />;
-  const first = loaded.types[0];
 
   return (
     <ScrollView
@@ -138,7 +146,7 @@ export default function PlanScreen() {
             target={target}
             canDelete={loaded.types.length > 1}
             onSave={(name, values) => save(type, name, values)}
-            onDelete={() => remove(type, first)}
+            onDelete={() => remove(type, loaded.types)}
           />
         );
       })}

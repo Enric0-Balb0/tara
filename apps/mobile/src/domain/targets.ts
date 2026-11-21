@@ -42,7 +42,8 @@ export function parseTargetInput(text: string): number | null | undefined {
   const trimmed = text.trim();
   if (trimmed === '') return null;
   if (!/^\d+([.,]\d+)?$/.test(trimmed)) return undefined;
-  const value = Number(trimmed.replace(',', '.'));
+  // Un decimale, come lo mostra il campo: un valore più preciso tornerebbe diverso.
+  const value = Math.round(Number(trimmed.replace(',', '.')) * 10) / 10;
   return value > MAX_TARGET ? undefined : value;
 }
 

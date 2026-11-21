@@ -59,6 +59,8 @@ export function DayGoals({ totals, target, dayTypeName, onSetTargets }: Props) {
   }
 
   const kcal = totals.energy_kcal;
+  // Un target con i macro ma senza kcal: le kcal si mostrano da sole, senza "/ –".
+  const kcalTarget = target.kcal === null ? '' : ` / ${formatAmount(target.kcal, 'kcal')}`;
   const left = remaining(target.kcal, kcal.amount);
   const leftText = remainingText(left, 'kcal');
   const incomplete = Object.values(totals).some((total) => total.incomplete);
@@ -69,12 +71,12 @@ export function DayGoals({ totals, target, dayTypeName, onSetTargets }: Props) {
     >
       <View
         accessible
-        accessibilityLabel={`${formatTotal(kcal, 'kcal')} kcal di ${formatAmount(target.kcal, 'kcal')}${leftText ? `, ${leftText}` : ''}`}
+        accessibilityLabel={`${formatTotal(kcal, 'kcal')} kcal${target.kcal === null ? '' : ` di ${formatAmount(target.kcal, 'kcal')}`}${leftText ? `, ${leftText}` : ''}`}
         style={styles.kcalRow}
       >
         <TaraText color="textSecondary">
-          <TaraText variant="bigNumber">{formatTotal(kcal, 'kcal')}</TaraText> /{' '}
-          {formatAmount(target.kcal, 'kcal')} kcal
+          <TaraText variant="bigNumber">{formatTotal(kcal, 'kcal')}</TaraText>
+          {kcalTarget} kcal
         </TaraText>
         {leftText === null ? null : (
           <TaraText variant="caption" color={left !== null && left < 0 ? 'error' : 'textSecondary'}>

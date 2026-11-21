@@ -26,6 +26,7 @@ import {
   type DayType,
   dayTypeFor,
   ensureDayTypes,
+  keepDayType,
   setDayType,
   targetOn,
 } from '@/data/targetsStore';
@@ -81,6 +82,8 @@ export default function TodayScreen() {
         entriesForDay(db, userId, date),
         ensureDayTypes(db, userId, new Date()),
       ]);
+      // Un giorno con voci fissa il suo tipo: cambiare i tipi dopo non riscrive il passato.
+      if (dayEntries.length > 0) await keepDayType(db, userId, date, new Date());
       const typeId = await dayTypeFor(db, userId, date);
       const dayTarget = typeId ? await targetOn(db, userId, typeId, date) : undefined;
       if (request !== latest.current) return;
@@ -135,6 +138,7 @@ export default function TodayScreen() {
       await setDayType(db, userId, date, id, new Date());
     } catch (error: unknown) {
       console.error('Tipo di giornata non salvato', error);
+      Alert.alert('Modifica non salvata', 'Il telefono non è riuscito a salvarla. Riprova.');
     }
     await load();
   }

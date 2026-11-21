@@ -136,6 +136,38 @@ export async function dayTypeFor(
   return first?.id;
 }
 
+async function ownsType(db: SqlDatabase, userId: string, dayTypeId: string): Promise<boolean> {
+  const row = await db.getFirstAsync<{ id: string }>(
+    'SELECT id FROM day_type WHERE id = ? AND user_id = ? AND deleted_at IS NULL',
+    dayTypeId,
+    userId,
+  );
+  return row !== null;
+}
+
+/**
+ * Fissa il tipo di un giorno che ancora non ne ha uno, con quello che vale adesso. Si chiama
+ * per i giorni con voci registrate: così eliminare o riordinare i tipi dopo non cambia il
+ * target con cui quei giorni sono stati confrontati (RF-53).
+ */
+export async function keepDayType(
+  db: SqlDatabase,
+  userId: string,
+  date: string,
+  now: Date,
+): Promise<void> {
+  const assigned = await db.getFirstAsync<{ id: string }>(
+    `SELECT p.id FROM day_plan AS p
+       JOIN day_type AS t ON t.id = p.day_type_id AND t.deleted_at IS NULL
+     WHERE p.user_id = ? AND p.date = ? AND p.deleted_at IS NULL`,
+    userId,
+    date,
+  );
+  if (assigned) return;
+  const current = await dayTypeFor(db, userId, date);
+  if (current !== undefined) await setDayType(db, userId, date, current, now);
+}
+
 export async function setDayType(
   db: SqlDatabase,
   userId: string,
@@ -143,6 +175,7 @@ export async function setDayType(
   dayTypeId: string,
   now: Date,
 ): Promise<void> {
+  if (!(await ownsType(db, userId, dayTypeId))) return;
   const stamp = now.toISOString();
   const existing = await db.getFirstAsync<{ id: string }>(
     'SELECT id FROM day_plan WHERE user_id = ? AND date = ? AND deleted_at IS NULL',
@@ -190,6 +223,7 @@ export async function setTarget(
   values: MacroTargets,
   now: Date,
 ): Promise<void> {
+  if (!(await ownsType(db, userId, dayTypeId))) return;
   const stamp = now.toISOString();
   const existing = await db.getFirstAsync<{ id: string }>(
     `SELECT id FROM day_type_target
