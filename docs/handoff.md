@@ -2,19 +2,27 @@
 
 Questo file riassume la conversazione di progettazione del 22 ottobre 2026 (claude.ai) da cui nasce il repository, così che una nuova sessione di Claude Code possa ripartire senza perdere contesto.
 
-## Riprendere il lavoro (aggiornato al 19/11/2026, sera)
+## Riprendere il lavoro (aggiornato al 21/11/2026)
 
-- **Fase:** F0, passo 11 (chiusura). **Gate F0 superato il 18/11** (passo 9); **passo 10 (autenticazione) fatto il 19/11**.
-  - Backend online dall'08/11 (passo 8): ogni merge su `main` con CI verde va online da solo su `https://tara-api-eu.onrender.com`.
-  - Accesso con codice via email, iscrizioni chiuse: API (#48), client (#49), schermate (#51), e2e con codice generato via admin (#53), scrittura controllata nei flussi Maestro (#55). Su Render c'è `TARA_SUPABASE_URL`: con un token vero dell'utente e2e `/v1/me` risponde 200 e crea la riga in `app_user` con l'id di `auth.users`.
-  - Dependabot: #36 (actions), #54 (api, al posto della #39 che Dependabot ha chiuso), #50 (solo vitest 5.1; `react-native-svg`, `react-native-worklets`, `react-native-reanimated` e le major di `@types/node` ora esclusi in `dependabot.yml`).
+- **Fase:** F1 (MVP «disinstallo FatSecret»), passo 1 di 9. La F0 è chiusa salvo il ruleset (vedi sotto); gate F0 superato il 18/11, autenticazione fatta il 19/11.
+  - Backend online dall'08/11: ogni merge su `main` con CI verde va online da solo su `https://tara-api-eu.onrender.com`.
+- **Piano della F1** (ordine proposto il 21/11, ogni passo usabile sull'emulatore, con test e flussi Maestro):
+  1. **Diario** (RF-40, 41, 42, 43, 45): pasti predefiniti Colazione, Spuntino, Pranzo, Merenda, Cena (scelta di Enrico, poi modificabili), aggiunta dalla ricerca, totali, modifica ed eliminazione, copia dei valori nella voce. Branch `feat/RF-40-diario`.
+  2. Tipi di giornata e target (RF-50, 51, 53, 57): selettore in Oggi, barre registrato/previsto, storico dei target.
+  3. Piano alimentare per tipo di giornata (RF-130): voci previste da confermare.
+  4. Sincronizzazione con il backend, backup pianificati e ruolo del database senza permessi sullo schema, prima dei diari veri. Al primo sync i pasti predefiniti creati su due telefoni vanno riconciliati.
+  5. Velocità: recenti, preferiti, copia di pasto e giornata (RF-44).
+  6. Prodotti: inserimento manuale (etichetta da compilare), barcode con Open Food Facts, lettura etichetta.
+  7. Ricette e pasti salvati.
+  8. Acqua (RF-60, 61) e peso con media mobile.
+  9. Immagine della giornata (RF-47), pasti configurabili, colori dei macro. Poi la build per il telefono (con SMTP) e il gate: due settimane senza FatSecret.
 - **Bloccato su Enrico:**
   - Ruleset su `main`: importare `.github/rulesets/main.json` (`docs/processo.md`, "Configurazione di GitHub"). È l'ultimo pezzo della F0.
-  - Email vere: Supabase permette di modificare il template solo con un SMTP proprio. Scelta consigliata: Brevo gratuito (300 email al giorno, basta confermare l'indirizzo mittente, senza dominio). Poi il template Magic Link con oggetto "Il tuo codice per Tara" e `{{ .Token }}`. Serve prima della prossima build per il telefono, non per gli e2e.
-- **Prossimo passo:** dopo il ruleset, chiusura formale della F0 e una build EAS preview con l'accesso (da chiedere prima: consuma quota), poi la F1.
+  - Email vere: Supabase permette di modificare il template solo con un SMTP proprio. Scelta consigliata: Brevo gratuito (300 email al giorno, basta confermare l'indirizzo mittente, senza dominio). Poi il template Magic Link con oggetto "Il tuo codice per Tara" e `{{ .Token }}`. Serve prima della build per il telefono, non per gli e2e.
 - **Note pratiche su questa macchina:**
   - Dopo un riavvio Docker Desktop è spento: `Start-Process "C:\Program Files\Docker\Docker\Docker Desktop.exe"`, poi `docker compose -f infra/docker-compose.yml up -d`. Senza, i test del backend falliscono alla connessione.
   - Development build locale (gratis, al posto di EAS): Gradle vuole JDK 17+, ma `JAVA_HOME` di sistema è Zulu 8, quindi `$env:JAVA_HOME='C:\Program Files\Android\Android Studio\jbr'`. Con il limite di 260 caratteri di Windows si compila da una copia corta, `C:\tb` (robocopy senza `node_modules`, `android`, `.expo`, poi `npm ci` e `npx expo prebuild --clean`); `subst` non funziona con Gradle. Per installarla sopra l'APK preview serve prima `adb uninstall com.enricobalbo.tara` (firma diversa).
+  - Emulatore: la scrittura con la penna è spenta (`adb shell settings put secure stylus_handwriting_enabled 0`, `docs/processo.md`). Con un AVD nuovo o azzerato va rifatto, altrimenti `hideKeyboard` dei flussi esce dall'app.
   - Screenshot dell'emulatore da Bash (`adb exec-out screencap -p > file.png`): la redirezione di PowerShell corrompe i PNG. `uiautomator dump` fallisce mentre una barra animata si muove e lascia il file vecchio: meglio lo screenshot.
   - Con la chiave e2e salvata, `[Environment]::SetEnvironmentVariable(..., 'User')` può restare appeso dopo aver scritto il valore: aspetta che tutte le finestre rispondano. Il valore c'è già; la finestra si chiude.
   - Le azioni che creano, cancellano o pagano qualcosa nei pannelli di Render, Supabase e GitHub le fa Enrico, salvo autorizzazione esplicita. L'08/11, con l'autorizzazione, Claude ha creato un servizio Render dal Chrome "Browser 2", dove Enrico ha la sessione di Render; il controllo dei permessi ha comunque bloccato la cancellazione, che resta a Enrico. Le letture sono possibili: MCP di Supabase per SQL, log e advisor; `gh` per PR, run e nomi dei segreti.

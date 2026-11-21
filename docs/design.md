@@ -222,6 +222,8 @@ Il gate F0 è "cerco albume, vedo i valori giusti, inserisco i grammi, funziona 
 
 - La barra di ricerca sta sopra le tab in tutte le schermate. Il pulsante scanner compare solo quando c'è lo scanner (F1): nessun pulsante finto.
 - Il foglio di inserimento ha due modi. Nel **diario** (F1) ha il pasto, "Aggiungi e continua" e "Aggiungi 500 g". **Solo calcolo** (F0, decisione di Enrico) non ha il pasto né il pulsante secondario: "Usa 200 g" riporta l'etichetta della scheda a 200 g, e la scorciatoia dice "Ultima volta: 200 g" (nel diario "Ultima volta a cena: 500 g").
+- *Dal diario in F1*: la scheda alimento non calcola più, aggiunge. Sopra "Aggiungi a Pranzo" c'è la fila dei pasti, con quello scelto in evidenza: quello toccato in Oggi ("Aggiungi" sotto il pasto) oppure, dalla barra di ricerca, quello con l'orario più vicino. "Aggiungi e continua" torna ai risultati per il prossimo alimento dello stesso pasto; "Aggiungi" torna a Oggi. Una voce toccata in Oggi apre lo stesso foglio con "Elimina" e "Salva 250 g", senza la scorciatoia "Ultima volta", che lì sarebbe la voce stessa; il foglio copre anche ricerca e tab.
+- In Oggi un pasto senza voci mostra solo "Aggiungi": il bordo tratteggiato resta riservato alle voci previste dal piano.
 - Il selettore crudo/cotto compare solo se il nome ha esattamente un crudo e un cotto: con più preparazioni dello stesso nome si sceglierebbe a caso.
 - Con il foglio aperto la scheda dietro è nascosta al lettore dello schermo; pulsanti e scorciatoie si leggono in grammi ("Usa 200 grammi").
 - La scheda alimento nasconde l'intestazione nativa, così il foglio copre tutta la schermata; in alto c'è un pulsante "Indietro".

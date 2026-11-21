@@ -89,6 +89,7 @@ export default function TodayScreen() {
   return (
     <View style={styles.screen}>
       <ScrollView
+        testID="diario"
         contentContainerStyle={styles.content}
         importantForAccessibility={editing ? "no-hide-descendants" : "auto"}
         accessibilityElementsHidden={editing !== null}
