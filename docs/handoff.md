@@ -8,6 +8,7 @@ Questo file riassume la conversazione di progettazione del 22 ottobre 2026 (clau
   - Backend online dall'08/11: ogni merge su `main` con CI verde va online da solo su `https://tara-api-eu.onrender.com`.
 - **Piano della F1** (ordine proposto il 21/11, ogni passo usabile sull'emulatore, con test e flussi Maestro):
   1. **Diario** (RF-40, 41, 42, 43, 45): pasti predefiniti Colazione, Spuntino, Pranzo, Merenda, Cena (scelta di Enrico, poi modificabili), aggiunta dalla ricerca, totali, modifica ed eliminazione, copia dei valori nella voce. Branch `feat/RF-40-diario`.
+     Limite noto: il foglio dei grammi dice sempre "g" e "grammi", anche per una voce in ml (le bevande del catalogo); da sistemare quando entrano i prodotti in ml.
   2. Tipi di giornata e target (RF-50, 51, 53, 57): selettore in Oggi, barre registrato/previsto, storico dei target.
   3. Piano alimentare per tipo di giornata (RF-130): voci previste da confermare.
   4. Sincronizzazione con il backend, backup pianificati e ruolo del database senza permessi sullo schema, prima dei diari veri. Al primo sync i pasti predefiniti creati su due telefoni vanno riconciliati.
