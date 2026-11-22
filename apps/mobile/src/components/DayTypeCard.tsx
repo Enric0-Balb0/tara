@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { formatAmount } from '@/domain/format';
+import { parseWaterTarget } from '@/domain/water';
 import {
   formatTargetInput,
   macroKcalCheck,
@@ -63,10 +64,11 @@ export function DayTypeCard({ testID, name, target, water, canDelete, onSave, on
   const parsed = Object.fromEntries(
     FIELDS.map((field) => [field.key, parseTargetInput(texts[field.key])]),
   ) as Record<keyof MacroTargets, number | null | undefined>;
-  const parsedWater = parseTargetInput(waterText);
-  // L'acqua è un target come gli altri, ma zero non vale: vuoto vuol dire non impostato.
-  const waterInvalid = parsedWater === undefined || parsedWater === 0;
-  const invalid = FIELDS.some((field) => parsed[field.key] === undefined) || waterInvalid;
+  const parsedWater = parseWaterTarget(waterText);
+  // L'acqua è in ml interi e zero non vale: vuoto vuol dire non impostato.
+  const waterInvalid = parsedWater === undefined;
+  const macroInvalid = FIELDS.some((field) => parsed[field.key] === undefined);
+  const invalid = macroInvalid || waterInvalid;
   const values: MacroTargets = {
     kcal: parsed.kcal ?? null,
     protein_g: parsed.protein_g ?? null,
@@ -121,15 +123,19 @@ export function DayTypeCard({ testID, name, target, water, canDelete, onSave, on
             testID={`${testID}-acqua`}
             value={waterText}
             onChangeText={setWaterText}
-            keyboardType="decimal-pad"
+            keyboardType="number-pad"
             invalid={waterInvalid}
             placeholder="–"
           />
         </View>
       </View>
-      {invalid ? (
+      {macroInvalid ? (
         <TaraText variant="caption" color="error">
           Scrivi solo numeri, con la virgola per i decimali.
+        </TaraText>
+      ) : waterInvalid ? (
+        <TaraText variant="caption" color="error">
+          L&apos;acqua è un numero intero di ml, maggiore di zero (o vuoto).
         </TaraText>
       ) : macroKcal !== null ? (
         <TaraText variant="caption" color="textSecondary">

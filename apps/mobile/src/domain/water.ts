@@ -53,3 +53,15 @@ export function parseIncrements(texts: readonly string[]): number[] | undefined 
   const unique = [...new Set(values)].sort((a, b) => a - b);
   return validIncrements(unique) ? unique : undefined;
 }
+
+/**
+ * Il target dell'acqua scritto a mano: null se vuoto (non impostato), undefined se non è un
+ * intero in ml maggiore di zero (i ml sono interi: niente decimali).
+ */
+export function parseWaterTarget(text: string): number | null | undefined {
+  const trimmed = text.trim();
+  if (trimmed === '') return null;
+  if (!/^\d+$/.test(trimmed)) return undefined;
+  const value = Number(trimmed);
+  return value > 0 && value <= 99_999 ? value : undefined;
+}

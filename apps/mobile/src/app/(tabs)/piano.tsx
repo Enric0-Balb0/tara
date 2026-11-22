@@ -1,7 +1,7 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useRef, useState } from 'react';
-import { Alert, Modal, ScrollView, StyleSheet, View } from 'react-native';
+import { type ComponentRef, useCallback, useRef, useState } from 'react';
+import { Alert, KeyboardAvoidingView, Modal, ScrollView, StyleSheet, View } from 'react-native';
 
 import { DayGoals } from '@/components/DayGoals';
 import { DayTypeCard } from '@/components/DayTypeCard';
@@ -64,6 +64,10 @@ export default function PlanScreen() {
   const selected = useRef<string | undefined>(undefined);
   const [editing, setEditing] = useState<PlanItem | null>(null);
   const latest = useRef(0);
+  // La schermata sta sotto l'intestazione delle tab: KeyboardAvoidingView ha bisogno di sapere
+  // a che altezza della finestra comincia, altrimenti calcola male quanto copre la tastiera.
+  const frame = useRef<ComponentRef<typeof View>>(null);
+  const [top, setTop] = useState(0);
 
   const load = useCallback(
     async (wanted?: string) => {
@@ -112,18 +116,22 @@ export default function PlanScreen() {
         )
       : Object.values(values).some((value) => value !== null);
     try {
-      if (name !== type.name) await renameDayType(db, userId, type.id, name, now);
-      if (changed) await setTarget(db, userId, type.id, toLocalDate(now), values, now);
-      // L'acqua non ha storia: vale il valore di adesso (RF-61).
-      if (water !== (loaded?.waters[type.id] ?? null)) {
-        await setWaterTarget(db, userId, type.id, water, now);
-      }
+      // Tutto o niente: nome, target e acqua della scheda si salvano insieme.
+      await db.withTransactionAsync(async () => {
+        if (name !== type.name) await renameDayType(db, userId, type.id, name, now);
+        if (changed) await setTarget(db, userId, type.id, toLocalDate(now), values, now);
+        // L'acqua non ha storia: vale il valore di adesso (RF-61).
+        if (water !== (loaded?.waters[type.id] ?? null)) {
+          await setWaterTarget(db, userId, type.id, water, now);
+        }
+      });
     } catch (error: unknown) {
       console.error('Target non salvato', error);
       Alert.alert('Target non salvato', 'Il telefono non è riuscito a salvarlo. Riprova.');
-      return;
+    } finally {
+      // Anche dopo un errore: la scheda mostra com'è davvero salvato.
+      await load();
     }
-    await load();
   }
 
   function remove(type: DayType, types: readonly DayType[]) {
@@ -197,114 +205,120 @@ export default function PlanScreen() {
     : undefined;
 
   return (
-    <View style={styles.screen}>
-      <ScrollView
-        testID="piano"
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        importantForAccessibility={editing ? 'no-hide-descendants' : 'auto'}
-        accessibilityElementsHidden={editing !== null}
-      >
-        {loaded.types.length > 1 ? (
-          <Segmented
-            label="Tipo di giornata"
-            options={loaded.types.map((candidate) => ({
-              key: candidate.id,
-              label: candidate.name,
-            }))}
-            selectedKey={type?.id}
-            onSelect={(id) => void load(id)}
-          />
-        ) : null}
-
-        {type ? (
-          <>
-            <View style={styles.intro}>
-              <TaraText variant="section" accessibilityRole="header">
-                Target di {type.name}
-              </TaraText>
-              <TaraText variant="caption" color="textSecondary">
-                Un target cambiato vale da oggi: i giorni passati restano con il loro. Un campo
-                vuoto è un target non impostato.
-              </TaraText>
-            </View>
-            <DayTypeCard
-              // Rimonta la scheda quando arriva un target diverso, così i campi ripartono da lì.
-              key={`${type.id}:${target?.id ?? 'nessuno'}:${target?.validFrom ?? ''}:${type.name}:${loaded.waters[type.id] ?? ''}`}
-              testID={`tipo-${index}`}
-              name={type.name}
-              target={target}
-              water={loaded.waters[type.id] ?? null}
-              canDelete={loaded.types.length > 1}
-              onSave={(name, values, water) => save(type, name, values, water)}
-              onDelete={() => remove(type, loaded.types)}
-            />
-
-            <View style={styles.intro}>
-              <TaraText variant="section" accessibilityRole="header">
-                Piano di {type.name}
-              </TaraText>
-              <TaraText variant="caption" color="textSecondary">
-                I pasti con alimenti e grammi: in Oggi diventano voci previste da confermare.
-              </TaraText>
-            </View>
-            {loaded.plan.length > 0 ? (
-              <View style={styles.intro}>
-                <TaraText variant="bodyStrong">Totale del piano</TaraText>
-                <DayGoals label="Totale del piano" totals={totals(loaded.plan)} target={target} />
-              </View>
-            ) : null}
-            {loaded.slots.map((slot) => {
-              const own = loaded.plan.filter((item) => item.mealSlotId === slot.id);
-              const sum = totals(own);
-              return (
-                <MealSection
-                  key={slot.id}
-                  name={slot.name}
-                  kcal={sum.energy_kcal}
-                  protein={sum.protein_g}
-                  addLabel={`Aggiungi al piano: ${slot.name}`}
-                  onAdd={() =>
-                    router.push({ pathname: '/cerca', params: { slot: slot.id, plan: type.id } })
-                  }
-                  entries={own.map((item) => ({
-                    key: item.id,
-                    row: (
-                      <DiaryRow
-                        name={item.foodName}
-                        state={item.foodState}
-                        quantity={item.quantity}
-                        unit={item.unit}
-                        kcal={entryAmount(item.snapshot, 'energy_kcal', item.quantity)}
-                        protein={entryAmount(item.snapshot, 'protein_g', item.quantity)}
-                        onPress={() => setEditing(item)}
-                      />
-                    ),
-                  }))}
-                />
-              );
-            })}
-          </>
-        ) : null}
-
-        <WaterIncrements
-          // Rimonta quando cambiano i valori salvati, così i campi ripartono da lì.
-          key={loaded.increments.join(',')}
-          testID="incrementi"
-          increments={loaded.increments}
-          onSave={saveIncrements}
-        />
-
-        <PressableScale
-          onPress={() => void add()}
-          style={[styles.add, { borderColor: colors.borderStrong }]}
+    <View
+      ref={frame}
+      style={styles.screen}
+      onLayout={() => frame.current?.measureInWindow((_x, y) => setTop(y))}
+    >
+      <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={top} style={styles.screen}>
+        <ScrollView
+          testID="piano"
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          importantForAccessibility={editing ? 'no-hide-descendants' : 'auto'}
+          accessibilityElementsHidden={editing !== null}
         >
-          <Icon name="plus" color="textSecondary" />
-          <TaraText variant="bodyStrong" color="textSecondary">
-            Aggiungi un tipo di giornata
-          </TaraText>
-        </PressableScale>
-      </ScrollView>
+          {loaded.types.length > 1 ? (
+            <Segmented
+              label="Tipo di giornata"
+              options={loaded.types.map((candidate) => ({
+                key: candidate.id,
+                label: candidate.name,
+              }))}
+              selectedKey={type?.id}
+              onSelect={(id) => void load(id)}
+            />
+          ) : null}
+
+          {type ? (
+            <>
+              <View style={styles.intro}>
+                <TaraText variant="section" accessibilityRole="header">
+                  Target di {type.name}
+                </TaraText>
+                <TaraText variant="caption" color="textSecondary">
+                  Un target cambiato vale da oggi: i giorni passati restano con il loro. Un campo
+                  vuoto è un target non impostato.
+                </TaraText>
+              </View>
+              <DayTypeCard
+                // Rimonta la scheda quando arriva un target diverso, così i campi ripartono da lì.
+                key={`${type.id}:${target?.id ?? 'nessuno'}:${target?.validFrom ?? ''}:${type.name}:${loaded.waters[type.id] ?? ''}`}
+                testID={`tipo-${index}`}
+                name={type.name}
+                target={target}
+                water={loaded.waters[type.id] ?? null}
+                canDelete={loaded.types.length > 1}
+                onSave={(name, values, water) => save(type, name, values, water)}
+                onDelete={() => remove(type, loaded.types)}
+              />
+
+              <View style={styles.intro}>
+                <TaraText variant="section" accessibilityRole="header">
+                  Piano di {type.name}
+                </TaraText>
+                <TaraText variant="caption" color="textSecondary">
+                  I pasti con alimenti e grammi: in Oggi diventano voci previste da confermare.
+                </TaraText>
+              </View>
+              {loaded.plan.length > 0 ? (
+                <View style={styles.intro}>
+                  <TaraText variant="bodyStrong">Totale del piano</TaraText>
+                  <DayGoals label="Totale del piano" totals={totals(loaded.plan)} target={target} />
+                </View>
+              ) : null}
+              {loaded.slots.map((slot) => {
+                const own = loaded.plan.filter((item) => item.mealSlotId === slot.id);
+                const sum = totals(own);
+                return (
+                  <MealSection
+                    key={slot.id}
+                    name={slot.name}
+                    kcal={sum.energy_kcal}
+                    protein={sum.protein_g}
+                    addLabel={`Aggiungi al piano: ${slot.name}`}
+                    onAdd={() =>
+                      router.push({ pathname: '/cerca', params: { slot: slot.id, plan: type.id } })
+                    }
+                    entries={own.map((item) => ({
+                      key: item.id,
+                      row: (
+                        <DiaryRow
+                          name={item.foodName}
+                          state={item.foodState}
+                          quantity={item.quantity}
+                          unit={item.unit}
+                          kcal={entryAmount(item.snapshot, 'energy_kcal', item.quantity)}
+                          protein={entryAmount(item.snapshot, 'protein_g', item.quantity)}
+                          onPress={() => setEditing(item)}
+                        />
+                      ),
+                    }))}
+                  />
+                );
+              })}
+            </>
+          ) : null}
+
+          <WaterIncrements
+            // Rimonta quando cambiano i valori salvati, così i campi ripartono da lì.
+            key={loaded.increments.join(',')}
+            testID="incrementi"
+            increments={loaded.increments}
+            onSave={saveIncrements}
+          />
+
+          <PressableScale
+            onPress={() => void add()}
+            style={[styles.add, { borderColor: colors.borderStrong }]}
+          >
+            <Icon name="plus" color="textSecondary" />
+            <TaraText variant="bodyStrong" color="textSecondary">
+              Aggiungi un tipo di giornata
+            </TaraText>
+          </PressableScale>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Nel Modal il foglio copre anche ricerca e tab, che stanno fuori dalla schermata. */}
       <Modal

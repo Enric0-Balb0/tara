@@ -4,6 +4,7 @@ import {
   DEFAULT_INCREMENTS,
   formatLitres,
   parseIncrements,
+  parseWaterTarget,
   validIncrements,
   waterFraction,
   waterText,
@@ -76,5 +77,20 @@ describe('parseIncrements', () => {
     expect(parseIncrements(['10', '', ''])).toBeUndefined();
     expect(parseIncrements(['', '', ''])).toBeUndefined();
     expect(parseIncrements(['250,5', '', ''])).toBeUndefined();
+  });
+});
+
+describe('parseWaterTarget', () => {
+  it('vuoto è non impostato, un intero positivo è il target', () => {
+    expect(parseWaterTarget('')).toBeNull();
+    expect(parseWaterTarget(' 3000 ')).toBe(3000);
+  });
+
+  it('rifiuta zero, decimali, testo e valori enormi', () => {
+    expect(parseWaterTarget('0')).toBeUndefined();
+    expect(parseWaterTarget('2500,5')).toBeUndefined();
+    expect(parseWaterTarget('2500.5')).toBeUndefined();
+    expect(parseWaterTarget('abc')).toBeUndefined();
+    expect(parseWaterTarget('100000')).toBeUndefined();
   });
 });
