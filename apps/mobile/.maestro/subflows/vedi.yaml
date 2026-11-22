@@ -1,15 +1,20 @@
 # Porta sullo schermo l'elemento ELEMENTO (testo o espressione regolare) di una schermata che
-# scorre, come Oggi dove i pasti stanno sotto l'acqua. Prima prova verso l'alto (l'elemento
-# potrebbe essere sopra, per esempio dopo aver cambiato giorno), poi verso il basso, e lo
-# centra: così il tocco o la verifica seguenti non dipendono dall'altezza dello schermo.
+# scorre, come Oggi dove i pasti stanno sotto l'acqua. Prima prova verso il basso (il caso
+# comune) e lo centra; solo se non c'è, con un'attesa breve, verso l'alto (l'elemento potrebbe
+# essere sopra, per esempio dopo aver cambiato giorno). Se non lo trova la verifica finale
+# fallisce: così il tocco o la verifica seguenti non dipendono dall'altezza dello schermo.
 appId: com.enricobalbo.tara
 ---
 - scrollUntilVisible:
     element: ${ELEMENTO}
-    direction: UP
+    direction: DOWN
+    centerElement: true
     timeout: 4000
     optional: true
 - scrollUntilVisible:
     element: ${ELEMENTO}
-    direction: DOWN
+    direction: UP
     centerElement: true
+    timeout: 4000
+    optional: true
+- assertVisible: ${ELEMENTO}
