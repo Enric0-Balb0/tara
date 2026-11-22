@@ -1,8 +1,19 @@
 import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { Alert, AppState, Modal, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  AccessibilityInfo,
+  Alert,
+  AppState,
+  KeyboardAvoidingView,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
 
+import { Button } from '@/components/Button';
 import { DayGoals } from '@/components/DayGoals';
 import { DiaryRow } from '@/components/DiaryRow';
 import { GramSheet } from '@/components/GramSheet';
@@ -12,6 +23,7 @@ import { PlannedRow } from '@/components/PlannedRow';
 import { PressableScale } from '@/components/PressableScale';
 import { Segmented } from '@/components/Segmented';
 import { TaraText } from '@/components/TaraText';
+import { TextField } from '@/components/TextField';
 import {
   type DiaryEntry,
   deleteEntry,
@@ -22,6 +34,7 @@ import {
 } from '@/data/diaryStore';
 import { confirmPlanItem, pendingPlan, type PlanItem, planFor } from '@/data/planStore';
 import { copyEntries } from '@/data/quickStore';
+import { saveMealFromDiary } from '@/data/savedMealsStore';
 import { useSession } from '@/data/SessionProvider';
 import type { SqlDatabase } from '@/data/sql';
 import {
@@ -37,6 +50,7 @@ import {
   addDays,
   dayLabel,
   dayTitle,
+  defaultSavedMealName,
   entryAmount,
   mealPlanStatus,
   toLocalDate,
@@ -72,6 +86,9 @@ export default function TodayScreen() {
   // Pasti completi riaperti a mano; gli altri completi restano chiusi in una riga.
   const [opened, setOpened] = useState<ReadonlySet<string>>(new Set());
   const [confirming, setConfirming] = useState<PlanItem | null>(null);
+  // "Salva come pasto": il pasto da salvare e il nome che si sta scrivendo (RF-30).
+  const [savingMeal, setSavingMeal] = useState<{ slot: MealSlot; name: string } | null>(null);
+  const savingNow = useRef(false);
   const latest = useRef(0);
   // Una conferma alla volta: un doppio tocco su "Conferma" non registra due voci.
   const confirmingNow = useRef(false);
@@ -207,6 +224,34 @@ export default function TodayScreen() {
       copying.current = false;
     }
     await load();
+  }
+
+  // Salva le voci del pasto come pasto salvato; il foglio resta aperto se non riesce.
+  async function saveAsMeal() {
+    if (userId === undefined || savingMeal === null || savingNow.current) return;
+    const name = savingMeal.name.trim();
+    if (name === '') return;
+    savingNow.current = true;
+    try {
+      const id = await saveMealFromDiary(db, {
+        userId,
+        name,
+        date,
+        mealSlotId: savingMeal.slot.id,
+        now: new Date(),
+      });
+      if (id === null) {
+        Alert.alert('Pasto non salvato', 'Il pasto non ha voci da salvare.');
+      } else {
+        AccessibilityInfo.announceForAccessibility(`Pasto salvato: ${name}`);
+      }
+      setSavingMeal(null);
+    } catch (error: unknown) {
+      console.error('Pasto non salvato', error);
+      Alert.alert('Pasto non salvato', 'Il telefono non è riuscito a salvarlo. Riprova.');
+    } finally {
+      savingNow.current = false;
+    }
   }
 
   const previousName =
@@ -357,6 +402,15 @@ export default function TodayScreen() {
                   />
                 ),
               }))}
+              onSave={
+                own.length > 0
+                  ? () =>
+                      setSavingMeal({
+                        slot,
+                        name: defaultSavedMealName(slot.name, date),
+                      })
+                  : undefined
+              }
               onAdd={() =>
                 router.push({
                   pathname: '/cerca',
@@ -439,6 +493,59 @@ export default function TodayScreen() {
           />
         ) : null}
       </Modal>
+
+      <Modal
+        visible={savingMeal !== null}
+        transparent
+        animationType="fade"
+        statusBarTranslucent
+        navigationBarTranslucent
+        onRequestClose={() => setSavingMeal(null)}
+      >
+        <KeyboardAvoidingView behavior="padding" style={styles.dialog}>
+          <Pressable
+            style={[StyleSheet.absoluteFill, styles.backdrop]}
+            onPress={() => setSavingMeal(null)}
+            accessible={false}
+            importantForAccessibility="no"
+          />
+          {savingMeal ? (
+            <View
+              accessibilityViewIsModal
+              style={[
+                styles.dialogCard,
+                { backgroundColor: colors.surface, borderColor: colors.borderStrong },
+              ]}
+            >
+              <TaraText variant="section" accessibilityRole="header">
+                Salva come pasto
+              </TaraText>
+              <TextField
+                label="Nome del pasto"
+                value={savingMeal.name}
+                onChangeText={(name) => setSavingMeal({ slot: savingMeal.slot, name })}
+                autoCapitalize="sentences"
+                autoFocus
+                selectTextOnFocus
+                testID="campo-nome-pasto"
+              />
+              <Button
+                label="Salva"
+                accessibilityLabel="Salva il pasto"
+                disabled={savingMeal.name.trim() === ''}
+                onPress={() => void saveAsMeal()}
+                testID="salva-nome-pasto"
+              />
+              <Button
+                label="Annulla"
+                kind="quiet"
+                onPress={() => setSavingMeal(null)}
+                testID="annulla-nome-pasto"
+              />
+            </View>
+          ) : null}
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 }
@@ -470,6 +577,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  dialog: { flex: 1, justifyContent: 'center', padding: space.l },
+  backdrop: { backgroundColor: 'black', opacity: 0.6 },
+  dialogCard: { borderRadius: radius.field, borderWidth: 1, padding: space.l, gap: space.m },
   legend: {
     alignItems: 'flex-end',
     paddingHorizontal: space.m,

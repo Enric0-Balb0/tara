@@ -10,16 +10,18 @@ import { TaraText } from '@/components/TaraText';
 import { type PersonalFood, personalFoods } from '@/data/foodsStore';
 import { startDraft } from '@/data/recipeDraft';
 import { type RecipeListItem, recipes } from '@/data/recipesStore';
+import { type SavedMealSummary, savedMeals } from '@/data/savedMealsStore';
 import { useSession } from '@/data/SessionProvider';
 import type { SqlDatabase } from '@/data/sql';
+import { foodCountLabel } from '@/domain/diary';
 import { formatAmount } from '@/domain/format';
 import { space, touch } from '@/theme/layout';
 import { useTheme } from '@/theme/useTheme';
 
 /**
  * Dispensa: il catalogo personale (RF-02, RF-18). I prodotti inseriti qui si trovano nella
- * ricerca come i generici; le ricette (RF-20) stanno nella loro sezione, i pasti salvati
- * arriveranno accanto.
+ * ricerca come i generici; le ricette (RF-20) e i pasti salvati (RF-32) stanno nelle loro
+ * sezioni.
  */
 export default function PantryScreen() {
   const db: SqlDatabase = useSQLiteContext();
@@ -30,17 +32,19 @@ export default function PantryScreen() {
   // undefined: si sta leggendo.
   const [foods, setFoods] = useState<PersonalFood[] | undefined>(undefined);
   const [recipeList, setRecipeList] = useState<RecipeListItem[]>([]);
+  const [mealList, setMealList] = useState<SavedMealSummary[]>([]);
   const [failed, setFailed] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       if (userId === undefined) return undefined;
       let current = true;
-      void Promise.all([personalFoods(db, userId), recipes(db, userId)])
-        .then(([list, recipeRows]) => {
+      void Promise.all([personalFoods(db, userId), recipes(db, userId), savedMeals(db, userId)])
+        .then(([list, recipeRows, mealRows]) => {
           if (!current) return;
           setFoods(list);
           setRecipeList(recipeRows);
+          setMealList(mealRows);
           setFailed(false);
         })
         .catch((error: unknown) => {
@@ -48,6 +52,7 @@ export default function PantryScreen() {
           if (!current) return;
           setFoods([]);
           setRecipeList([]);
+          setMealList([]);
           setFailed(true);
         });
       return () => {
@@ -58,13 +63,14 @@ export default function PantryScreen() {
 
   const sections = [
     ...(recipeList.length > 0 ? [{ key: 'ricette', title: 'Ricette', data: recipeList }] : []),
+    ...(mealList.length > 0 ? [{ key: 'pasti', title: 'Pasti salvati', data: mealList }] : []),
     ...(foods && foods.length > 0
       ? [{ key: 'alimenti', title: 'I tuoi alimenti', data: foods }]
       : []),
   ];
 
   return (
-    <SectionList<PersonalFood | RecipeListItem>
+    <SectionList<PersonalFood | RecipeListItem | SavedMealSummary>
       style={{ backgroundColor: colors.background }}
       contentContainerStyle={styles.content}
       sections={sections}
@@ -100,11 +106,29 @@ export default function PantryScreen() {
           <TaraText color="textSecondary" style={styles.empty}>
             {failed
               ? 'Il telefono non è riuscito a leggere i tuoi alimenti: riprova tornando qui.'
-              : "Qui trovi i prodotti che inserisci tu e le tue ricette: copi l'etichetta una volta, poi li cerchi come tutti gli altri."}
+              : "Qui trovi i prodotti che inserisci tu, le tue ricette e i pasti salvati: copi l'etichetta una volta, poi li cerchi come tutti gli altri."}
           </TaraText>
         ) : undefined
       }
       renderItem={({ item, section }) => {
+        if (section.key === 'pasti') {
+          const meal = item as SavedMealSummary;
+          const count = foodCountLabel(meal.itemCount);
+          return (
+            <PressableScale
+              onPress={() => router.push({ pathname: '/pasto/[id]', params: { id: meal.id } })}
+              accessibilityLabel={`${meal.name}, pasto salvato, ${count}`}
+              style={[styles.row, { borderBottomColor: colors.border }]}
+            >
+              <View style={styles.text}>
+                <TaraText numberOfLines={2}>{meal.name}</TaraText>
+              </View>
+              <TaraText variant="caption" color="textSecondary">
+                {count}
+              </TaraText>
+            </PressableScale>
+          );
+        }
         const isRecipe = section.key === 'ricette';
         const recipeItem = item as RecipeListItem;
         const food = item as PersonalFood;

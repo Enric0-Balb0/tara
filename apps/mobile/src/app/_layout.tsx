@@ -54,6 +54,7 @@ function Screens() {
         <Stack.Screen name="alimento/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="nuovo-alimento" options={{ headerShown: false }} />
         <Stack.Screen name="ricetta" options={{ headerShown: false }} />
+        <Stack.Screen name="pasto/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="design" options={{ title: 'Componenti' }} />
       </Stack.Protected>
       <Stack.Protected guard={!signedIn}>
