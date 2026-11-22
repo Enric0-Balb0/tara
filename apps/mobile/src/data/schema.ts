@@ -276,6 +276,37 @@ export const MIGRATIONS: readonly string[] = [
   CREATE INDEX recipe_item_recipe ON recipe_item (recipe_id);
   CREATE INDEX recipe_item_ingredient ON recipe_item (ingredient_food_id);
   `,
+  // v10: pasti salvati (RF-30, RF-31, RF-32). Un elenco con nome di alimenti e quantità, da
+  // registrare in un tocco. Le voci tengono nome e stato come il diario, senza riferimento a
+  // food: l'alimento può sparire, la voce allora si salta.
+  `
+  CREATE TABLE saved_meal (
+    id TEXT PRIMARY KEY NOT NULL,
+    user_id TEXT NOT NULL,
+    name TEXT NOT NULL CONSTRAINT saved_meal_name_not_blank CHECK (trim(name) <> ''),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  ) STRICT;
+
+  CREATE TABLE saved_meal_item (
+    id TEXT PRIMARY KEY NOT NULL,
+    user_id TEXT NOT NULL,
+    saved_meal_id TEXT NOT NULL REFERENCES saved_meal (id),
+    food_id TEXT NOT NULL,
+    food_name TEXT NOT NULL,
+    food_state TEXT NOT NULL CONSTRAINT saved_meal_item_state_valid
+      CHECK (food_state IN ('raw', 'cooked', 'not_applicable')),
+    quantity REAL NOT NULL CONSTRAINT saved_meal_item_quantity_positive CHECK (quantity > 0),
+    unit TEXT NOT NULL CONSTRAINT saved_meal_item_unit_valid CHECK (unit IN ('g', 'ml')),
+    position INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  ) STRICT;
+
+  CREATE INDEX saved_meal_item_meal ON saved_meal_item (saved_meal_id);
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;
