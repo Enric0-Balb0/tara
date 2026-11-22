@@ -6,7 +6,7 @@
 
 import { useSyncExternalStore } from 'react';
 
-import type { FoodState } from '@/domain/food';
+import type { BaseUnit, FoodState } from '@/domain/food';
 import { parseLabelValue } from '@/domain/foodForm';
 import type { RecipeYield } from '@/domain/recipe';
 
@@ -15,6 +15,8 @@ export interface DraftItem {
   foodId: string;
   foodName: string;
   foodState: FoodState;
+  /** Un liquido si pesa in ml: nel totale della ricetta 1 ml vale 1 g. */
+  baseUnit: BaseUnit;
   gramsRaw: number;
 }
 
@@ -79,12 +81,16 @@ export function setYieldText(text: string): void {
   set({ ...draft, yield: { ...draft.yield, text } });
 }
 
-export function addItem(food: { id: string; name: string; state: FoodState }, grams: number): void {
+export function addItem(
+  food: { id: string; name: string; state: FoodState; baseUnit: BaseUnit },
+  grams: number,
+): void {
   const item: DraftItem = {
     key: `item-${++counter}`,
     foodId: food.id,
     foodName: food.name,
     foodState: food.state,
+    baseUnit: food.baseUnit,
     gramsRaw: grams,
   };
   set({ ...draft, items: [...draft.items, item] });

@@ -12,7 +12,9 @@ import {
   recipeDetail,
   recipes,
   recipesContaining,
+  ingredientValues,
   refreshRecipeValues,
+  setCookedWeight,
   updateRecipe,
 } from './recipesStore';
 import { initDatabase } from './schema';
@@ -85,12 +87,23 @@ describe('createRecipe (RF-20)', () => {
           foodId: 'albume-crudo',
           foodName: "Albume d'uovo",
           foodState: 'raw',
+          foodBaseUnit: 'g',
           gramsRaw: 200,
         }),
         expect.objectContaining({ foodId: oats, foodName: 'Avena', gramsRaw: 50 }),
       ],
       totalWeightG: 250,
       servingG: 125,
+      missingIngredients: [],
+    });
+  });
+
+  it('un ingrediente in ml porta la sua unità nella scheda della ricetta', async () => {
+    const milk = await createFood(db, USER, { ...OATS, name: 'Latte', baseUnit: 'ml' }, NOW);
+    const id = await createRecipe(db, USER, PANCAKE([{ foodId: milk, gramsRaw: 100 }]), NOW);
+    expect((await recipeDetail(db, USER, id))?.items[0]).toMatchObject({
+      foodName: 'Latte',
+      foodBaseUnit: 'ml',
     });
   });
 
@@ -136,6 +149,55 @@ describe('createRecipe (RF-20)', () => {
         id,
       ),
     ).rejects.toThrow(/recipe_item_not_itself/);
+  });
+
+  it('la resa è a porzioni o a peso cotto, nient’altro', async () => {
+    const id = await createFood(db, USER, { ...OATS, name: 'Impasto' }, NOW);
+    await expect(
+      db.runAsync(
+        `INSERT INTO recipe (food_id, user_id, yield_mode, portions, cooked_weight_g, created_at,
+           updated_at)
+         VALUES (?, ?, 'pezzi', 2, NULL, 'a', 'a')`,
+        id,
+        USER,
+      ),
+    ).rejects.toThrow(/recipe_yield_mode_valid/);
+  });
+
+  it('rifiuta come ingrediente un alimento di un altro utente o che non esiste', async () => {
+    const theirs = await createFood(db, OTHER, { ...OATS, name: 'Avena altrui' }, NOW);
+    await expect(
+      createRecipe(db, USER, PANCAKE([{ foodId: theirs, gramsRaw: 50 }]), NOW),
+    ).rejects.toThrow(/Ingrediente non nel catalogo dell'utente/);
+    await expect(
+      createRecipe(db, USER, PANCAKE([{ foodId: 'inesistente', gramsRaw: 50 }]), NOW),
+    ).rejects.toThrow(/Ingrediente non nel catalogo dell'utente/);
+    const id = await pancake();
+    await expect(
+      updateRecipe(db, USER, id, PANCAKE([{ foodId: theirs, gramsRaw: 50 }]), later(1)),
+    ).rejects.toThrow(/Ingrediente non nel catalogo dell'utente/);
+    expect((await recipeDetail(db, USER, id))?.items).toHaveLength(2);
+    expect(await recipes(db, USER)).toHaveLength(1);
+  });
+
+  it('accetta come ingrediente un alimento proprio eliminato, già nella ricetta', async () => {
+    const id = await pancake();
+    await deleteFood(db, USER, oats, later(1));
+    const detail = await recipeDetail(db, USER, id);
+    if (detail === null) throw new Error('ricetta non salvata');
+    expect(
+      await updateRecipe(
+        db,
+        USER,
+        id,
+        {
+          name: 'Pancake rinominati',
+          yield: detail.yield,
+          items: detail.items.map((item) => ({ foodId: item.foodId, gramsRaw: item.gramsRaw })),
+        },
+        later(2),
+      ),
+    ).toBe(true);
   });
 
   it('la resa deve avere porzioni oppure peso cotto, mai entrambi', async () => {
@@ -298,6 +360,51 @@ describe('catalogo che perde un ingrediente', () => {
     expect(await valuesOf(id)).toEqual(before);
     const detail = await recipeDetail(db, USER, id);
     expect(detail?.items.map((item) => item.foodId)).toEqual(['albume-crudo', oats]);
+    expect(detail?.missingIngredients).toEqual(['albume-crudo']);
+  });
+
+  it('il peso da cotto non cambia finché l’ingrediente sparito non è sostituito', async () => {
+    const id = await createRecipe(
+      db,
+      USER,
+      {
+        name: 'Teglia',
+        yield: { mode: 'weight', cookedWeightG: 200 },
+        items: [
+          { foodId: 'albume-crudo', gramsRaw: 200 },
+          { foodId: oats, gramsRaw: 50 },
+        ],
+      },
+      NOW,
+    );
+    const before = await valuesOf(id);
+    await replaceCatalog(db, snapshotText(withoutEggWhite, 'v2'), {
+      etag: null,
+      syncedAt: later(5).toISOString(),
+    });
+    expect(await setCookedWeight(db, USER, id, 100, later(6))).toBe('missing_ingredients');
+    expect((await recipeDetail(db, USER, id))?.yield).toEqual({
+      mode: 'weight',
+      cookedWeightG: 200,
+    });
+    expect(await valuesOf(id)).toEqual(before);
+  });
+});
+
+describe('ingredientValues (anteprima dell’editor)', () => {
+  it('legge i valori anche di un ingrediente eliminato, come il calcolo salvato', async () => {
+    await deleteFood(db, USER, oats, later(1));
+    const { values, missing } = await ingredientValues(db, [oats, 'albume-crudo']);
+    expect(values[oats]).toMatchObject({ energy_kcal: 372, protein_g: 13.5 });
+    expect(values['albume-crudo']).toMatchObject({ protein_g: 10.9 });
+    expect(missing).toEqual([]);
+  });
+
+  it('segnala gli ingredienti che non sono più nel catalogo', async () => {
+    const { values, missing } = await ingredientValues(db, ['sparito', oats]);
+    expect(missing).toEqual(['sparito']);
+    expect(values).not.toHaveProperty('sparito');
+    expect(values[oats]).toBeDefined();
   });
 });
 
@@ -374,6 +481,87 @@ describe('updateRecipe', () => {
       updateRecipe(db, USER, id, PANCAKE([{ foodId: oats, gramsRaw: -1 }]), later(1)),
     ).rejects.toThrow(/recipe_item_grams_positive/);
     expect((await recipeDetail(db, USER, id))?.items).toHaveLength(2);
+  });
+});
+
+describe('setCookedWeight (RF-23)', () => {
+  async function tray(): Promise<string> {
+    return createRecipe(
+      db,
+      USER,
+      {
+        name: 'Teglia di pollo',
+        yield: { mode: 'weight', cookedWeightG: 250 },
+        items: [
+          { foodId: 'albume-crudo', gramsRaw: 200 },
+          { foodId: oats, gramsRaw: 50 },
+        ],
+      },
+      NOW,
+    );
+  }
+
+  async function itemRows(id: string) {
+    return db.getAllAsync('SELECT * FROM recipe_item WHERE recipe_id = ? ORDER BY id', id);
+  }
+
+  it('cambia il peso cotto e i valori per 100 g, senza riscrivere gli ingredienti', async () => {
+    const id = await tray();
+    const items = await itemRows(id);
+    const kcal = (await valuesOf(id)).energy_kcal?.amountPer100 ?? 0;
+    expect(await setCookedWeight(db, USER, id, 200, later(1))).toBe('updated');
+    expect((await recipeDetail(db, USER, id))?.yield).toEqual({
+      mode: 'weight',
+      cookedWeightG: 200,
+    });
+    expect((await valuesOf(id)).energy_kcal?.amountPer100).toBeCloseTo((kcal * 250) / 200, 6);
+    expect(await itemRows(id)).toEqual(items);
+    const [food] = await db.getAllAsync<{ updated_at: string }>(
+      'SELECT updated_at FROM food WHERE id = ?',
+      id,
+    );
+    expect(food?.updated_at).toBe(later(1).toISOString());
+  });
+
+  it('la voce registrata prima resta con i valori di allora (snapshot)', async () => {
+    const id = await tray();
+    const food = await getFood(db, id);
+    if (food === null) throw new Error('ricetta non salvata');
+    const [slot] = await ensureMealSlots(db, USER, NOW);
+    await addEntry(db, {
+      userId: USER,
+      date: '2026-11-21',
+      mealSlotId: slot?.id ?? '',
+      food,
+      quantity: 150,
+      now: NOW,
+    });
+    const before = await entriesForDay(db, USER, '2026-11-21');
+    await setCookedWeight(db, USER, id, 180, later(1));
+    expect(await entriesForDay(db, USER, '2026-11-21')).toEqual(before);
+  });
+
+  it('non tocca la ricetta di un altro utente, eliminata o a porzioni', async () => {
+    const id = await tray();
+    const before = await valuesOf(id);
+    expect(await setCookedWeight(db, OTHER, id, 100, later(1))).toBe('not_found');
+    expect((await recipeDetail(db, USER, id))?.yield).toEqual({
+      mode: 'weight',
+      cookedWeightG: 250,
+    });
+    expect(await valuesOf(id)).toEqual(before);
+    const portions = await pancake();
+    expect(await setCookedWeight(db, USER, portions, 100, later(1))).toBe('not_found');
+    expect((await recipeDetail(db, USER, portions))?.yield.mode).toBe('portions');
+    await deleteRecipe(db, USER, id, later(2));
+    expect(await setCookedWeight(db, USER, id, 100, later(3))).toBe('not_found');
+  });
+
+  it('rifiuta un peso cotto non positivo', async () => {
+    const id = await tray();
+    await expect(setCookedWeight(db, USER, id, 0, later(1))).rejects.toThrow(
+      /recipe_yield_complete/,
+    );
   });
 });
 

@@ -2,7 +2,9 @@
 # dalla Dispensa creo "Pancake" con albume (200 g) e fiocchi d'avena (40 g) in 4 porzioni da
 # 60 g; la scheda mostra ingredienti e "Per porzione"; la registro a pranzo con la
 # scorciatoia "1 porzione"; la modifico aggiungendo un ingrediente (l'editor resta in
-# "Modifica ricetta" al ritorno dalla ricerca) e la duplico.
+# "Modifica ricetta" al ritorno dalla ricerca) e la duplico; scegliendo un ingrediente per la
+# copia, la scheda dell'originale non offre "Modifica" né "Duplica"; dall'editor torno alla
+# scheda della copia e la elimino.
 appId: com.enricobalbo.tara
 name: Ricette
 tags:
@@ -236,9 +238,73 @@ tags:
 - copyTextFrom:
     id: campo-nome-ricetta
 - assertTrue: ${maestro.copiedText === 'Pancake (copia)'}
+
+# Scegliendo un ingrediente per la copia, la scheda di un'altra ricetta (l'originale) non
+# offre "Modifica" né "Duplica": aprirebbero un secondo editor sulla stessa bozza.
+- tapOn:
+    id: aggiungi-ingrediente
+- runFlow:
+    file: subflows/scrivi.yaml
+    env:
+      CAMPO: campo-ricerca
+      TESTO: pancake
+- extendedWaitUntil:
+    visible: 'Pancake, .*kcal e .*'
+    timeout: 10000
+- tapOn:
+    text: 'Pancake, .*kcal e .*'
+    index: 0
+- extendedWaitUntil:
+    visible: Aggiungi alla ricetta
+    timeout: 10000
+- assertVisible:
+    id: ingredienti-ricetta
+- assertNotVisible:
+    id: modifica-ricetta
+- scrollUntilVisible:
+    element: 'Fonte: Ricetta'
+    direction: DOWN
+- assertNotVisible:
+    id: duplica-ricetta
+- assertNotVisible:
+    id: campo-peso-oggi
+# Senza aggiungere nulla si torna all'editor: la bozza è ancora quella della copia.
 - tapOn: Indietro
+- back
+- extendedWaitUntil:
+    visible:
+      id: campo-nome-ricetta
+    timeout: 10000
+- assertVisible: Modifica ricetta
+- copyTextFrom:
+    id: campo-nome-ricetta
+- assertTrue: ${maestro.copiedText === 'Pancake (copia)'}
+
+# Indietro dall'editor si arriva alla scheda della copia, non a quella dell'originale.
 - tapOn: Indietro
 - extendedWaitUntil:
-    visible: 'Pancake \(copia\), ricetta, .*'
+    visible:
+      id: modifica-ricetta
     timeout: 10000
-- takeScreenshot: screenshots/dispensa-copia
+- assertVisible: 'Pancake \(copia\)'
+- takeScreenshot: screenshots/scheda-copia
+
+# Elimina ricetta: dall'editor della copia, confermando, si torna alla Dispensa senza la copia.
+- tapOn:
+    id: modifica-ricetta
+- extendedWaitUntil:
+    visible:
+      id: campo-nome-ricetta
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: elimina-ricetta
+    direction: DOWN
+- tapOn:
+    id: elimina-ricetta
+- tapOn: '(?i)elimina'
+- extendedWaitUntil:
+    visible: 'Pancake, ricetta, .*'
+    timeout: 10000
+- assertNotVisible: 'Pancake \(copia\), ricetta, .*'
+- takeScreenshot: screenshots/dispensa-senza-copia

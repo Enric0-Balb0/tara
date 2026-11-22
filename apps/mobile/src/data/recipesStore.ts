@@ -5,7 +5,7 @@
  * un ingrediente; il diario ha la copia dei valori del momento e non si riscrive (principio 7).
  */
 
-import type { FoodState } from '@/domain/food';
+import type { BaseUnit, FoodState } from '@/domain/food';
 import { newId } from '@/domain/ids';
 import { recipeValues, type RecipeYield } from '@/domain/recipe';
 import { searchKey } from '@/domain/search';
@@ -28,11 +28,21 @@ export interface RecipeDetail {
     foodId: string;
     foodName: string;
     foodState: FoodState;
+    /** 'ml' per un liquido: nel totale della ricetta 1 ml vale 1 g. */
+    foodBaseUnit: BaseUnit;
     gramsRaw: number;
   }[];
   totalWeightG: number;
   servingG: number | null;
+  /**
+   * Gli ingredienti spariti dal catalogo: finché restano nella ricetta i valori non si
+   * ricalcolano (restano quelli di prima), quindi la resa non si può cambiare.
+   */
+  missingIngredients: string[];
 }
+
+/** Com'è andato l'aggiornamento del peso da cotto. */
+export type CookedWeightResult = 'updated' | 'not_found' | 'missing_ingredients';
 
 export interface RecipeListItem {
   id: string;
@@ -63,6 +73,20 @@ async function insertRecipeRows(
 ) {
   const at = now.toISOString();
   const { yield: recipeYield } = input;
+  // Un ingrediente è un generico condiviso o un alimento dell'utente (anche eliminato, se era
+  // già nella ricetta): mai quello di un altro, che la sincronizzazione non gli darebbe.
+  const foreign = await db.getAllAsync<{ id: string }>(
+    `SELECT DISTINCT value AS id FROM json_each(?)
+     WHERE NOT EXISTS (
+       SELECT 1 FROM food WHERE id = value AND (user_id IS NULL OR user_id = ?))`,
+    JSON.stringify(input.items.map((item) => item.foodId)),
+    userId,
+  );
+  if (foreign.length > 0) {
+    throw new Error(
+      `Ingrediente non nel catalogo dell'utente: ${foreign.map((row) => row.id).join(', ')}`,
+    );
+  }
   if (insertRecipe) {
     await db.runAsync(
       `INSERT INTO recipe (food_id, user_id, yield_mode, portions, cooked_weight_g, created_at,
@@ -104,6 +128,17 @@ async function insertRecipeRows(
   }
 }
 
+/** Un ingrediente della ricetta non c'è più in `food` (sparito con un catalogo nuovo). */
+async function hasMissingIngredient(db: SqlDatabase, recipeId: string): Promise<boolean> {
+  const missing = await db.getFirstAsync(
+    `SELECT 1 FROM recipe_item AS i
+     WHERE i.recipe_id = ? AND i.deleted_at IS NULL
+       AND NOT EXISTS (SELECT 1 FROM food WHERE id = i.ingredient_food_id)`,
+    recipeId,
+  );
+  return missing !== null;
+}
+
 /** Ricalcola e riscrive i valori di una ricetta; la transazione è di chi chiama. */
 async function writeValues(db: SqlDatabase, recipeId: string): Promise<void> {
   const recipe = await db.getFirstAsync<RecipeRow>(
@@ -114,13 +149,7 @@ async function writeValues(db: SqlDatabase, recipeId: string): Promise<void> {
   );
   if (recipe === null) return;
   // Un ingrediente sparito dal catalogo: i valori di prima restano, non si azzerano.
-  const missing = await db.getFirstAsync(
-    `SELECT 1 FROM recipe_item AS i
-     WHERE i.recipe_id = ? AND i.deleted_at IS NULL
-       AND NOT EXISTS (SELECT 1 FROM food WHERE id = i.ingredient_food_id)`,
-    recipeId,
-  );
-  if (missing !== null) return;
+  if (await hasMissingIngredient(db, recipeId)) return;
   // Gli ingredienti si leggono anche se eliminati: la ricetta non perde i valori.
   const rows = await db.getAllAsync<{
     item_id: string;
@@ -307,6 +336,68 @@ export async function updateRecipe(
   return changed;
 }
 
+/**
+ * Il peso da cotto di oggi (RF-23): cambia solo la resa e ricalcola i valori per 100 g; gli
+ * ingredienti restano com'erano e le voci già nel diario hanno i loro valori (principio 7).
+ * Con un ingrediente sparito dal catalogo non cambia nulla: i valori non si ricalcolerebbero.
+ */
+export async function setCookedWeight(
+  db: SqlDatabase,
+  userId: string,
+  id: string,
+  grams: number,
+  now: Date,
+): Promise<CookedWeightResult> {
+  let result: CookedWeightResult = 'not_found';
+  const at = now.toISOString();
+  await db.withTransactionAsync(async () => {
+    const recipe = await db.getFirstAsync(
+      `SELECT 1 FROM recipe AS r JOIN food AS f ON f.id = r.food_id
+       WHERE r.food_id = ? AND f.user_id = ? AND f.deleted_at IS NULL
+         AND r.yield_mode = 'weight'`,
+      id,
+      userId,
+    );
+    if (recipe === null) return;
+    if (await hasMissingIngredient(db, id)) {
+      result = 'missing_ingredients';
+      return;
+    }
+    await db.runAsync(
+      'UPDATE recipe SET cooked_weight_g = ?, updated_at = ? WHERE food_id = ?',
+      grams,
+      at,
+      id,
+    );
+    await db.runAsync('UPDATE food SET updated_at = ? WHERE id = ?', at, id);
+    await refreshAll(db, [id]);
+    result = 'updated';
+  });
+  return result;
+}
+
+/**
+ * I valori per 100 degli ingredienti per l'anteprima dell'editor, letti come li legge il
+ * calcolo salvato: anche di un alimento eliminato. `missing`: quelli spariti dal catalogo.
+ */
+export async function ingredientValues(
+  db: SqlDatabase,
+  foodIds: readonly string[],
+): Promise<{ values: Record<string, Record<string, number>>; missing: string[] }> {
+  const rows = await db.getAllAsync<{ id: string; code: string | null; amount: number | null }>(
+    `SELECT f.id, v.nutrient_code AS code, v.amount_per_100 AS amount
+     FROM food AS f LEFT JOIN nutrient_value AS v ON v.food_id = f.id
+     WHERE f.id IN (SELECT value FROM json_each(?))`,
+    JSON.stringify(foodIds),
+  );
+  const values: Record<string, Record<string, number>> = {};
+  for (const row of rows) {
+    const per100 = (values[row.id] ??= {});
+    if (row.code !== null && row.amount !== null) per100[row.code] = row.amount;
+  }
+  return { values, missing: [...new Set(foodIds)].filter((id) => values[id] === undefined) };
+}
+
 export async function duplicateRecipe(
   db: SqlDatabase,
   userId: string,
@@ -375,11 +466,14 @@ export async function recipeDetail(
     food_id: string;
     food_name: string;
     food_state: FoodState;
+    food_base_unit: BaseUnit;
     grams_raw: number;
+    missing: number;
   }>(
     `SELECT i.id, i.ingredient_food_id AS food_id,
             coalesce(f.name, 'Alimento non più nel catalogo') AS food_name,
-            coalesce(f.state, 'not_applicable') AS food_state, i.grams_raw
+            coalesce(f.state, 'not_applicable') AS food_state,
+            coalesce(f.base_unit, 'g') AS food_base_unit, i.grams_raw, f.id IS NULL AS missing
      FROM recipe_item AS i LEFT JOIN food AS f ON f.id = i.ingredient_food_id
      WHERE i.recipe_id = ? AND i.user_id = ? AND i.deleted_at IS NULL
      ORDER BY i.position`,
@@ -400,10 +494,14 @@ export async function recipeDetail(
       foodId: row.food_id,
       foodName: row.food_name,
       foodState: row.food_state,
+      foodBaseUnit: row.food_base_unit,
       gramsRaw: row.grams_raw,
     })),
     totalWeightG,
     servingG,
+    missingIngredients: [
+      ...new Set(rows.filter((row) => row.missing === 1).map((row) => row.food_id)),
+    ],
   };
 }
 

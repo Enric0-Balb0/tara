@@ -13,9 +13,9 @@ import { Segmented } from '@/components/Segmented';
 import { StateTag } from '@/components/StateTag';
 import { TaraText } from '@/components/TaraText';
 import { TextField } from '@/components/TextField';
-import { getFood } from '@/data/catalogStore';
 import {
   clearDraft,
+  getDraft,
   readYield,
   removeItem,
   setItemGrams,
@@ -25,11 +25,17 @@ import {
   startDraft,
   useRecipeDraft,
 } from '@/data/recipeDraft';
-import { createRecipe, recipeDetail, updateRecipe } from '@/data/recipesStore';
+import {
+  createRecipe,
+  deleteRecipe,
+  ingredientValues,
+  recipeDetail,
+  updateRecipe,
+} from '@/data/recipesStore';
 import { useSession } from '@/data/SessionProvider';
 import type { SqlDatabase } from '@/data/sql';
 import { formatAmount } from '@/domain/format';
-import { recipeValues } from '@/domain/recipe';
+import { MISSING_INGREDIENT_TEXT, recipeValues } from '@/domain/recipe';
 import { space, touch } from '@/theme/layout';
 import { useTheme } from '@/theme/useTheme';
 
@@ -59,10 +65,15 @@ export default function RecipeScreen() {
   const draft = useRecipeDraft();
   const [missing, setMissing] = useState(false);
   const [values, setValues] = useState<Record<string, Per100>>({});
+  // Gli ingredienti spariti dal catalogo: vanno sostituiti prima di salvare.
+  const [gone, setGone] = useState<ReadonlySet<string>>(new Set());
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [tried, setTried] = useState(false);
   const [saving, setSaving] = useState(false);
   const busy = useRef(false);
+  // La ricetta già caricata nella bozza: si carica una volta per id, non a ogni cambio della
+  // bozza, così un altro editor non la riporta indietro.
+  const loadedId = useRef<string | null>(null);
   const ready = id === undefined || draft.recipeId === id;
 
   // Uscendo dalla schermata (salvata o no) la bozza si butta; la ricerca degli ingredienti
@@ -70,11 +81,16 @@ export default function RecipeScreen() {
   useEffect(() => () => clearDraft(), []);
 
   useEffect(() => {
-    if (id === undefined || userId === undefined || draft.recipeId === id) return undefined;
+    if (id === undefined || userId === undefined || loadedId.current === id) return undefined;
+    if (getDraft().recipeId === id) {
+      loadedId.current = id;
+      return undefined;
+    }
     let current = true;
     void recipeDetail(db, userId, id)
       .then((detail) => {
         if (!current) return;
+        loadedId.current = id;
         if (detail === null) {
           setMissing(true);
           return;
@@ -91,6 +107,7 @@ export default function RecipeScreen() {
             foodId: item.foodId,
             foodName: item.foodName,
             foodState: item.foodState,
+            baseUnit: item.foodBaseUnit,
             gramsRaw: item.gramsRaw,
           })),
         });
@@ -102,26 +119,21 @@ export default function RecipeScreen() {
     return () => {
       current = false;
     };
-  }, [db, userId, id, draft.recipeId]);
+  }, [db, userId, id]);
 
-  // I valori degli ingredienti si leggono dal catalogo, una volta per alimento.
+  // I valori degli ingredienti, una volta per alimento, letti come li legge il salvataggio
+  // (anche di un alimento personale eliminato).
   const wanted = [...new Set(draft.items.map((item) => item.foodId))]
-    .filter((foodId) => values[foodId] === undefined)
+    .filter((foodId) => values[foodId] === undefined && !gone.has(foodId))
     .join(',');
   useEffect(() => {
     if (wanted === '') return undefined;
     let current = true;
-    void Promise.all(
-      wanted.split(',').map(async (foodId) => {
-        const food = await getFood(db, foodId);
-        return [
-          foodId,
-          Object.fromEntries((food?.nutrients ?? []).map((n) => [n.code, n.amountPer100])),
-        ] as const;
-      }),
-    )
-      .then((entries) => {
-        if (current) setValues((previous) => ({ ...previous, ...Object.fromEntries(entries) }));
+    void ingredientValues(db, wanted.split(','))
+      .then((read) => {
+        if (!current) return;
+        setValues((previous) => ({ ...previous, ...read.values }));
+        if (read.missing.length > 0) setGone((previous) => new Set([...previous, ...read.missing]));
       })
       .catch((error: unknown) => console.error('Valori non letti', error));
     return () => {
@@ -132,6 +144,7 @@ export default function RecipeScreen() {
   const recipeYield = readYield(draft.yield);
   const nameOk = draft.name.trim() !== '';
   const itemsOk = draft.items.length > 0;
+  const hasGone = draft.items.some((item) => gone.has(item.foodId));
   const errors = {
     name: nameOk ? undefined : 'Scrivi il nome della ricetta.',
     items: itemsOk ? undefined : 'Aggiungi almeno un ingrediente.',
@@ -146,8 +159,9 @@ export default function RecipeScreen() {
   const shown = tried ? errors : { name: undefined, items: undefined, yield: undefined };
 
   const loadedAll = draft.items.every((item) => values[item.foodId] !== undefined);
+  // Con un ingrediente sparito l'anteprima non c'è: il salvataggio non saprebbe calcolarla.
   const result =
-    recipeYield !== null && itemsOk && loadedAll
+    recipeYield !== null && itemsOk && loadedAll && !hasGone
       ? recipeValues(
           draft.items.map((item) => ({
             grams: item.gramsRaw,
@@ -161,7 +175,14 @@ export default function RecipeScreen() {
 
   async function save() {
     setTried(true);
-    if (!nameOk || !itemsOk || recipeYield === null || userId === undefined || busy.current) {
+    if (
+      !nameOk ||
+      !itemsOk ||
+      hasGone ||
+      recipeYield === null ||
+      userId === undefined ||
+      busy.current
+    ) {
       return;
     }
     busy.current = true;
@@ -187,6 +208,31 @@ export default function RecipeScreen() {
       busy.current = false;
       setSaving(false);
     }
+  }
+
+  function confirmDelete() {
+    const recipeId = draft.recipeId;
+    if (recipeId === null || userId === undefined) return;
+    Alert.alert(
+      `Eliminare «${draft.name.trim()}»?`,
+      'Le voci già nel diario restano, con i valori di quando le hai registrate.',
+      [
+        { text: 'Annulla', style: 'cancel' },
+        {
+          text: 'Elimina',
+          style: 'destructive',
+          onPress: () => {
+            void deleteRecipe(db, userId, recipeId, new Date())
+              // Una ricetta esistente si apre solo dalla sua scheda: via l'editor e la scheda.
+              .then(() => router.dismiss(2))
+              .catch((error: unknown) => {
+                console.error('Ricetta non eliminata', error);
+                Alert.alert('Ricetta non eliminata', 'Il telefono non è riuscito. Riprova.');
+              });
+          },
+        },
+      ],
+    );
   }
 
   return (
@@ -261,23 +307,38 @@ export default function RecipeScreen() {
               <TaraText variant="bodyStrong" accessibilityRole="header">
                 Ingredienti
               </TaraText>
-              {draft.items.map((item) => (
-                <PressableScale
-                  key={item.key}
-                  onPress={() => setEditingKey(item.key)}
-                  accessibilityLabel={`${item.foodName}, ${formatAmount(item.gramsRaw, 'grams')} grammi. Modifica`}
-                  testID={`ingrediente-${item.foodId}`}
-                  style={[styles.item, { borderBottomColor: colors.border }]}
-                >
-                  <View style={styles.itemName}>
-                    <TaraText numberOfLines={2} style={styles.itemText}>
-                      {item.foodName}
+              {draft.items.map((item) => {
+                const itemGone = gone.has(item.foodId);
+                const unitWord = item.baseUnit === 'ml' ? 'millilitri' : 'grammi';
+                return (
+                  <PressableScale
+                    key={item.key}
+                    onPress={() => setEditingKey(item.key)}
+                    accessibilityLabel={`${item.foodName}, ${formatAmount(item.gramsRaw, 'grams')} ${unitWord}${itemGone ? ', da sostituire' : ''}. Modifica`}
+                    testID={`ingrediente-${item.foodId}`}
+                    style={[styles.item, { borderBottomColor: colors.border }]}
+                  >
+                    <View style={styles.itemName}>
+                      <TaraText
+                        numberOfLines={2}
+                        style={styles.itemText}
+                        color={itemGone ? 'error' : undefined}
+                      >
+                        {item.foodName}
+                      </TaraText>
+                      <StateTag state={item.foodState} />
+                    </View>
+                    <TaraText variant="bodyStrong">
+                      {formatAmount(item.gramsRaw, 'grams')} {item.baseUnit}
                     </TaraText>
-                    <StateTag state={item.foodState} />
-                  </View>
-                  <TaraText variant="bodyStrong">{formatAmount(item.gramsRaw, 'grams')} g</TaraText>
-                </PressableScale>
-              ))}
+                  </PressableScale>
+                );
+              })}
+              {hasGone ? (
+                <TaraText variant="caption" color="error" testID="ingrediente-mancante">
+                  {MISSING_INGREDIENT_TEXT}
+                </TaraText>
+              ) : null}
               {shown.items ? (
                 <TaraText variant="caption" color="error">
                   {shown.items}
@@ -300,6 +361,15 @@ export default function RecipeScreen() {
                   </TaraText>
                 ) : null}
               </View>
+            ) : null}
+
+            {draft.recipeId !== null ? (
+              <Button
+                label="Elimina ricetta"
+                kind="quiet"
+                onPress={confirmDelete}
+                testID="elimina-ricetta"
+              />
             ) : null}
           </ScrollView>
           <View
@@ -324,6 +394,7 @@ export default function RecipeScreen() {
                 per100: values[editing.foodId] ?? {},
               }}
               startGrams={editing.gramsRaw}
+              unit={editing.baseUnit}
               confirmVerb="Salva"
               onConfirm={(grams) => {
                 setItemGrams(editing.key, grams);

@@ -14,8 +14,14 @@ import {
   subscribeDraft,
 } from './recipeDraft';
 
-const OATS = { id: 'avena', name: 'Avena', state: 'raw' as const };
-const EGG = { id: 'albume', name: "Albume d'uovo", state: 'raw' as const };
+const OATS = { id: 'avena', name: 'Avena', state: 'raw' as const, baseUnit: 'g' as const };
+const EGG = { id: 'albume', name: "Albume d'uovo", state: 'raw' as const, baseUnit: 'g' as const };
+const MILK = {
+  id: 'latte',
+  name: 'Latte',
+  state: 'not_applicable' as const,
+  baseUnit: 'ml' as const,
+};
 
 beforeEach(() => clearDraft());
 
@@ -40,6 +46,15 @@ describe('bozza della ricetta (RF-20)', () => {
       ['avena', 'Avena', 'raw', 30],
     ]);
     expect(items[0]?.key).not.toBe(items[1]?.key);
+  });
+
+  it("ricorda l'unità dell'ingrediente: un liquido resta in ml", () => {
+    addItem(MILK, 200);
+    addItem(OATS, 40);
+    expect(getDraft().items.map((item) => [item.foodId, item.baseUnit])).toEqual([
+      ['latte', 'ml'],
+      ['avena', 'g'],
+    ]);
   });
 
   it('cambia i grammi di un solo ingrediente e ne toglie uno', () => {

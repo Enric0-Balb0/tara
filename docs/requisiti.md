@@ -98,6 +98,8 @@ Una ricetta è un alimento composto e si registra come qualsiasi altro alimento;
 | RF-25 | Sostituzione di un ingrediente con un altro prodotto collegato allo stesso alimento generico. | S | F1 |
 | RF-26 | Scheda ricetta con valori per porzione e per 100 g. | M | F1 |
 
+Un ingrediente liquido si inserisce in ml e la ricetta lo somma come se 1 ml pesasse 1 g: peso totale, porzioni e valori per 100 g della ricetta usano questa approssimazione, che per acqua, latte e albume liquido sbaglia di pochi punti percentuali. Gli ingredienti sono generici del catalogo condiviso o alimenti dell'utente, mai di un altro utente. Se un catalogo nuovo non ha più un generico usato da una ricetta, la ricetta conserva i valori di prima e lo segnala: resa e copia aspettano che l'ingrediente sia sostituito.
+
 ### Pasti salvati
 
 | ID | Requisito | Priorità | Fase |

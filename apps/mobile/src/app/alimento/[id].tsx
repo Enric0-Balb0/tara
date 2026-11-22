@@ -20,7 +20,7 @@ import {
   duplicateRecipe,
   type RecipeDetail,
   recipeDetail,
-  updateRecipe,
+  setCookedWeight,
 } from '@/data/recipesStore';
 import { addPlanItem } from '@/data/planStore';
 import { isFavorite, setFavorite } from '@/data/quickStore';
@@ -29,7 +29,7 @@ import type { SqlDatabase } from '@/data/sql';
 import { minutesOfDay, slotForTime, toLocalDate } from '@/domain/diary';
 import { parseLabelValue } from '@/domain/foodForm';
 import { formatAmount, formatTime } from '@/domain/format';
-import { portionShortcuts } from '@/domain/recipe';
+import { MISSING_INGREDIENT_TEXT, portionShortcuts } from '@/domain/recipe';
 import { sourceLabel } from '@/domain/sources';
 import { radius, space, touch } from '@/theme/layout';
 import { useTheme } from '@/theme/useTheme';
@@ -193,7 +193,10 @@ export default function FoodScreen() {
   function addToRecipe(quantity: number) {
     if (!food || saving.current) return;
     saving.current = true;
-    addRecipeItem({ id: food.id, name: food.name, state: food.state }, quantity);
+    addRecipeItem(
+      { id: food.id, name: food.name, state: food.state, baseUnit: food.baseUnit },
+      quantity,
+    );
     setSheetOpen(false);
     // Tornando al editor i parametri si sostituiscono: senza `id` una ricetta in modifica
     // si presenterebbe come nuova.
@@ -201,9 +204,12 @@ export default function FoodScreen() {
     router.dismissTo(recipeId ? { pathname: '/ricetta', params: { id: recipeId } } : '/ricetta');
   }
 
+  // Un ingrediente sparito: peso e copia aspettano che lo si sostituisca nell'editor.
+  const missingIngredient = (recipe?.missingIngredients.length ?? 0) > 0;
+
   // RF-23: il peso da cotto di oggi; le voci già registrate restano come erano.
   async function updateCookedWeight() {
-    if (userId === undefined || !recipe || saving.current) return;
+    if (userId === undefined || !recipe || missingIngredient || saving.current) return;
     const grams = parseLabelValue(cookedText);
     if (grams === null || grams === undefined || grams <= 0) {
       setCookedInvalid(true);
@@ -212,17 +218,11 @@ export default function FoodScreen() {
     setCookedInvalid(false);
     saving.current = true;
     try {
-      await updateRecipe(
-        db,
-        userId,
-        recipe.id,
-        {
-          name: recipe.name,
-          yield: { mode: 'weight', cookedWeightG: grams },
-          items: recipe.items.map((item) => ({ foodId: item.foodId, gramsRaw: item.gramsRaw })),
-        },
-        new Date(),
-      );
+      const result = await setCookedWeight(db, userId, recipe.id, grams, new Date());
+      if (result === 'not_found') {
+        Alert.alert('Peso non aggiornato', 'La ricetta non è più nel tuo catalogo.');
+      }
+      // Con 'missing_ingredients' la rilettura mostra l'avviso: il peso resta quello di prima.
       await load(() => true);
     } catch (error: unknown) {
       console.error('Peso non aggiornato', error);
@@ -234,10 +234,18 @@ export default function FoodScreen() {
 
   async function duplicate() {
     if (userId === undefined || !recipe || saving.current) return;
+    if (missingIngredient) {
+      Alert.alert('Ricetta non duplicata', MISSING_INGREDIENT_TEXT);
+      return;
+    }
     saving.current = true;
     try {
       const copy = await duplicateRecipe(db, userId, recipe.id, new Date());
-      if (copy !== null) router.push({ pathname: '/ricetta', params: { id: copy } });
+      if (copy !== null) {
+        // La scheda diventa quella della copia: tornando dall'editor si vede la copia.
+        router.replace({ pathname: '/alimento/[id]', params: { id: copy } });
+        router.push({ pathname: '/ricetta', params: { id: copy } });
+      }
     } catch (error: unknown) {
       console.error('Ricetta non duplicata', error);
       Alert.alert('Ricetta non duplicata', 'Il telefono non è riuscito a copiarla. Riprova.');
@@ -292,7 +300,9 @@ export default function FoodScreen() {
         <View style={styles.topBar}>
           {back}
           <View style={styles.topActions}>
-            {food.source === 'recipe' ? (
+            {/* Scegliendo un ingrediente la ricetta non si modifica né si copia: l'editor
+                aperto sopra prenderebbe la bozza di quello che sta sotto. */}
+            {params.ricetta ? null : food.source === 'recipe' ? (
               <PressableScale
                 onPress={() => router.push({ pathname: '/ricetta', params: { id: food.id } })}
                 accessibilityLabel="Modifica ricetta"
@@ -354,12 +364,19 @@ export default function FoodScreen() {
                   <TaraText style={styles.ingredientName} numberOfLines={2}>
                     {item.foodName}
                   </TaraText>
-                  <TaraText variant="bodyStrong">{formatAmount(item.gramsRaw, 'grams')} g</TaraText>
+                  <TaraText variant="bodyStrong">
+                    {formatAmount(item.gramsRaw, 'grams')} {item.foodBaseUnit}
+                  </TaraText>
                 </View>
               ))}
               <TaraText variant="caption" color="textSecondary">
                 Grammi a crudo
               </TaraText>
+              {missingIngredient ? (
+                <TaraText variant="caption" color="error" testID="ingrediente-mancante">
+                  {MISSING_INGREDIENT_TEXT}
+                </TaraText>
+              ) : null}
             </View>
           ) : null}
           {recipe?.servingG ? (
@@ -371,7 +388,7 @@ export default function FoodScreen() {
             grams={100}
             unit={food.baseUnit}
           />
-          {recipe?.yield.mode === 'weight' ? (
+          {recipe?.yield.mode === 'weight' && !params.ricetta ? (
             <View style={styles.cooked}>
               <TextField
                 label="Peso da cotto di oggi (g)"
@@ -390,11 +407,12 @@ export default function FoodScreen() {
                 label="Aggiorna il peso"
                 kind="secondary"
                 onPress={() => void updateCookedWeight()}
+                disabled={missingIngredient}
                 testID="aggiorna-peso"
               />
             </View>
           ) : null}
-          {recipe ? (
+          {recipe && !params.ricetta ? (
             <Button
               label="Duplica"
               kind="secondary"

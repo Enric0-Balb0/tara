@@ -66,6 +66,13 @@ export function recipeValues(
   return { totalWeightG, servingG, per100, perServing };
 }
 
+/**
+ * Con un ingrediente sparito dal catalogo i valori della ricetta restano quelli di prima:
+ * scheda ed editor lo dicono, e resa e copia aspettano la sostituzione.
+ */
+export const MISSING_INGREDIENT_TEXT =
+  'Un ingrediente non è più nel catalogo: sostituiscilo per aggiornare i valori.';
+
 /** Le scorciatoie del foglio dei grammi per una ricetta a porzioni: una e due porzioni. */
 export function portionShortcuts(servingG: number): { label: string; grams: number }[] {
   if (!(servingG > 0)) return [];
