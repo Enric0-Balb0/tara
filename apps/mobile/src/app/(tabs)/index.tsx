@@ -24,6 +24,7 @@ import { PressableScale } from '@/components/PressableScale';
 import { Segmented } from '@/components/Segmented';
 import { TaraText } from '@/components/TaraText';
 import { TextField } from '@/components/TextField';
+import { WaterRow } from '@/components/WaterRow';
 import {
   type DiaryEntry,
   deleteEntry,
@@ -46,6 +47,14 @@ import {
   setDayType,
   targetOn,
 } from '@/data/targetsStore';
+import {
+  addWater,
+  lastWater,
+  undoLastWater,
+  waterIncrements,
+  waterOn,
+  waterTarget,
+} from '@/data/waterStore';
 import {
   addDays,
   dayLabel,
@@ -81,6 +90,13 @@ export default function TodayScreen() {
   const [dayTypes, setDayTypes] = useState<DayType[]>([]);
   const [dayTypeId, setDayTypeId] = useState<string | undefined>(undefined);
   const [target, setTarget] = useState<DayTarget | undefined>(undefined);
+  // Acqua del giorno mostrato: ml bevuti, target del tipo di giornata, incrementi dei pulsanti.
+  const [water, setWater] = useState({
+    ml: 0,
+    last: null as number | null,
+    target: null as number | null,
+    increments: [250],
+  });
   const [plan, setPlan] = useState<PlanItem[]>([]);
   const [pending, setPending] = useState<PlanItem[]>([]);
   // Pasti completi riaperti a mano; gli altri completi restano chiusi in una riga.
@@ -94,6 +110,8 @@ export default function TodayScreen() {
   const confirmingNow = useRef(false);
   // Una copia alla volta: un doppio tocco non copia due volte.
   const copying = useRef(false);
+  // Un'acqua alla volta: due tocchi veloci non aggiungono due volte.
+  const drinking = useRef(false);
 
   // Dopo mezzanotte, con l'app rimasta aperta, "oggi" va avanti: chi guardava oggi passa
   // al giorno nuovo, chi guardava un altro giorno resta lì.
@@ -128,6 +146,12 @@ export default function TodayScreen() {
       if (dayEntries.length > 0) await keepDayType(db, userId, date, new Date());
       const typeId = await dayTypeFor(db, userId, date);
       const dayTarget = typeId ? await targetOn(db, userId, typeId, date) : undefined;
+      const [dayWater, dayLast, dayWaterTarget, steps] = await Promise.all([
+        waterOn(db, userId, date),
+        lastWater(db, userId, date),
+        typeId ? waterTarget(db, userId, typeId) : null,
+        waterIncrements(db, userId),
+      ]);
       // Il piano vale da oggi in avanti, come i target: un giorno passato non ha voci
       // previste, e cambiare il piano oggi non riapre i pasti di ieri.
       const planned = typeId !== undefined && date >= toLocalDate(new Date());
@@ -140,6 +164,7 @@ export default function TodayScreen() {
       setDayTypes(types);
       setDayTypeId(typeId);
       setTarget(dayTarget);
+      setWater({ ml: dayWater, last: dayLast, target: dayWaterTarget, increments: steps });
       setPlan(dayPlan);
       setPending(dayPending);
     } catch (error: unknown) {
@@ -254,6 +279,21 @@ export default function TodayScreen() {
     }
   }
 
+  // Aggiunge o annulla acqua; la lettura dopo un errore mostra com'è davvero il giorno.
+  async function drink(change: (owner: string) => Promise<unknown>) {
+    if (userId === undefined || drinking.current) return;
+    drinking.current = true;
+    try {
+      await change(userId);
+    } catch (error: unknown) {
+      console.error('Acqua non salvata', error);
+      Alert.alert('Acqua non salvata', 'Il telefono non è riuscito a salvarla. Riprova.');
+    } finally {
+      drinking.current = false;
+    }
+    await load();
+  }
+
   const previousName =
     date === today ? 'ieri' : addDays(date, -1) === today ? 'oggi' : dayLabel(addDays(date, -1));
 
@@ -329,6 +369,15 @@ export default function TodayScreen() {
           target={target}
           dayTypeName={dayTypeName}
           onSetTargets={() => router.navigate('/piano')}
+        />
+
+        <WaterRow
+          ml={water.ml}
+          target={water.target}
+          increments={water.increments}
+          lastAdded={water.last}
+          onAdd={(ml) => void drink((owner) => addWater(db, owner, date, ml, new Date()))}
+          onUndo={() => void drink((owner) => undoLastWater(db, owner, date, new Date()))}
         />
 
         {/* Con voci previste dal piano la copia registrerebbe il pasto due volte. */}

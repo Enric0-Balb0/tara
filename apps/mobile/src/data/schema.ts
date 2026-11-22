@@ -307,6 +307,41 @@ export const MIGRATIONS: readonly string[] = [
 
   CREATE INDEX saved_meal_item_meal ON saved_meal_item (saved_meal_id);
   `,
+  // 11: acqua (RF-60, RF-61): le aggiunte del giorno, il target per tipo di giornata e le
+  // impostazioni dell'utente (gli incrementi dei pulsanti).
+  `
+  CREATE TABLE water_entry (
+    id TEXT PRIMARY KEY NOT NULL,
+    user_id TEXT NOT NULL,
+    date TEXT NOT NULL CONSTRAINT water_entry_date_valid
+      CHECK (date GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'),
+    ml REAL NOT NULL CONSTRAINT water_entry_ml_positive CHECK (ml > 0),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  ) STRICT;
+
+  CREATE INDEX water_entry_day ON water_entry (user_id, date);
+
+  CREATE TABLE day_type_water (
+    id TEXT PRIMARY KEY NOT NULL,
+    user_id TEXT NOT NULL,
+    day_type_id TEXT NOT NULL REFERENCES day_type (id),
+    ml REAL NOT NULL CONSTRAINT day_type_water_ml_positive CHECK (ml > 0),
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  ) STRICT;
+
+  CREATE UNIQUE INDEX day_type_water_once ON day_type_water (day_type_id) WHERE deleted_at IS NULL;
+
+  CREATE TABLE user_setting (
+    user_id TEXT NOT NULL,
+    key TEXT NOT NULL,
+    value TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (user_id, key)
+  ) STRICT;
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

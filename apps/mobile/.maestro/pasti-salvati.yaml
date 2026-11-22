@@ -15,7 +15,10 @@ tags:
     timeout: 30000
 
 # Oggi: albume a pranzo, 200 g.
-- tapOn: Aggiungi a Pranzo
+- runFlow:
+    file: subflows/tocca.yaml
+    env:
+      ELEMENTO: Aggiungi a Pranzo
 - runFlow:
     file: subflows/scrivi.yaml
     env:
@@ -42,13 +45,17 @@ tags:
 - tapOn:
     id: tasto-0
 - tapOn: Aggiungi 200 grammi
-- extendedWaitUntil:
-    visible: "Albume d'uovo, 200 grammi, 96 kcal, 21,8 grammi di proteine"
-    timeout: 10000
+- runFlow:
+    file: subflows/vedi.yaml
+    env:
+      ELEMENTO: 'Albume d''uovo, 200 grammi, 96 kcal, 21,8 grammi di proteine'
 
 # Salva come pasto: il nome proposto è "Pranzo del <giorno> <mese>" (o "dell'8", "dell'11"),
 # lo cambio.
-- tapOn: 'Salva come pasto: Pranzo'
+- runFlow:
+    file: subflows/tocca.yaml
+    env:
+      ELEMENTO: 'Salva come pasto: Pranzo'
 - extendedWaitUntil:
     visible:
       id: campo-nome-pasto
@@ -69,9 +76,15 @@ tags:
 - takeScreenshot: screenshots/salva-come-pasto
 
 # Ieri: dalla ricerca vuota, "Pasti salvati" registra con un tocco.
-- tapOn: Giorno precedente
+- runFlow:
+    file: subflows/tocca.yaml
+    env:
+      ELEMENTO: Giorno precedente
 - assertVisible: Ieri
-- tapOn: Aggiungi a Pranzo
+- runFlow:
+    file: subflows/tocca.yaml
+    env:
+      ELEMENTO: Aggiungi a Pranzo
 - extendedWaitUntil:
     visible: Pasti salvati
     timeout: 10000
@@ -102,9 +115,10 @@ tags:
     id: registra-pasto-salvato
 
 # Si torna a Oggi, ancora sul giorno di ieri: la voce c'è con 150 g.
-- extendedWaitUntil:
-    visible: "Albume d'uovo, 150 grammi, .*"
-    timeout: 10000
+- runFlow:
+    file: subflows/vedi.yaml
+    env:
+      ELEMENTO: 'Albume d''uovo, 150 grammi, .*'
 - assertVisible: Ieri
 - takeScreenshot: screenshots/oggi-pasto-registrato
 

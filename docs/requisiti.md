@@ -151,6 +151,8 @@ Il diario è pensato per chi conosce già le grammature: un alimento noto si reg
 | RF-61 | Target acqua per tipo di giornata (es. più alto nei giorni ON). | S | F1 |
 | RF-62 | Opzione per conteggiare nell'acqua le bevande registrate nel diario. | C | F2 |
 
+Nota su RF-61 *(scelta MVP)*: il target dell'acqua per tipo di giornata non ha storico; i giorni passati mostrano il target attuale del loro tipo.
+
 ### Integratori
 
 | ID | Requisito | Priorità | Fase |
@@ -361,7 +363,9 @@ day_type             id, user_id, name, position
 day_type_target      id, day_type_id, valid_from, kcal, protein_g, carbs_g, fat_g
                      (poi: fiber_g, sodium_mg, potassium_mg, caffeine_mg, water_ml, steps)
 day_plan             id, user_id, date, day_type_id
-water_entry          id, user_id, date, ml, created_at
+water_entry          id, user_id, date, ml, created_at, updated_at, deleted_at
+day_type_water       id, user_id, day_type_id, ml, updated_at, deleted_at  (uno attivo per tipo)
+user_setting         user_id, key, value, updated_at  (es. water_increments)
 
 -- Integratori
 supplement_stack_item  id, user_id, food_id, dose, unit, moment, day_rule, valid_from, valid_to

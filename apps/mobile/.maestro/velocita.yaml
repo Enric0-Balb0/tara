@@ -16,7 +16,10 @@ tags:
 # Ieri: albume a pranzo, segnato come preferito.
 - tapOn: Giorno precedente
 - assertVisible: Ieri
-- tapOn: Aggiungi a Pranzo
+- runFlow:
+    file: subflows/tocca.yaml
+    env:
+      ELEMENTO: Aggiungi a Pranzo
 - runFlow:
     file: subflows/scrivi.yaml
     env:
@@ -38,17 +41,25 @@ tags:
 - tapOn:
     id: tasto-0
 - tapOn: Aggiungi 200 grammi
-- extendedWaitUntil:
-    visible: "Albume d'uovo, 200 grammi, 96 kcal, 21,8 grammi di proteine"
-    timeout: 10000
+- runFlow:
+    file: subflows/vedi.yaml
+    env:
+      ELEMENTO: 'Albume d''uovo, 200 grammi, 96 kcal, 21,8 grammi di proteine'
 
 # Oggi è vuoto: si copia il pranzo da ieri.
-- tapOn: '.*torna a oggi'
+- runFlow:
+    file: subflows/tocca.yaml
+    env:
+      ELEMENTO: '.*torna a oggi'
 - assertVisible: Copia la giornata di ieri
-- tapOn: 'Copia da ieri: Pranzo'
-- extendedWaitUntil:
-    visible: "Albume d'uovo, 200 grammi, 96 kcal, 21,8 grammi di proteine"
-    timeout: 10000
+- runFlow:
+    file: subflows/tocca.yaml
+    env:
+      ELEMENTO: 'Copia da ieri: Pranzo'
+- runFlow:
+    file: subflows/vedi.yaml
+    env:
+      ELEMENTO: 'Albume d''uovo, 200 grammi, 96 kcal, 21,8 grammi di proteine'
 - takeScreenshot: screenshots/copia-da-ieri
 
 # La ricerca vuota: preferiti e recenti.

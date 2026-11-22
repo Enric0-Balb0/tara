@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { formatAmount } from '@/domain/format';
+import { parseWaterTarget } from '@/domain/water';
 import {
   formatTargetInput,
   macroKcalCheck,
@@ -30,8 +31,10 @@ interface Props {
   name: string;
   /** Il target in vigore oggi; undefined se il tipo non ne ha ancora uno. */
   target: MacroTargets | undefined;
+  /** Il target dell'acqua in ml; null se non impostato (RF-61). */
+  water: number | null;
   canDelete: boolean;
-  onSave: (name: string, values: MacroTargets) => Promise<void>;
+  onSave: (name: string, values: MacroTargets, water: number | null) => Promise<void>;
   onDelete: () => void;
 }
 
@@ -50,17 +53,22 @@ function textsOf(target: MacroTargets): Texts {
  * Un tipo di giornata nel Piano (RF-50): nome e target di kcal e macro. Un campo vuoto è un
  * target non impostato; se i macro non tornano con le kcal lo dice, senza bloccare.
  */
-export function DayTypeCard({ testID, name, target, canDelete, onSave, onDelete }: Props) {
+export function DayTypeCard({ testID, name, target, water, canDelete, onSave, onDelete }: Props) {
   const { colors } = useTheme();
   const saved = target ?? EMPTY;
   const [nameText, setNameText] = useState(name);
   const [texts, setTexts] = useState<Texts>(() => textsOf(saved));
+  const [waterText, setWaterText] = useState(() => formatTargetInput(water));
   const [saving, setSaving] = useState(false);
 
   const parsed = Object.fromEntries(
     FIELDS.map((field) => [field.key, parseTargetInput(texts[field.key])]),
   ) as Record<keyof MacroTargets, number | null | undefined>;
-  const invalid = FIELDS.some((field) => parsed[field.key] === undefined);
+  const parsedWater = parseWaterTarget(waterText);
+  // L'acqua è in ml interi e zero non vale: vuoto vuol dire non impostato.
+  const waterInvalid = parsedWater === undefined;
+  const macroInvalid = FIELDS.some((field) => parsed[field.key] === undefined);
+  const invalid = macroInvalid || waterInvalid;
   const values: MacroTargets = {
     kcal: parsed.kcal ?? null,
     protein_g: parsed.protein_g ?? null,
@@ -68,14 +76,17 @@ export function DayTypeCard({ testID, name, target, canDelete, onSave, onDelete 
     fat_g: parsed.fat_g ?? null,
   };
   const nameOk = nameText.trim().length > 0;
+  const waterValue = parsedWater ?? null;
   const changed =
-    nameText.trim() !== name || FIELDS.some((field) => values[field.key] !== saved[field.key]);
+    nameText.trim() !== name ||
+    FIELDS.some((field) => values[field.key] !== saved[field.key]) ||
+    waterValue !== water;
   const macroKcal = invalid ? null : macroKcalCheck(values);
 
   async function save() {
     setSaving(true);
     try {
-      await onSave(nameText.trim(), values);
+      await onSave(nameText.trim(), values, waterValue);
     } finally {
       setSaving(false);
     }
@@ -106,10 +117,25 @@ export function DayTypeCard({ testID, name, target, canDelete, onSave, onDelete 
             />
           </View>
         ))}
+        <View style={styles.cell}>
+          <TextField
+            label="Acqua (ml)"
+            testID={`${testID}-acqua`}
+            value={waterText}
+            onChangeText={setWaterText}
+            keyboardType="number-pad"
+            invalid={waterInvalid}
+            placeholder="–"
+          />
+        </View>
       </View>
-      {invalid ? (
+      {macroInvalid ? (
         <TaraText variant="caption" color="error">
           Scrivi solo numeri, con la virgola per i decimali.
+        </TaraText>
+      ) : waterInvalid ? (
+        <TaraText variant="caption" color="error">
+          L&apos;acqua è un numero intero di ml, maggiore di zero (o vuoto).
         </TaraText>
       ) : macroKcal !== null ? (
         <TaraText variant="caption" color="textSecondary">

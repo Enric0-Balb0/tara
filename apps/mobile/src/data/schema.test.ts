@@ -31,6 +31,7 @@ describe('initDatabase', () => {
       'day_plan',
       'day_type',
       'day_type_target',
+      'day_type_water',
       'diary_entry',
       'favorite_food',
       'food',
@@ -43,10 +44,12 @@ describe('initDatabase', () => {
       'saved_meal',
       'saved_meal_item',
       'sync_state',
+      'user_setting',
+      'water_entry',
     ]);
     const version = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
     expect(version?.user_version).toBe(SCHEMA_VERSION);
-    expect(SCHEMA_VERSION).toBe(10);
+    expect(SCHEMA_VERSION).toBe(11);
   });
 
   it('chi trova il database occupato aspetta invece di fallire subito', async () => {

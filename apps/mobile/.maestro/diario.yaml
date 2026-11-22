@@ -16,7 +16,10 @@ tags:
 - assertVisible: Pranzo
 
 # Aggiungere a un pasto preciso.
-- tapOn: Aggiungi a Pranzo
+- runFlow:
+    file: subflows/tocca.yaml
+    env:
+      ELEMENTO: Aggiungi a Pranzo
 - runFlow:
     file: subflows/scrivi.yaml
     env:
@@ -44,14 +47,18 @@ tags:
 - tapOn: Aggiungi 200 grammi
 
 # Di nuovo in Oggi: la voce con peso, kcal e proteine per 200 g.
-- extendedWaitUntil:
-    visible: "Albume d'uovo, 200 grammi, 96 kcal, 21,8 grammi di proteine"
-    timeout: 10000
+- runFlow:
+    file: subflows/vedi.yaml
+    env:
+      ELEMENTO: 'Albume d''uovo, 200 grammi, 96 kcal, 21,8 grammi di proteine'
 - assertVisible: 96 kcal
 - takeScreenshot: screenshots/diario-voce
 
 # Un tocco sulla voce: si cambia il peso.
-- tapOn: "Albume d'uovo, 200 grammi, 96 kcal, 21,8 grammi di proteine"
+- runFlow:
+    file: subflows/tocca.yaml
+    env:
+      ELEMENTO: 'Albume d''uovo, 200 grammi, 96 kcal, 21,8 grammi di proteine'
 - tapOn:
     id: tasto-delete
 - tapOn:
@@ -65,12 +72,16 @@ tags:
 - tapOn:
     id: tasto-0
 - tapOn: Salva 250 grammi
-- extendedWaitUntil:
-    visible: "Albume d'uovo, 250 grammi, 120 kcal, 27,3 grammi di proteine"
-    timeout: 10000
+- runFlow:
+    file: subflows/vedi.yaml
+    env:
+      ELEMENTO: 'Albume d''uovo, 250 grammi, 120 kcal, 27,3 grammi di proteine'
 
 # L'ultima quantità usata a pranzo per lo stesso alimento (RF-42).
-- tapOn: Aggiungi a Pranzo
+- runFlow:
+    file: subflows/tocca.yaml
+    env:
+      ELEMENTO: Aggiungi a Pranzo
 - runFlow:
     file: subflows/scrivi.yaml
     env:
@@ -90,14 +101,20 @@ tags:
     timeout: 10000
 
 # Eliminare la voce.
-- tapOn: "Albume d'uovo, 250 grammi, 120 kcal, 27,3 grammi di proteine"
+- runFlow:
+    file: subflows/tocca.yaml
+    env:
+      ELEMENTO: 'Albume d''uovo, 250 grammi, 120 kcal, 27,3 grammi di proteine'
 - tapOn: Elimina dal diario
 - extendedWaitUntil:
     notVisible: "Albume d'uovo, 250 grammi, 120 kcal, 27,3 grammi di proteine"
     timeout: 10000
 
 # "Aggiungi e continua" torna ai risultati con il pasto scelto sulla scheda.
-- tapOn: Aggiungi a Pranzo
+- runFlow:
+    file: subflows/tocca.yaml
+    env:
+      ELEMENTO: Aggiungi a Pranzo
 - runFlow:
     file: subflows/scrivi.yaml
     env:
@@ -136,7 +153,13 @@ tags:
     direction: UP
 
 # Gli altri giorni.
-- tapOn: Giorno precedente
+- runFlow:
+    file: subflows/tocca.yaml
+    env:
+      ELEMENTO: Giorno precedente
 - assertVisible: Ieri
-- tapOn: '.*torna a oggi'
+- runFlow:
+    file: subflows/tocca.yaml
+    env:
+      ELEMENTO: '.*torna a oggi'
 - assertVisible: Oggi

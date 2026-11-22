@@ -142,7 +142,10 @@ tags:
 - tapOn:
     id: tab-oggi
     retryTapIfNoChange: true
-- tapOn: Aggiungi a Pranzo
+- runFlow:
+    file: subflows/tocca.yaml
+    env:
+      ELEMENTO: Aggiungi a Pranzo
 - runFlow:
     file: subflows/scrivi.yaml
     env:

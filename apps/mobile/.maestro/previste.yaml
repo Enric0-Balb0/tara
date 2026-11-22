@@ -54,12 +54,20 @@ tags:
 - tapOn:
     id: tab-oggi
     retryTapIfNoChange: true
-- extendedWaitUntil:
-    visible: "Albume d'uovo, previsto 300 grammi, 144 kcal, 32,7 grammi di proteine"
-    timeout: 10000
+- runFlow:
+    file: subflows/vedi.yaml
+    env:
+      ELEMENTO: 'Albume d''uovo, previsto 300 grammi, 144 kcal, 32,7 grammi di proteine'
+- runFlow:
+    file: subflows/vedi.yaml
+    env:
+      ELEMENTO: 'Pranzo 0 di 1'
 - assertVisible: 'Pranzo 0 di 1'
 - takeScreenshot: screenshots/oggi-prevista
-- tapOn: "Albume d'uovo, previsto 300 grammi, 144 kcal, 32,7 grammi di proteine"
+- runFlow:
+    file: subflows/tocca.yaml
+    env:
+      ELEMENTO: 'Albume d''uovo, previsto 300 grammi, 144 kcal, 32,7 grammi di proteine'
 - tapOn:
     id: tasto-delete
 - tapOn:
@@ -75,18 +83,27 @@ tags:
 - tapOn: Conferma 200 grammi
 
 # Pasto completo come da piano: una riga sola, che si riapre con un tocco.
-- extendedWaitUntil:
-    visible: '.*1 di 1, come da piano.*'
-    timeout: 10000
+- runFlow:
+    file: subflows/vedi.yaml
+    env:
+      ELEMENTO: '.*1 di 1, come da piano.*'
 - takeScreenshot: screenshots/oggi-pasto-completo
-- tapOn: '.*1 di 1, come da piano.*'
-- extendedWaitUntil:
-    visible: "Albume d'uovo, 200 grammi, 96 kcal, 21,8 grammi di proteine"
-    timeout: 10000
+- runFlow:
+    file: subflows/tocca.yaml
+    env:
+      ELEMENTO: '.*1 di 1, come da piano.*'
+- runFlow:
+    file: subflows/vedi.yaml
+    env:
+      ELEMENTO: 'Albume d''uovo, 200 grammi, 96 kcal, 21,8 grammi di proteine'
 
 # Eliminata la voce confermata, la voce prevista torna.
-- tapOn: "Albume d'uovo, 200 grammi, 96 kcal, 21,8 grammi di proteine"
+- runFlow:
+    file: subflows/tocca.yaml
+    env:
+      ELEMENTO: 'Albume d''uovo, 200 grammi, 96 kcal, 21,8 grammi di proteine'
 - tapOn: Elimina dal diario
-- extendedWaitUntil:
-    visible: "Albume d'uovo, previsto 300 grammi, 144 kcal, 32,7 grammi di proteine"
-    timeout: 10000
+- runFlow:
+    file: subflows/vedi.yaml
+    env:
+      ELEMENTO: 'Albume d''uovo, previsto 300 grammi, 144 kcal, 32,7 grammi di proteine'

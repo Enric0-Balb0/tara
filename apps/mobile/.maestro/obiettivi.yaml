@@ -59,11 +59,15 @@ tags:
 - tapOn:
     id: tab-oggi
     retryTapIfNoChange: true
-- extendedWaitUntil:
-    visible: '0 kcal di 2800, mancano 2800'
-    timeout: 10000
+- runFlow:
+    file: subflows/vedi.yaml
+    env:
+      ELEMENTO: '0 kcal di 2800, mancano 2800'
 - assertVisible: 'Proteine 0 di 240 grammi'
-- tapOn: Aggiungi a Pranzo
+- runFlow:
+    file: subflows/tocca.yaml
+    env:
+      ELEMENTO: Aggiungi a Pranzo
 - runFlow:
     file: subflows/scrivi.yaml
     env:
@@ -75,7 +79,10 @@ tags:
 - tapOn:
     text: "Albume d'uovo"
     index: 0
-- tapOn: Aggiungi a Pranzo
+- runFlow:
+    file: subflows/tocca.yaml
+    env:
+      ELEMENTO: Aggiungi a Pranzo
 - tapOn:
     id: tasto-2
 - tapOn:
@@ -83,18 +90,26 @@ tags:
 - tapOn:
     id: tasto-0
 - tapOn: Aggiungi 200 grammi
-- extendedWaitUntil:
-    visible: '96 kcal di 2800, mancano 2704'
-    timeout: 10000
+- runFlow:
+    file: subflows/vedi.yaml
+    env:
+      ELEMENTO: '96 kcal di 2800, mancano 2704'
 - assertVisible: 'Proteine 22 di 240 grammi'
 - takeScreenshot: screenshots/oggi-obiettivi
 
 # Riposo non ha target: tornano i totali con l'invito al Piano.
-- tapOn: Riposo
+- runFlow:
+    file: subflows/tocca.yaml
+    env:
+      ELEMENTO: Riposo
 - extendedWaitUntil:
     visible: 'Nessun target per Riposo: impostalo nel Piano'
     timeout: 10000
-- tapOn: Allenamento
-- extendedWaitUntil:
-    visible: '96 kcal di 2800, mancano 2704'
-    timeout: 10000
+- runFlow:
+    file: subflows/tocca.yaml
+    env:
+      ELEMENTO: Allenamento
+- runFlow:
+    file: subflows/vedi.yaml
+    env:
+      ELEMENTO: '96 kcal di 2800, mancano 2704'

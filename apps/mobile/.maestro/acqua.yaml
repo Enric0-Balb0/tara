@@ -1,0 +1,71 @@
+# Acqua (RF-60, RF-61; serve il backend per l'accesso): imposto 3000 ml di acqua per
+# Allenamento nel Piano, in Oggi leggo "0 di 3 l", aggiungo 500 ml due volte ("1 di 3 l") e
+# annullo l'ultima aggiunta ("0,5 di 3 l").
+appId: com.enricobalbo.tara
+name: Acqua
+tags:
+  - api
+---
+- runFlow: subflows/avvio.yaml
+- runFlow: subflows/accedi.yaml
+- extendedWaitUntil:
+    visible:
+      id: diario
+    timeout: 30000
+
+# Senza target solo i litri, nessun pulsante perso: i due incrementi predefiniti.
+- assertVisible:
+    id: acqua
+- assertVisible:
+    id: acqua-250
+- assertVisible:
+    id: acqua-500
+
+# Dal Piano: il target dell'acqua di Allenamento, salvato con la scheda.
+# Le tab per id, ritoccando se lo schermo non cambia: a volte il primo tocco si perde.
+- tapOn:
+    id: tab-piano
+    retryTapIfNoChange: true
+- extendedWaitUntil:
+    visible:
+      id: piano
+    timeout: 10000
+# Il campo sta sotto i quattro dei macro: lo porto sullo schermo prima di toccarlo, e così il
+# pulsante Salva dopo aver chiuso la tastiera.
+- runFlow:
+    file: subflows/etichetta.yaml
+    env:
+      CAMPO: tipo-0-acqua
+      TESTO: '3000'
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      text: Salva Allenamento
+    direction: DOWN
+    centerElement: true
+- tapOn: Salva Allenamento
+- takeScreenshot: screenshots/piano-acqua
+
+# In Oggi: 0 di 3 l, poi +500 ml due volte, poi Annulla.
+- tapOn:
+    id: tab-oggi
+    retryTapIfNoChange: true
+- extendedWaitUntil:
+    visible: 0 di 3 l
+    timeout: 10000
+- tapOn:
+    id: acqua-500
+- extendedWaitUntil:
+    visible: 0,5 di 3 l
+    timeout: 10000
+- tapOn:
+    id: acqua-500
+- extendedWaitUntil:
+    visible: 1 di 3 l
+    timeout: 10000
+- takeScreenshot: screenshots/oggi-acqua
+- tapOn:
+    id: acqua-annulla
+- extendedWaitUntil:
+    visible: 0,5 di 3 l
+    timeout: 10000
