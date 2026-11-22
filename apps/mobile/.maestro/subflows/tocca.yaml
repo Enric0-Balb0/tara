@@ -1,0 +1,8 @@
+# Porta sullo schermo l'elemento ELEMENTO (vedi.yaml) e lo tocca.
+appId: com.enricobalbo.tara
+---
+- runFlow:
+    file: vedi.yaml
+    env:
+      ELEMENTO: ${ELEMENTO}
+- tapOn: ${ELEMENTO}
