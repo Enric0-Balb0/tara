@@ -153,6 +153,7 @@ Linee da 2 px su una griglia di 24, estremità arrotondate, disegnate come set u
 | **Tastierino** | cifre 0–9, Tara, cancella | Tara: si digita il peso del contenitore, che viene sottratto e mostrato sopra la lettura ("tara 38 g"); in F1 si sceglie tra i contenitori salvati (es. vaschetta del meal prep) *(scelta di progetto)* |
 | **Selettore del tipo di giornata** | in alto in "Oggi" | mostra i tipi definiti dall'utente (RF-50), es. Allenamento e Riposo |
 | **Etichetta** | valori per 100 g o per la quantità scelta, nell'ordine dell'etichetta europea | in sola lettura (scheda alimento, condivisione) o da compilare (inserimento manuale, lettura della foto) |
+| **Riga dell'acqua** | in Oggi sotto gli obiettivi, una riga sola: "Acqua" con "1,25 di 3 l" e sottile avanzamento a sinistra; a destra pulsanti a pillola ("+250", "+500") e "Annulla +500" che dice cosa annulla | i pulsanti vanno a capo solo se non stanno a 360 dp; senza target niente barra |
 | **Immagine della giornata** | la giornata come etichetta: totali contro il piano, pasti con le voci e i grammi, attribuzione di CIQUAL | si condivide dal menu di "Oggi" |
 
 ### L'etichetta da compilare

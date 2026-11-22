@@ -47,7 +47,14 @@ import {
   setDayType,
   targetOn,
 } from '@/data/targetsStore';
-import { addWater, undoLastWater, waterIncrements, waterOn, waterTarget } from '@/data/waterStore';
+import {
+  addWater,
+  lastWater,
+  undoLastWater,
+  waterIncrements,
+  waterOn,
+  waterTarget,
+} from '@/data/waterStore';
 import {
   addDays,
   dayLabel,
@@ -84,7 +91,12 @@ export default function TodayScreen() {
   const [dayTypeId, setDayTypeId] = useState<string | undefined>(undefined);
   const [target, setTarget] = useState<DayTarget | undefined>(undefined);
   // Acqua del giorno mostrato: ml bevuti, target del tipo di giornata, incrementi dei pulsanti.
-  const [water, setWater] = useState({ ml: 0, target: null as number | null, increments: [250] });
+  const [water, setWater] = useState({
+    ml: 0,
+    last: null as number | null,
+    target: null as number | null,
+    increments: [250],
+  });
   const [plan, setPlan] = useState<PlanItem[]>([]);
   const [pending, setPending] = useState<PlanItem[]>([]);
   // Pasti completi riaperti a mano; gli altri completi restano chiusi in una riga.
@@ -134,8 +146,9 @@ export default function TodayScreen() {
       if (dayEntries.length > 0) await keepDayType(db, userId, date, new Date());
       const typeId = await dayTypeFor(db, userId, date);
       const dayTarget = typeId ? await targetOn(db, userId, typeId, date) : undefined;
-      const [dayWater, dayWaterTarget, steps] = await Promise.all([
+      const [dayWater, dayLast, dayWaterTarget, steps] = await Promise.all([
         waterOn(db, userId, date),
+        lastWater(db, userId, date),
         typeId ? waterTarget(db, userId, typeId) : null,
         waterIncrements(db, userId),
       ]);
@@ -151,7 +164,7 @@ export default function TodayScreen() {
       setDayTypes(types);
       setDayTypeId(typeId);
       setTarget(dayTarget);
-      setWater({ ml: dayWater, target: dayWaterTarget, increments: steps });
+      setWater({ ml: dayWater, last: dayLast, target: dayWaterTarget, increments: steps });
       setPlan(dayPlan);
       setPending(dayPending);
     } catch (error: unknown) {
@@ -362,7 +375,7 @@ export default function TodayScreen() {
           ml={water.ml}
           target={water.target}
           increments={water.increments}
-          canUndo={water.ml > 0}
+          lastAdded={water.last}
           onAdd={(ml) => void drink((owner) => addWater(db, owner, date, ml, new Date()))}
           onUndo={() => void drink((owner) => undoLastWater(db, owner, date, new Date()))}
         />

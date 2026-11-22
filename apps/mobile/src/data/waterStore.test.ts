@@ -6,6 +6,7 @@ import { ensureDayTypes } from './targetsStore';
 import { openTestDatabase } from './testing/nodeDatabase';
 import {
   addWater,
+  lastWater,
   setWaterIncrements,
   setWaterTarget,
   undoLastWater,
@@ -66,6 +67,16 @@ describe('acqua del giorno', () => {
     );
     expect(rows).toHaveLength(2);
     expect(rows.every((row) => row.deleted_at !== null)).toBe(true);
+  });
+
+  it("conosce l'ultima aggiunta del giorno, quella che Annulla toglie", async () => {
+    expect(await lastWater(db, USER, DAY)).toBeNull();
+    await addWater(db, USER, DAY, 250, NOW);
+    await addWater(db, USER, DAY, 500, later(1));
+    expect(await lastWater(db, USER, DAY)).toBe(500);
+    expect(await lastWater(db, OTHER, DAY)).toBeNull();
+    await undoLastWater(db, USER, DAY, later(2));
+    expect(await lastWater(db, USER, DAY)).toBe(250);
   });
 
   it('rifiuta quantità e date non valide con il vincolo', async () => {

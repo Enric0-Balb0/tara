@@ -54,6 +54,22 @@ export async function undoLastWater(
   return result.changes > 0;
 }
 
+/** I ml dell'ultima aggiunta del giorno (quella che "Annulla" toglie); null se non ce n'è. */
+export async function lastWater(
+  db: SqlDatabase,
+  userId: string,
+  date: string,
+): Promise<number | null> {
+  const row = await db.getFirstAsync<{ ml: number }>(
+    `SELECT ml FROM water_entry
+     WHERE user_id = ? AND date = ? AND deleted_at IS NULL
+     ORDER BY created_at DESC, id DESC LIMIT 1`,
+    userId,
+    date,
+  );
+  return row?.ml ?? null;
+}
+
 /** I ml bevuti nel giorno. */
 export async function waterOn(db: SqlDatabase, userId: string, date: string): Promise<number> {
   const row = await db.getFirstAsync<{ total: number | null }>(
