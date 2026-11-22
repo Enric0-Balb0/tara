@@ -5,6 +5,8 @@ import {
   DEFAULT_MEAL_SLOTS,
   dayLabel,
   dayTitle,
+  defaultSavedMealName,
+  foodCountLabel,
   entryAmount,
   formatTotal,
   mealPlanStatus,
@@ -80,6 +82,24 @@ describe('date', () => {
   it('dayLabel è la data per esteso, in minuscolo come nel testo', () => {
     expect(dayLabel('2026-11-19')).toBe('giovedì 19 novembre');
     expect(dayLabel('2026-01-01')).toBe('giovedì 1 gennaio');
+  });
+
+  it('defaultSavedMealName propone «Pranzo del 21 novembre», senza giorno della settimana', () => {
+    expect(defaultSavedMealName('Pranzo', '2026-11-21')).toBe('Pranzo del 21 novembre');
+    expect(defaultSavedMealName('Cena', '2026-02-28')).toBe('Cena del 28 febbraio');
+  });
+
+  it('foodCountLabel accorda il numero degli alimenti', () => {
+    expect(foodCountLabel(1)).toBe('1 alimento');
+    expect(foodCountLabel(0)).toBe('0 alimenti');
+    expect(foodCountLabel(3)).toBe('3 alimenti');
+  });
+
+  it('defaultSavedMealName elide davanti a 8 e 11 e scrive il primo del mese come 1°', () => {
+    expect(defaultSavedMealName('Spuntino', '2026-01-01')).toBe('Spuntino del 1° gennaio');
+    expect(defaultSavedMealName('Pranzo', '2026-03-08')).toBe("Pranzo dell'8 marzo");
+    expect(defaultSavedMealName('Cena', '2026-04-11')).toBe("Cena dell'11 aprile");
+    expect(defaultSavedMealName('Colazione', '2026-05-18')).toBe('Colazione del 18 maggio');
   });
 });
 

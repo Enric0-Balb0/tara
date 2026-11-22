@@ -108,6 +108,8 @@ Un ingrediente liquido si inserisce in ml e la ricetta lo somma come se 1 ml pes
 | RF-31 | Registrazione con un tap, con quantità modificabili prima di confermare. | M | F1 |
 | RF-32 | Creazione di un pasto salvato a partire da un pasto già registrato nel diario. | S | F1 |
 
+Scelte: le voci del pasto salvato tengono alimento, stato, quantità e unità, non i valori nutrizionali, che si leggono dall'alimento nel momento della registrazione (poi la voce di diario ha il suo snapshot). Un alimento che non c'è più o è stato eliminato si salta: il foglio lo segna "non c'è più" e, a registrazione fatta, si dice quante voci sono state saltate; se non ne resta nessuna non si registra niente. Cambiare i grammi nel foglio vale solo per quella registrazione e non modifica il pasto salvato (si modifica dalla Dispensa). Dalla ricerca vuota i pasti salvati si offrono solo arrivando da un pasto di Oggi, non dal piano né dalla scelta di un ingrediente.
+
 ## Diario, obiettivi, acqua e integratori
 
 Il diario è pensato per chi conosce già le grammature: un alimento noto si registra in pochi tap, e copiare conta più che digitare.
@@ -344,8 +346,9 @@ nutrient_value       food_id, nutrient_code, amount_per_100, provenance
                      (label|open_food_facts|reference|estimated|manual), confidence (0–1)
 recipe               food_id, yield_mode (portions|weight), portions, cooked_weight_g
 recipe_item          recipe_id, ingredient_food_id, grams_raw
-saved_meal           id, user_id, name
-saved_meal_item      saved_meal_id, food_id, quantity, unit
+saved_meal           id, user_id, name, created_at, updated_at, deleted_at
+saved_meal_item      id, user_id, saved_meal_id, food_id, food_name, food_state, quantity,
+                     unit (g|ml), position, created_at, updated_at, deleted_at
 label_scan           id, user_id, image_refs, extraction_json, model, prompt_version, cost, created_at
 
 -- Diario e obiettivi

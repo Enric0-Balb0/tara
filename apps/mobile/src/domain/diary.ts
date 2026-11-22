@@ -92,6 +92,23 @@ export function dayLabel(date: string): string {
   return `${WEEKDAYS[parsed.getUTCDay()] ?? ''} ${parsed.getUTCDate()} ${MONTHS[parsed.getUTCMonth()] ?? ''}`;
 }
 
+/** "1 alimento", "3 alimenti": quanti alimenti ha un pasto salvato. */
+export function foodCountLabel(count: number): string {
+  return count === 1 ? '1 alimento' : `${count} alimenti`;
+}
+
+/**
+ * Nome proposto per un pasto salvato (RF-30): «Pranzo del 21 novembre», senza il giorno della
+ * settimana. Con l'elisione dell'italiano: «dell'8 marzo», «dell'11 aprile», «del 1° maggio».
+ */
+export function defaultSavedMealName(slotName: string, date: string): string {
+  const parsed = parseDate(date);
+  const day = parsed.getUTCDate();
+  const month = MONTHS[parsed.getUTCMonth()] ?? '';
+  const of = day === 1 ? 'del 1°' : day === 8 || day === 11 ? `dell'${day}` : `del ${day}`;
+  return `${slotName} ${of} ${month}`;
+}
+
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
 /** Titolo della giornata: Oggi, Ieri, Domani, altrimenti la data (con l'anno se è un altro). */

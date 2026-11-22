@@ -1,0 +1,134 @@
+# Pasti salvati (RF-30, RF-31, RF-32; serve il backend per l'accesso e il primo download):
+# oggi registro 200 g di albume a pranzo e lo salvo come "Pranzo leggero"; ieri, dalla
+# ricerca vuota di "Aggiungi a Pranzo", lo registro con un tocco cambiando i grammi a 150;
+# nella Dispensa il pasto salvato c'è, con i 200 g di partenza.
+appId: com.enricobalbo.tara
+name: Pasti salvati
+tags:
+  - api
+---
+- runFlow: subflows/avvio.yaml
+- runFlow: subflows/accedi.yaml
+- extendedWaitUntil:
+    visible:
+      id: diario
+    timeout: 30000
+
+# Oggi: albume a pranzo, 200 g.
+- tapOn: Aggiungi a Pranzo
+- runFlow:
+    file: subflows/scrivi.yaml
+    env:
+      CAMPO: campo-ricerca
+      TESTO: albume
+# Il primo download comprende circa 3500 alimenti: la ricerca riparte quando arrivano.
+- extendedWaitUntil:
+    visible: "Albume d'uovo in polvere"
+    timeout: 90000
+- tapOn:
+    text: "Albume d'uovo, .*kcal e .*"
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: aggiungi-alimento
+    timeout: 10000
+- assertVisible: Aggiungi a Pranzo
+- tapOn:
+    id: aggiungi-alimento
+- tapOn:
+    id: tasto-2
+- tapOn:
+    id: tasto-0
+- tapOn:
+    id: tasto-0
+- tapOn: Aggiungi 200 grammi
+- extendedWaitUntil:
+    visible: "Albume d'uovo, 200 grammi, 96 kcal, 21,8 grammi di proteine"
+    timeout: 10000
+
+# Salva come pasto: il nome proposto è "Pranzo del <giorno> <mese>" (o "dell'8", "dell'11"),
+# lo cambio.
+- tapOn: 'Salva come pasto: Pranzo'
+- extendedWaitUntil:
+    visible:
+      id: campo-nome-pasto
+    timeout: 10000
+- copyTextFrom:
+    id: campo-nome-pasto
+- assertTrue: ${maestro.copiedText.startsWith('Pranzo del')}
+- tapOn:
+    id: campo-nome-pasto
+- eraseText: 60
+- runFlow:
+    file: subflows/scrivi.yaml
+    env:
+      CAMPO: campo-nome-pasto
+      TESTO: Pranzo leggero
+- tapOn:
+    id: salva-nome-pasto
+- takeScreenshot: screenshots/salva-come-pasto
+
+# Ieri: dalla ricerca vuota, "Pasti salvati" registra con un tocco.
+- tapOn: Giorno precedente
+- assertVisible: Ieri
+- tapOn: Aggiungi a Pranzo
+- extendedWaitUntil:
+    visible: Pasti salvati
+    timeout: 10000
+- assertVisible: 'Pranzo leggero, pasto salvato, 1 alimento'
+- takeScreenshot: screenshots/ricerca-pasti-salvati
+- tapOn: 'Pranzo leggero, pasto salvato, 1 alimento'
+- extendedWaitUntil:
+    visible:
+      id: registra-pasto-salvato
+    timeout: 10000
+- assertVisible: "Albume d'uovo, 200 grammi. Modifica"
+
+# I grammi si cambiano per questa registrazione: 150 al posto di 200.
+- tapOn: "Albume d'uovo, 200 grammi. Modifica"
+- tapOn:
+    id: tasto-1
+- tapOn:
+    id: tasto-5
+- tapOn:
+    id: tasto-0
+- tapOn: Salva 150 grammi
+- extendedWaitUntil:
+    visible: "Albume d'uovo, 150 grammi. Modifica"
+    timeout: 10000
+- assertVisible: Registra a Pranzo
+- takeScreenshot: screenshots/registra-pasto-salvato
+- tapOn:
+    id: registra-pasto-salvato
+
+# Si torna a Oggi, ancora sul giorno di ieri: la voce c'è con 150 g.
+- extendedWaitUntil:
+    visible: "Albume d'uovo, 150 grammi, .*"
+    timeout: 10000
+- assertVisible: Ieri
+- takeScreenshot: screenshots/oggi-pasto-registrato
+
+# Dispensa: il pasto salvato c'è, e conserva i 200 g di partenza.
+- tapOn:
+    id: tab-dispensa
+    retryTapIfNoChange: true
+- extendedWaitUntil:
+    visible: Pasti salvati
+    timeout: 10000
+- assertVisible: 'Pranzo leggero, pasto salvato, 1 alimento'
+- takeScreenshot: screenshots/dispensa-pasti-salvati
+- tapOn: 'Pranzo leggero, pasto salvato, 1 alimento'
+- extendedWaitUntil:
+    visible:
+      id: campo-nome-pasto
+    timeout: 10000
+- assertVisible: "Albume d'uovo, 200 grammi. Modifica"
+- takeScreenshot: screenshots/pasto-salvato
+
+# Togliere una voce chiede conferma: con "Annulla" l'albume resta nel pasto.
+- tapOn: "Rimuovi Albume d'uovo dal pasto"
+- extendedWaitUntil:
+    visible: "Togliere «Albume d'uovo» dal pasto?"
+    timeout: 10000
+- tapOn: Annulla
+- assertVisible: "Albume d'uovo, 200 grammi. Modifica"

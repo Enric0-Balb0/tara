@@ -31,6 +31,8 @@ interface Props {
   addLabel?: string;
   /** Copia il pasto da un altro giorno (RF-44), es. "Copia da ieri"; senza, niente pulsante. */
   copy?: { label: string; onPress: () => void };
+  /** Salva le voci del pasto come pasto salvato (RF-30); senza, niente pulsante. */
+  onSave?: () => void;
 }
 
 /**
@@ -51,6 +53,7 @@ export function MealSection({
   onAdd,
   addLabel,
   copy,
+  onSave,
 }: Props) {
   const { colors, reduceMotion } = useTheme();
   // "voce": la riga nuova compare e le altre si spostano; con il movimento ridotto solo
@@ -190,6 +193,18 @@ export function MealSection({
           >
             <TaraText variant="bodyStrong" color="textSecondary">
               {copy.label}
+            </TaraText>
+          </PressableScale>
+        ) : null}
+        {onSave ? (
+          <PressableScale
+            onPress={onSave}
+            accessibilityLabel={`Salva come pasto: ${name}`}
+            testID={`salva-pasto-${name.toLowerCase()}`}
+            style={styles.add}
+          >
+            <TaraText variant="bodyStrong" color="textSecondary">
+              Salva come pasto
             </TaraText>
           </PressableScale>
         ) : null}
