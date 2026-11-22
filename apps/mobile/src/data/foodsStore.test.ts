@@ -180,6 +180,22 @@ describe('updateFood e deleteFood', () => {
     expect(await getFood(db, 'albume-crudo')).toMatchObject({ name: "Albume d'uovo" });
   });
 
+  it('un alimento personale senza fonte si elenca, si modifica e si elimina', async () => {
+    // `source <> 'recipe'` con source NULL non sarebbe vero: l'alimento resterebbe bloccato.
+    await db.runAsync(
+      `INSERT INTO food (id, user_id, name, state, base_unit, search_text, source, created_at,
+         updated_at)
+       VALUES ('senza-fonte', ?, 'Grana', 'not_applicable', 'g', 'grana', NULL, ?, ?)`,
+      USER,
+      NOW.toISOString(),
+      NOW.toISOString(),
+    );
+    expect((await personalFoods(db, USER)).map((food) => food.id)).toEqual(['senza-fonte']);
+    expect(await updateFood(db, USER, 'senza-fonte', SKYR, later(1))).toBe(true);
+    await deleteFood(db, USER, 'senza-fonte', later(2));
+    expect(await getFood(db, 'senza-fonte')).toBeNull();
+  });
+
   it("se un valore è rifiutato la modifica non tocca l'alimento", async () => {
     const id = await createFood(db, USER, SKYR, NOW);
     await expect(

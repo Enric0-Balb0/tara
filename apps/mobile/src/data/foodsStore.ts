@@ -105,7 +105,7 @@ export async function updateFood(
     const { changes } = await db.runAsync(
       `UPDATE food SET name = ?, state = ?, base_unit = ?, search_text = ?, brand = ?,
          updated_at = ?
-       WHERE id = ? AND user_id = ? AND source <> 'recipe' AND deleted_at IS NULL`,
+       WHERE id = ? AND user_id = ? AND source IS NOT 'recipe' AND deleted_at IS NULL`,
       input.name.trim(),
       input.state,
       input.baseUnit,
@@ -146,7 +146,7 @@ export async function deleteFood(
   await db.withTransactionAsync(async () => {
     const { changes } = await db.runAsync(
       `UPDATE food SET deleted_at = ?, updated_at = ?
-       WHERE id = ? AND user_id = ? AND source <> 'recipe' AND deleted_at IS NULL`,
+       WHERE id = ? AND user_id = ? AND source IS NOT 'recipe' AND deleted_at IS NULL`,
       at,
       at,
       id,
@@ -178,7 +178,7 @@ export async function personalFoods(db: SqlDatabase, userId: string): Promise<Pe
             (SELECT amount_per_100 FROM nutrient_value
              WHERE food_id = f.id AND nutrient_code = 'energy_kcal') AS kcal
      FROM food AS f
-     WHERE f.user_id = ? AND f.deleted_at IS NULL AND f.source <> 'recipe'
+     WHERE f.user_id = ? AND f.deleted_at IS NULL AND f.source IS NOT 'recipe'
      ORDER BY f.name COLLATE NOCASE, f.brand COLLATE NOCASE`,
     userId,
   );
