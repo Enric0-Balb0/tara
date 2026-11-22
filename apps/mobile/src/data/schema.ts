@@ -241,6 +241,41 @@ export const MIGRATIONS: readonly string[] = [
     ('sodium_mg', 'Sodio', 'mg', 9)
   ON CONFLICT (code) DO NOTHING;
   `,
+  // v9: ricette (RF-20, RF-21). Una ricetta è un alimento personale (source 'recipe') con la
+  // sua resa e i suoi ingredienti; i valori per 100 g stanno in nutrient_value, ricalcolati.
+  `
+  CREATE TABLE recipe (
+    food_id TEXT PRIMARY KEY NOT NULL REFERENCES food (id),
+    user_id TEXT NOT NULL,
+    yield_mode TEXT NOT NULL
+      CONSTRAINT recipe_yield_mode_valid CHECK (yield_mode IN ('portions', 'weight')),
+    portions REAL,
+    cooked_weight_g REAL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    CONSTRAINT recipe_yield_complete CHECK (
+      (yield_mode = 'portions' AND portions > 0 AND cooked_weight_g IS NULL) OR
+      (yield_mode = 'weight' AND cooked_weight_g > 0 AND portions IS NULL))
+  ) STRICT;
+
+  CREATE TABLE recipe_item (
+    id TEXT PRIMARY KEY NOT NULL,
+    user_id TEXT NOT NULL,
+    recipe_id TEXT NOT NULL REFERENCES recipe (food_id),
+    -- Senza riferimento a food, come il diario: un nuovo catalogo può non avere più il generico.
+    ingredient_food_id TEXT NOT NULL,
+    grams_raw REAL NOT NULL
+      CONSTRAINT recipe_item_grams_positive CHECK (grams_raw > 0),
+    position INTEGER NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT,
+    CONSTRAINT recipe_item_not_itself CHECK (ingredient_food_id <> recipe_id)
+  ) STRICT;
+
+  CREATE INDEX recipe_item_recipe ON recipe_item (recipe_id);
+  CREATE INDEX recipe_item_ingredient ON recipe_item (ingredient_food_id);
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

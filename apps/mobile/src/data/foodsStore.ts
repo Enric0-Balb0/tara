@@ -9,6 +9,7 @@ import type { BaseUnit, FoodState } from '@/domain/food';
 import { newId } from '@/domain/ids';
 import { searchKey } from '@/domain/search';
 
+import { refreshRecipesUsing } from './recipesStore';
 import type { SqlDatabase } from './sql';
 
 export interface PersonalFoodInput {
@@ -104,7 +105,7 @@ export async function updateFood(
     const { changes } = await db.runAsync(
       `UPDATE food SET name = ?, state = ?, base_unit = ?, search_text = ?, brand = ?,
          updated_at = ?
-       WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
+       WHERE id = ? AND user_id = ? AND source IS NOT 'recipe' AND deleted_at IS NULL`,
       input.name.trim(),
       input.state,
       input.baseUnit,
@@ -127,6 +128,8 @@ export async function updateFood(
       userId,
       id,
     );
+    // Le ricette che lo usano si ricalcolano (RF-22); il diario no.
+    await refreshRecipesUsing(db, [id]);
     changed = true;
   });
   return changed;
@@ -143,7 +146,7 @@ export async function deleteFood(
   await db.withTransactionAsync(async () => {
     const { changes } = await db.runAsync(
       `UPDATE food SET deleted_at = ?, updated_at = ?
-       WHERE id = ? AND user_id = ? AND deleted_at IS NULL`,
+       WHERE id = ? AND user_id = ? AND source IS NOT 'recipe' AND deleted_at IS NULL`,
       at,
       at,
       id,
@@ -161,7 +164,7 @@ export async function deleteFood(
   });
 }
 
-/** Il catalogo personale per la Dispensa, in ordine alfabetico. */
+/** Il catalogo personale per la Dispensa, in ordine alfabetico; le ricette hanno il loro elenco. */
 export async function personalFoods(db: SqlDatabase, userId: string): Promise<PersonalFood[]> {
   const rows = await db.getAllAsync<{
     id: string;
@@ -175,7 +178,7 @@ export async function personalFoods(db: SqlDatabase, userId: string): Promise<Pe
             (SELECT amount_per_100 FROM nutrient_value
              WHERE food_id = f.id AND nutrient_code = 'energy_kcal') AS kcal
      FROM food AS f
-     WHERE f.user_id = ? AND f.deleted_at IS NULL
+     WHERE f.user_id = ? AND f.deleted_at IS NULL AND f.source IS NOT 'recipe'
      ORDER BY f.name COLLATE NOCASE, f.brand COLLATE NOCASE`,
     userId,
   );

@@ -1,0 +1,310 @@
+# Ricette (RF-20, RF-21, RF-24, RF-26; serve il backend per l'accesso e il primo download):
+# dalla Dispensa creo "Pancake" con albume (200 g) e fiocchi d'avena (40 g) in 4 porzioni da
+# 60 g; la scheda mostra ingredienti e "Per porzione"; la registro a pranzo con la
+# scorciatoia "1 porzione"; la modifico aggiungendo un ingrediente (l'editor resta in
+# "Modifica ricetta" al ritorno dalla ricerca) e la duplico; scegliendo un ingrediente per la
+# copia, la scheda dell'originale non offre "Modifica" né "Duplica"; dall'editor torno alla
+# scheda della copia e la elimino.
+appId: com.enricobalbo.tara
+name: Ricette
+tags:
+  - api
+---
+- runFlow: subflows/avvio.yaml
+- runFlow: subflows/accedi.yaml
+- extendedWaitUntil:
+    visible:
+      id: diario
+    timeout: 30000
+
+# Nuova ricetta dalla Dispensa.
+- tapOn:
+    id: tab-dispensa
+    retryTapIfNoChange: true
+- tapOn:
+    id: nuova-ricetta
+- extendedWaitUntil:
+    visible:
+      id: campo-nome-ricetta
+    timeout: 10000
+- assertVisible: Nuova ricetta
+- tapOn:
+    id: campo-nome-ricetta
+- runFlow:
+    file: subflows/scrivi.yaml
+    env:
+      CAMPO: campo-nome-ricetta
+      TESTO: Pancake
+- hideKeyboard
+
+# Primo ingrediente: albume, 200 g.
+- tapOn:
+    id: aggiungi-ingrediente
+- runFlow:
+    file: subflows/scrivi.yaml
+    env:
+      CAMPO: campo-ricerca
+      TESTO: albume
+# Il primo download comprende circa 3500 alimenti: la ricerca riparte quando arrivano.
+- extendedWaitUntil:
+    visible: "Albume d'uovo in polvere"
+    timeout: 90000
+- tapOn:
+    text: "Albume d'uovo, .*kcal e .*"
+    index: 0
+- extendedWaitUntil:
+    visible: Aggiungi alla ricetta
+    timeout: 10000
+- tapOn:
+    id: aggiungi-alimento
+- tapOn:
+    id: tasto-2
+- tapOn:
+    id: tasto-0
+- tapOn:
+    id: tasto-0
+- tapOn: Aggiungi 200 grammi
+- extendedWaitUntil:
+    visible: "Albume d'uovo, 200 grammi. Modifica"
+    timeout: 10000
+
+# Secondo ingrediente: fiocchi d'avena, 40 g.
+- tapOn:
+    id: aggiungi-ingrediente
+- runFlow:
+    file: subflows/scrivi.yaml
+    env:
+      CAMPO: campo-ricerca
+      TESTO: fiocchi d'avena
+- extendedWaitUntil:
+    visible: "Fiocchi d'avena, .*kcal e .*"
+    timeout: 20000
+- tapOn:
+    text: "Fiocchi d'avena, .*kcal e .*"
+    index: 0
+- extendedWaitUntil:
+    visible: Aggiungi alla ricetta
+    timeout: 10000
+- tapOn:
+    id: aggiungi-alimento
+- tapOn:
+    id: tasto-4
+- tapOn:
+    id: tasto-0
+- tapOn: Aggiungi 40 grammi
+- extendedWaitUntil:
+    visible: "Fiocchi d'avena, 40 grammi. Modifica"
+    timeout: 10000
+
+# Quattro porzioni: ognuna pesa 240 / 4 = 60 g.
+- tapOn:
+    id: campo-porzioni
+- eraseText: 5
+- runFlow:
+    file: subflows/scrivi.yaml
+    env:
+      CAMPO: campo-porzioni
+      TESTO: '4'
+- hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: porzione-ricetta
+    direction: DOWN
+- assertVisible: 1 porzione = 60 g
+- takeScreenshot: screenshots/ricetta-editor
+- tapOn:
+    id: salva-ricetta
+
+# La ricetta compare nella Dispensa, con la porzione.
+- extendedWaitUntil:
+    visible: Ricette
+    timeout: 10000
+- assertVisible: 'Pancake, ricetta, .* per 100 grammi, porzione di 60 grammi'
+- takeScreenshot: screenshots/dispensa-ricette
+
+# La scheda: ingredienti e valori per porzione.
+- tapOn: 'Pancake, ricetta, .*'
+- extendedWaitUntil:
+    visible: Ingredienti
+    timeout: 10000
+- assertVisible: "Albume d'uovo"
+- assertVisible: 200 g
+- assertVisible: 40 g
+- scrollUntilVisible:
+    element: Per porzione
+    direction: DOWN
+- assertVisible: per 60 g
+- assertVisible: Per 100 g
+- takeScreenshot: screenshots/scheda-ricetta
+
+# Da Oggi: cerco la ricetta e la registro a pranzo con "1 porzione".
+- tapOn: Indietro
+- tapOn:
+    id: tab-oggi
+    retryTapIfNoChange: true
+- tapOn: Aggiungi a Pranzo
+- runFlow:
+    file: subflows/scrivi.yaml
+    env:
+      CAMPO: campo-ricerca
+      TESTO: pancake
+- extendedWaitUntil:
+    visible: 'Pancake, .*kcal e .*'
+    timeout: 10000
+- tapOn:
+    text: 'Pancake, .*kcal e .*'
+    index: 0
+- extendedWaitUntil:
+    visible: Aggiungi a Pranzo
+    timeout: 10000
+- tapOn: Aggiungi a Pranzo
+- assertVisible: '1 porzione · 60 g'
+- assertVisible: '2 porzioni · 120 g'
+- takeScreenshot: screenshots/foglio-porzioni
+- tapOn: '1 porzione · 60 g'
+- tapOn: Aggiungi 60 grammi
+- extendedWaitUntil:
+    visible: 'Pancake, 60 grammi, .*'
+    timeout: 10000
+- takeScreenshot: screenshots/oggi-pancake
+
+# Modifica: il terzo ingrediente (altri 100 g di albume) si sceglie dalla ricerca e
+# l'editor, tornando, è ancora "Modifica ricetta" della stessa ricetta.
+- tapOn:
+    id: tab-dispensa
+    retryTapIfNoChange: true
+- tapOn: 'Pancake, ricetta, .*'
+- extendedWaitUntil:
+    visible:
+      id: modifica-ricetta
+    timeout: 10000
+- tapOn:
+    id: modifica-ricetta
+- extendedWaitUntil:
+    visible:
+      id: campo-nome-ricetta
+    timeout: 10000
+- assertVisible: Modifica ricetta
+- tapOn:
+    id: aggiungi-ingrediente
+- runFlow:
+    file: subflows/scrivi.yaml
+    env:
+      CAMPO: campo-ricerca
+      TESTO: albume
+- extendedWaitUntil:
+    visible: "Albume d'uovo in polvere"
+    timeout: 20000
+- tapOn:
+    text: "Albume d'uovo, .*kcal e .*"
+    index: 0
+- extendedWaitUntil:
+    visible: Aggiungi alla ricetta
+    timeout: 10000
+- tapOn:
+    id: aggiungi-alimento
+- tapOn:
+    id: tasto-1
+- tapOn:
+    id: tasto-0
+- tapOn:
+    id: tasto-0
+- tapOn: Aggiungi 100 grammi
+- extendedWaitUntil:
+    visible: "Albume d'uovo, 100 grammi. Modifica"
+    timeout: 10000
+- assertVisible: Modifica ricetta
+- tapOn:
+    id: salva-ricetta
+# Si torna alla scheda, che si rilegge: ora ci sono tre ingredienti.
+- extendedWaitUntil:
+    visible: 100 g
+    timeout: 10000
+- assertVisible: 200 g
+- assertVisible: 40 g
+
+# Duplica: la copia si apre nell'editor con il nome "Pancake (copia)".
+- scrollUntilVisible:
+    element:
+      id: duplica-ricetta
+    direction: DOWN
+- tapOn:
+    id: duplica-ricetta
+- extendedWaitUntil:
+    visible:
+      id: campo-nome-ricetta
+    timeout: 10000
+- assertVisible: Modifica ricetta
+- copyTextFrom:
+    id: campo-nome-ricetta
+- assertTrue: ${maestro.copiedText === 'Pancake (copia)'}
+
+# Scegliendo un ingrediente per la copia, la scheda di un'altra ricetta (l'originale) non
+# offre "Modifica" né "Duplica": aprirebbero un secondo editor sulla stessa bozza.
+- tapOn:
+    id: aggiungi-ingrediente
+- runFlow:
+    file: subflows/scrivi.yaml
+    env:
+      CAMPO: campo-ricerca
+      TESTO: pancake
+- extendedWaitUntil:
+    visible: 'Pancake, .*kcal e .*'
+    timeout: 10000
+- tapOn:
+    text: 'Pancake, .*kcal e .*'
+    index: 0
+- extendedWaitUntil:
+    visible: Aggiungi alla ricetta
+    timeout: 10000
+- assertVisible:
+    id: ingredienti-ricetta
+- assertNotVisible:
+    id: modifica-ricetta
+- scrollUntilVisible:
+    element: 'Fonte: Ricetta'
+    direction: DOWN
+- assertNotVisible:
+    id: duplica-ricetta
+- assertNotVisible:
+    id: campo-peso-oggi
+# Senza aggiungere nulla si torna all'editor: la bozza è ancora quella della copia.
+- tapOn: Indietro
+- back
+- extendedWaitUntil:
+    visible:
+      id: campo-nome-ricetta
+    timeout: 10000
+- assertVisible: Modifica ricetta
+- copyTextFrom:
+    id: campo-nome-ricetta
+- assertTrue: ${maestro.copiedText === 'Pancake (copia)'}
+
+# Indietro dall'editor si arriva alla scheda della copia, non a quella dell'originale.
+- tapOn: Indietro
+- extendedWaitUntil:
+    visible:
+      id: modifica-ricetta
+    timeout: 10000
+- assertVisible: 'Pancake \(copia\)'
+- takeScreenshot: screenshots/scheda-copia
+
+# Elimina ricetta: dall'editor della copia, confermando, si torna alla Dispensa senza la copia.
+- tapOn:
+    id: modifica-ricetta
+- extendedWaitUntil:
+    visible:
+      id: campo-nome-ricetta
+    timeout: 10000
+- scrollUntilVisible:
+    element:
+      id: elimina-ricetta
+    direction: DOWN
+- tapOn:
+    id: elimina-ricetta
+- tapOn: '(?i)elimina'
+- extendedWaitUntil:
+    visible: 'Pancake, ricetta, .*'
+    timeout: 10000
+- assertNotVisible: 'Pancake \(copia\), ricetta, .*'
+- takeScreenshot: screenshots/dispensa-senza-copia

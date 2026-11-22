@@ -10,6 +10,7 @@ import {
 } from './foodsStore';
 import { addEntry, ensureMealSlots, entriesForDay } from './diaryStore';
 import { favorites, recentFoods, setFavorite } from './quickStore';
+import { createRecipe } from './recipesStore';
 import { initDatabase } from './schema';
 import type { SqlDatabase } from './sql';
 import { snapshotText } from './testing/snapshot';
@@ -130,6 +131,23 @@ describe('personalFoods', () => {
   });
 });
 
+describe('personalFoods e ricette', () => {
+  it('non include le ricette: hanno il loro elenco', async () => {
+    const skyr = await createFood(db, USER, SKYR, NOW);
+    await createRecipe(
+      db,
+      USER,
+      {
+        name: 'Budino',
+        yield: { mode: 'portions', portions: 1 },
+        items: [{ foodId: skyr, gramsRaw: 150 }],
+      },
+      later(1),
+    );
+    expect((await personalFoods(db, USER)).map((food) => food.name)).toEqual(['Skyr bianco']);
+  });
+});
+
 describe('updateFood e deleteFood', () => {
   it('la modifica sostituisce nome, marca e valori', async () => {
     const id = await createFood(db, USER, SKYR, NOW);
@@ -160,6 +178,22 @@ describe('updateFood e deleteFood', () => {
     await replaceCatalog(db, snapshotText(), { etag: null, syncedAt: NOW.toISOString() });
     expect(await updateFood(db, USER, 'albume-crudo', SKYR, later(1))).toBe(false);
     expect(await getFood(db, 'albume-crudo')).toMatchObject({ name: "Albume d'uovo" });
+  });
+
+  it('un alimento personale senza fonte si elenca, si modifica e si elimina', async () => {
+    // `source <> 'recipe'` con source NULL non sarebbe vero: l'alimento resterebbe bloccato.
+    await db.runAsync(
+      `INSERT INTO food (id, user_id, name, state, base_unit, search_text, source, created_at,
+         updated_at)
+       VALUES ('senza-fonte', ?, 'Grana', 'not_applicable', 'g', 'grana', NULL, ?, ?)`,
+      USER,
+      NOW.toISOString(),
+      NOW.toISOString(),
+    );
+    expect((await personalFoods(db, USER)).map((food) => food.id)).toEqual(['senza-fonte']);
+    expect(await updateFood(db, USER, 'senza-fonte', SKYR, later(1))).toBe(true);
+    await deleteFood(db, USER, 'senza-fonte', later(2));
+    expect(await getFood(db, 'senza-fonte')).toBeNull();
   });
 
   it("se un valore è rifiutato la modifica non tocca l'alimento", async () => {

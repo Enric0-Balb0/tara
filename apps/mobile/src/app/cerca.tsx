@@ -1,6 +1,6 @@
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, FlatList, StyleSheet, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
 
@@ -13,6 +13,8 @@ import { SearchField } from '@/components/SearchField';
 import { TaraText } from '@/components/TaraText';
 import { useCatalog } from '@/data/CatalogProvider';
 import { type FoodHit, searchFoods } from '@/data/catalogStore';
+import { getDraft } from '@/data/recipeDraft';
+import { recipesContaining } from '@/data/recipesStore';
 import {
   favorites as loadFavorites,
   type QuickFood,
@@ -30,14 +32,17 @@ import { useTheme } from '@/theme/useTheme';
 /**
  * "Cerca un alimento": a ogni lettera cerca nel catalogo sul telefono, anche offline. Pasto e
  * giorno, se arrivano da "Aggiungi" in Oggi, passano alla scheda per la voce del diario.
+ * Con `ricetta=1` si scelgono gli ingredienti di una ricetta (RF-20): la ricetta in modifica e
+ * quelle che la contengono non si offrono, per non chiudere un giro.
  */
 export default function SearchScreen() {
   const { colors } = useTheme();
   const router = useRouter();
-  const { slot, date, plan } = useLocalSearchParams<{
+  const { slot, date, plan, ricetta } = useLocalSearchParams<{
     slot?: string;
     date?: string;
     plan?: string;
+    ricetta?: string;
   }>();
   const db: SqlDatabase = useSQLiteContext();
   const { info, syncing, progress, refresh } = useCatalog();
@@ -56,6 +61,26 @@ export default function SearchScreen() {
     favorites: [],
     recent: [],
   });
+
+  // Ricette da non offrire come ingredienti: quella in modifica e chi la contiene.
+  const [excluded, setExcluded] = useState<ReadonlySet<string>>(new Set());
+  useEffect(() => {
+    const recipeId = ricetta ? getDraft().recipeId : null;
+    if (recipeId === null) return undefined;
+    let current = true;
+    void recipesContaining(db, recipeId)
+      .then((ids) => {
+        if (current) setExcluded(new Set([recipeId, ...ids]));
+      })
+      .catch((error: unknown) => console.error('Ricette annidate non lette', error));
+    return () => {
+      current = false;
+    };
+  }, [db, ricetta]);
+  const hits = useMemo(
+    () => (results?.hits ?? []).filter((hit) => !excluded.has(hit.id)),
+    [results, excluded],
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -85,6 +110,7 @@ export default function SearchScreen() {
         ...(slot ? { slot } : {}),
         ...(date ? { date } : {}),
         ...(plan ? { plan } : {}),
+        ...(ricetta ? { ricetta } : {}),
       },
     });
 
@@ -96,6 +122,7 @@ export default function SearchScreen() {
         ...(slot ? { slot } : {}),
         ...(date ? { date } : {}),
         ...(plan ? { plan } : {}),
+        ...(ricetta ? { ricetta } : {}),
       },
     });
   const catalogVersion = info?.version;
@@ -161,14 +188,16 @@ export default function SearchScreen() {
             <TaraText variant="bodyStrong" accessibilityRole="header" style={styles.quickTitle}>
               Preferiti
             </TaraText>
-            {quick.favorites.map((food) => (
-              <QuickRow
-                key={`p-${food.foodId}`}
-                name={food.foodName}
-                state={food.foodState}
-                onPress={() => open(food.foodId)}
-              />
-            ))}
+            {quick.favorites
+              .filter((food) => !excluded.has(food.foodId))
+              .map((food) => (
+                <QuickRow
+                  key={`p-${food.foodId}`}
+                  name={food.foodName}
+                  state={food.foodState}
+                  onPress={() => open(food.foodId)}
+                />
+              ))}
           </View>
         ) : null}
         {quick.recent.length > 0 ? (
@@ -176,15 +205,17 @@ export default function SearchScreen() {
             <TaraText variant="bodyStrong" accessibilityRole="header" style={styles.quickTitle}>
               Recenti
             </TaraText>
-            {quick.recent.map((food) => (
-              <QuickRow
-                key={`r-${food.foodId}`}
-                name={food.foodName}
-                state={food.foodState}
-                detail={`ultima volta ${formatAmount(food.lastQuantity, 'grams')} ${food.unit}`}
-                onPress={() => open(food.foodId)}
-              />
-            ))}
+            {quick.recent
+              .filter((food) => !excluded.has(food.foodId))
+              .map((food) => (
+                <QuickRow
+                  key={`r-${food.foodId}`}
+                  name={food.foodName}
+                  state={food.foodState}
+                  detail={`ultima volta ${formatAmount(food.lastQuantity, 'grams')} ${food.unit}`}
+                  onPress={() => open(food.foodId)}
+                />
+              ))}
           </View>
         ) : null}
       </View>
@@ -210,7 +241,7 @@ export default function SearchScreen() {
         <SearchField value={query} onChangeText={setQuery} autoFocus />
       </View>
       <FlatList
-        data={results?.hits ?? []}
+        data={hits}
         keyExtractor={(hit) => hit.id}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"

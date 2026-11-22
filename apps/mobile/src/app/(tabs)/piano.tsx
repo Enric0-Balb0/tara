@@ -288,6 +288,7 @@ export default function PlanScreen() {
             }}
             mealName={editingSlot?.name}
             startGrams={editing.quantity}
+            unit={editing.unit}
             confirmVerb="Salva"
             onConfirm={(quantity) =>
               void write((owner) => updatePlanQuantity(db, owner, editing.id, quantity, new Date()))

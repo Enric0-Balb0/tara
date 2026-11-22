@@ -5,20 +5,31 @@ import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { GramSheet } from '@/components/GramSheet';
+import { Button } from '@/components/Button';
 import { Icon } from '@/components/Icon';
 import { NutritionLabel } from '@/components/NutritionLabel';
 import { PressableScale } from '@/components/PressableScale';
 import { Segmented } from '@/components/Segmented';
 import { StateTag } from '@/components/StateTag';
 import { TaraText } from '@/components/TaraText';
+import { TextField } from '@/components/TextField';
 import { type FoodDetail, getFood, getVariant } from '@/data/catalogStore';
 import { addEntry, ensureMealSlots, lastQuantity, type MealSlot } from '@/data/diaryStore';
+import { addItem as addRecipeItem, getDraft } from '@/data/recipeDraft';
+import {
+  duplicateRecipe,
+  type RecipeDetail,
+  recipeDetail,
+  setCookedWeight,
+} from '@/data/recipesStore';
 import { addPlanItem } from '@/data/planStore';
 import { isFavorite, setFavorite } from '@/data/quickStore';
 import { useSession } from '@/data/SessionProvider';
 import type { SqlDatabase } from '@/data/sql';
 import { minutesOfDay, slotForTime, toLocalDate } from '@/domain/diary';
-import { formatTime } from '@/domain/format';
+import { parseLabelValue } from '@/domain/foodForm';
+import { formatAmount, formatTime } from '@/domain/format';
+import { MISSING_INGREDIENT_TEXT, portionShortcuts } from '@/domain/recipe';
 import { sourceLabel } from '@/domain/sources';
 import { radius, space, touch } from '@/theme/layout';
 import { useTheme } from '@/theme/useTheme';
@@ -31,11 +42,13 @@ import { useTheme } from '@/theme/useTheme';
  */
 export default function FoodScreen() {
   // plan: id del tipo di giornata quando si aggiunge al piano invece che al diario (RF-130).
+  // ricetta: si sta scegliendo un ingrediente per la ricetta in modifica (RF-20).
   const params = useLocalSearchParams<{
     id: string;
     slot?: string;
     date?: string;
     plan?: string;
+    ricetta?: string;
   }>();
   const { id } = params;
   const db: SqlDatabase = useSQLiteContext();
@@ -55,6 +68,10 @@ export default function FoodScreen() {
   const lastKey = `${id}:${slotId ?? ''}`;
   const lastGrams = last?.key === lastKey ? last.grams : null;
   const [sheetOpen, setSheetOpen] = useState(false);
+  // Solo per una ricetta: ingredienti e resa, riletti dopo ogni aggiornamento del peso.
+  const [recipe, setRecipe] = useState<RecipeDetail | null>(null);
+  const [cookedText, setCookedText] = useState('');
+  const [cookedInvalid, setCookedInvalid] = useState(false);
   const [favorite, setFavoriteState] = useState(false);
   // Dopo un tocco sulla stella la lettura iniziale, se arriva tardi, non la riporta indietro.
   const starTouched = useRef(false);
@@ -62,27 +79,39 @@ export default function FoodScreen() {
   const saving = useRef(false);
   const date = params.date ?? toLocalDate(new Date());
 
+  const load = useCallback(
+    async (isCurrent: () => boolean) => {
+      const found = await getFood(db, id);
+      const other =
+        // La variante sta nel catalogo condiviso: per un alimento personale porterebbe a
+        // un generico con lo stesso nome, non a un prodotto dell'utente.
+        found && !found.personal && found.state !== 'not_applicable'
+          ? await getVariant(db, found.name, found.state === 'raw' ? 'cooked' : 'raw')
+          : null;
+      const detail =
+        found?.source === 'recipe' && userId !== undefined
+          ? await recipeDetail(db, userId, id)
+          : null;
+      if (!isCurrent()) return;
+      setFood(found);
+      setVariantId(other);
+      setRecipe(detail);
+      if (detail?.yield.mode === 'weight') {
+        setCookedText(String(detail.yield.cookedWeightG).replace('.', ','));
+      }
+    },
+    [db, id, userId],
+  );
+
   // Alla scheda si torna anche dal form di modifica: si rilegge a ogni ritorno.
   useFocusEffect(
     useCallback(() => {
       let current = true;
-      void (async () => {
-        const found = await getFood(db, id);
-        const other =
-          // La variante sta nel catalogo condiviso: per un alimento personale porterebbe a
-          // un generico con lo stesso nome, non a un prodotto dell'utente.
-          found && !found.personal && found.state !== 'not_applicable'
-            ? await getVariant(db, found.name, found.state === 'raw' ? 'cooked' : 'raw')
-            : null;
-        if (current) {
-          setFood(found);
-          setVariantId(other);
-        }
-      })();
+      void load(() => current);
       return () => {
         current = false;
       };
-    }, [db, id]),
+    }, [load]),
   );
 
   useEffect(() => {
@@ -160,6 +189,71 @@ export default function FoodScreen() {
   const source = sourceLabel(food.source);
   const slot = slots.find((candidate) => candidate.id === slotId);
 
+  // Ingrediente di una ricetta: va nella bozza in memoria, non nel database.
+  function addToRecipe(quantity: number) {
+    if (!food || saving.current) return;
+    saving.current = true;
+    addRecipeItem(
+      { id: food.id, name: food.name, state: food.state, baseUnit: food.baseUnit },
+      quantity,
+    );
+    setSheetOpen(false);
+    // Tornando al editor i parametri si sostituiscono: senza `id` una ricetta in modifica
+    // si presenterebbe come nuova.
+    const recipeId = getDraft().recipeId;
+    router.dismissTo(recipeId ? { pathname: '/ricetta', params: { id: recipeId } } : '/ricetta');
+  }
+
+  // Un ingrediente sparito: peso e copia aspettano che lo si sostituisca nell'editor.
+  const missingIngredient = (recipe?.missingIngredients.length ?? 0) > 0;
+
+  // RF-23: il peso da cotto di oggi; le voci già registrate restano come erano.
+  async function updateCookedWeight() {
+    if (userId === undefined || !recipe || missingIngredient || saving.current) return;
+    const grams = parseLabelValue(cookedText);
+    if (grams === null || grams === undefined || grams <= 0) {
+      setCookedInvalid(true);
+      return;
+    }
+    setCookedInvalid(false);
+    saving.current = true;
+    try {
+      const result = await setCookedWeight(db, userId, recipe.id, grams, new Date());
+      if (result === 'not_found') {
+        Alert.alert('Peso non aggiornato', 'La ricetta non è più nel tuo catalogo.');
+      }
+      // Con 'missing_ingredients' la rilettura mostra l'avviso: il peso resta quello di prima.
+      await load(() => true);
+    } catch (error: unknown) {
+      console.error('Peso non aggiornato', error);
+      Alert.alert('Peso non aggiornato', 'Il telefono non è riuscito a salvarlo. Riprova.');
+    } finally {
+      saving.current = false;
+    }
+  }
+
+  async function duplicate() {
+    if (userId === undefined || !recipe || saving.current) return;
+    if (missingIngredient) {
+      Alert.alert('Ricetta non duplicata', MISSING_INGREDIENT_TEXT);
+      return;
+    }
+    saving.current = true;
+    try {
+      const copy = await duplicateRecipe(db, userId, recipe.id, new Date());
+      if (copy !== null) {
+        // La scheda diventa quella della copia: tornando dall'editor si vede la copia.
+        router.replace({ pathname: '/alimento/[id]', params: { id: copy } });
+        router.push({ pathname: '/ricetta', params: { id: copy } });
+      }
+    } catch (error: unknown) {
+      console.error('Ricetta non duplicata', error);
+      Alert.alert('Ricetta non duplicata', 'Il telefono non è riuscito a copiarla. Riprova.');
+    } finally {
+      saving.current = false;
+    }
+  }
+
   async function add(quantity: number, andContinue: boolean) {
     if (userId === undefined || slot === undefined || !food || saving.current) return;
     saving.current = true;
@@ -206,7 +300,18 @@ export default function FoodScreen() {
         <View style={styles.topBar}>
           {back}
           <View style={styles.topActions}>
-            {food.personal ? (
+            {/* Scegliendo un ingrediente la ricetta non si modifica né si copia: l'editor
+                aperto sopra prenderebbe la bozza di quello che sta sotto. */}
+            {params.ricetta ? null : food.source === 'recipe' ? (
+              <PressableScale
+                onPress={() => router.push({ pathname: '/ricetta', params: { id: food.id } })}
+                accessibilityLabel="Modifica ricetta"
+                testID="modifica-ricetta"
+                style={styles.edit}
+              >
+                <TaraText variant="bodyStrong">Modifica</TaraText>
+              </PressableScale>
+            ) : food.personal ? (
               <PressableScale
                 onPress={() =>
                   router.push({ pathname: '/nuovo-alimento', params: { id: food.id } })
@@ -249,7 +354,72 @@ export default function FoodScreen() {
               </TaraText>
             ) : null}
           </View>
-          <NutritionLabel per100={per100} grams={100} unit={food.baseUnit} />
+          {recipe ? (
+            <View style={styles.ingredients} testID="ingredienti-ricetta">
+              <TaraText variant="bodyStrong" accessibilityRole="header">
+                Ingredienti
+              </TaraText>
+              {recipe.items.map((item) => (
+                <View key={item.id} style={styles.ingredient}>
+                  <TaraText style={styles.ingredientName} numberOfLines={2}>
+                    {item.foodName}
+                  </TaraText>
+                  <TaraText variant="bodyStrong">
+                    {formatAmount(item.gramsRaw, 'grams')} {item.foodBaseUnit}
+                  </TaraText>
+                </View>
+              ))}
+              <TaraText variant="caption" color="textSecondary">
+                Grammi a crudo
+              </TaraText>
+              {missingIngredient ? (
+                <TaraText variant="caption" color="error" testID="ingrediente-mancante">
+                  {MISSING_INGREDIENT_TEXT}
+                </TaraText>
+              ) : null}
+            </View>
+          ) : null}
+          {recipe?.servingG ? (
+            <NutritionLabel title="Per porzione" per100={per100} grams={recipe.servingG} />
+          ) : null}
+          <NutritionLabel
+            title={recipe ? 'Per 100 g' : undefined}
+            per100={per100}
+            grams={100}
+            unit={food.baseUnit}
+          />
+          {recipe?.yield.mode === 'weight' && !params.ricetta ? (
+            <View style={styles.cooked}>
+              <TextField
+                label="Peso da cotto di oggi (g)"
+                value={cookedText}
+                onChangeText={setCookedText}
+                keyboardType="decimal-pad"
+                invalid={cookedInvalid}
+                testID="campo-peso-oggi"
+              />
+              {cookedInvalid ? (
+                <TaraText variant="caption" color="error">
+                  Scrivi il peso da cotto in grammi, maggiore di zero.
+                </TaraText>
+              ) : null}
+              <Button
+                label="Aggiorna il peso"
+                kind="secondary"
+                onPress={() => void updateCookedWeight()}
+                disabled={missingIngredient}
+                testID="aggiorna-peso"
+              />
+            </View>
+          ) : null}
+          {recipe && !params.ricetta ? (
+            <Button
+              label="Duplica"
+              kind="secondary"
+              onPress={() => void duplicate()}
+              testID="duplica-ricetta"
+            />
+          ) : null}
           {source !== null ? (
             <TaraText variant="caption" color="textSecondary">
               Fonte: {source}
@@ -257,23 +427,28 @@ export default function FoodScreen() {
           ) : null}
         </ScrollView>
         <View style={[styles.actions, { paddingBottom: space.l + insets.bottom }]}>
-          <Segmented
-            label="Pasto"
-            options={slots.map((candidate) => ({ key: candidate.id, label: candidate.name }))}
-            selectedKey={slotId}
-            onSelect={setSlotId}
-          />
+          {params.ricetta ? null : (
+            <Segmented
+              label="Pasto"
+              options={slots.map((candidate) => ({ key: candidate.id, label: candidate.name }))}
+              selectedKey={slotId}
+              onSelect={setSlotId}
+            />
+          )}
           <PressableScale
             onPress={() => setSheetOpen(true)}
-            disabled={slot === undefined}
+            disabled={slot === undefined && !params.ricetta}
+            testID="aggiungi-alimento"
             style={[styles.primary, { backgroundColor: colors.action }]}
           >
             <TaraText variant="bodyStrong" color="background">
-              {slot
-                ? params.plan
-                  ? `Aggiungi al piano: ${slot.name}`
-                  : `Aggiungi a ${slot.name}`
-                : 'Aggiungi'}
+              {params.ricetta
+                ? 'Aggiungi alla ricetta'
+                : slot
+                  ? params.plan
+                    ? `Aggiungi al piano: ${slot.name}`
+                    : `Aggiungi a ${slot.name}`
+                  : 'Aggiungi'}
             </TaraText>
           </PressableScale>
         </View>
@@ -282,11 +457,15 @@ export default function FoodScreen() {
       <GramSheet
         visible={sheetOpen}
         food={{ name: food.name, state: food.state, per100 }}
-        mealName={slot?.name}
-        lastGrams={lastGrams ?? undefined}
+        mealName={params.ricetta ? undefined : slot?.name}
+        lastGrams={params.ricetta ? undefined : (lastGrams ?? undefined)}
         confirmVerb="Aggiungi"
-        onConfirm={(quantity) => void add(quantity, false)}
-        onConfirmAndContinue={(quantity) => void add(quantity, true)}
+        unit={food.baseUnit}
+        shortcuts={recipe?.servingG ? portionShortcuts(recipe.servingG) : undefined}
+        onConfirm={(quantity) =>
+          params.ricetta ? addToRecipe(quantity) : void add(quantity, false)
+        }
+        onConfirmAndContinue={params.ricetta ? undefined : (quantity) => void add(quantity, true)}
         onClose={() => setSheetOpen(false)}
         onChangeState={
           variantId === null
@@ -318,6 +497,16 @@ const styles = StyleSheet.create({
   topActions: { flexDirection: 'row', alignItems: 'center' },
   edit: { minHeight: touch.min, paddingHorizontal: space.m, justifyContent: 'center' },
   content: { padding: space.l, gap: space.l },
+  ingredients: { gap: space.xs },
+  ingredient: {
+    minHeight: touch.min,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: space.m,
+  },
+  ingredientName: { flex: 1 },
+  cooked: { gap: space.s },
   heading: { gap: space.xs },
   title: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: space.s },
   missing: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.l },

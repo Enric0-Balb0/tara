@@ -403,6 +403,7 @@ export default function TodayScreen() {
             }}
             mealName={editingSlot?.name}
             startGrams={editing.quantity}
+            unit={editing.unit}
             confirmVerb="Salva"
             onConfirm={(quantity) => void saveQuantity(editing, quantity)}
             onDelete={() => void remove(editing)}
@@ -431,6 +432,7 @@ export default function TodayScreen() {
             }}
             mealName={slots.find((slot) => slot.id === confirming.mealSlotId)?.name}
             startGrams={confirming.quantity}
+            unit={confirming.unit}
             confirmVerb="Conferma"
             onConfirm={(quantity) => void confirm([confirming], quantity)}
             onClose={() => setConfirming(null)}
