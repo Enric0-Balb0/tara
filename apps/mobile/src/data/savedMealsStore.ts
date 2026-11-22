@@ -211,7 +211,10 @@ export async function removeSavedMealItem(
  * Registra il pasto nel diario con i valori di adesso di ogni alimento. `quantities` può
  * sostituire il peso di singole voci (per id) solo per questa registrazione. Le voci il cui
  * alimento non c'è più si saltano. Tutto o niente; un millisecondo in più per voce tiene
- * l'ordine del pasto. Restituisce quante voci ha registrato (le saltate sono le altre).
+ * l'ordine del pasto. Un pasto salvato non dell'utente (o senza voci) registra 0. Lancia un
+ * errore, senza scrivere niente, se il pasto del diario non è dell'utente o è eliminato, o se
+ * una quantità non è un numero finito > 0 o non è di una voce del pasto salvato.
+ * Restituisce quante voci ha registrato (le saltate sono le altre).
  */
 export async function logSavedMeal(
   db: SqlDatabase,
@@ -225,8 +228,22 @@ export async function logSavedMeal(
   },
 ): Promise<number> {
   const items = await savedMealItems(db, input.userId, input.savedMealId);
+  if (items.length === 0) return 0;
+  const known = new Set(items.map((item) => item.id));
+  for (const [itemId, quantity] of Object.entries(input.quantities)) {
+    if (!known.has(itemId)) throw new Error(`Voce non nel pasto salvato: ${itemId}`);
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      throw new Error(`Quantità non valida per la voce ${itemId}`);
+    }
+  }
   let logged = 0;
   await db.withTransactionAsync(async () => {
+    const slot = await db.getFirstAsync<{ id: string }>(
+      'SELECT id FROM meal_slot WHERE id = ? AND user_id = ? AND deleted_at IS NULL',
+      input.mealSlotId,
+      input.userId,
+    );
+    if (slot === null) throw new Error('Pasto non trovato per questo utente');
     for (const item of items) {
       const food = await getFood(db, item.foodId);
       if (food === null) continue;

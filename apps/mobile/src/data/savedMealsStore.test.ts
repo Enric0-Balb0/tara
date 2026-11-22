@@ -246,6 +246,44 @@ describe('logSavedMeal (RF-31)', () => {
     expect(entries.map((e) => e.foodId)).toEqual(['albume-crudo']);
   });
 
+  it('rifiuta un pasto del diario di un altro utente o eliminato, senza scrivere', async () => {
+    const id = await breakfastMeal();
+    const foreign = (await ensureMealSlots(db, OTHER, NOW))[0]!.id;
+    const call = (mealSlotId: string) =>
+      logSavedMeal(db, {
+        userId: USER,
+        savedMealId: id,
+        date: TARGET_DAY,
+        mealSlotId,
+        quantities: {},
+        now: ms(200),
+      });
+    await expect(call(foreign)).rejects.toThrow(/Pasto non trovato/);
+    await db.runAsync('UPDATE meal_slot SET deleted_at = ? WHERE id = ?', NOW.toISOString(), lunch);
+    await expect(call(lunch)).rejects.toThrow(/Pasto non trovato/);
+    expect(await entriesForDay(db, USER, TARGET_DAY)).toEqual([]);
+  });
+
+  it('rifiuta quantità non valide o di voci estranee prima di scrivere', async () => {
+    const id = await breakfastMeal();
+    const [first] = await savedMealItems(db, USER, id);
+    const call = (quantities: Record<string, number>) =>
+      logSavedMeal(db, {
+        userId: USER,
+        savedMealId: id,
+        date: TARGET_DAY,
+        mealSlotId: lunch,
+        quantities,
+        now: ms(200),
+      });
+    await expect(call({ [first!.id]: 0 })).rejects.toThrow(/Quantità non valida/);
+    await expect(call({ [first!.id]: -5 })).rejects.toThrow(/Quantità non valida/);
+    await expect(call({ [first!.id]: NaN })).rejects.toThrow(/Quantità non valida/);
+    await expect(call({ [first!.id]: Infinity })).rejects.toThrow(/Quantità non valida/);
+    await expect(call({ 'non-esiste': 10 })).rejects.toThrow(/Voce non nel pasto salvato/);
+    expect(await entriesForDay(db, USER, TARGET_DAY)).toEqual([]);
+  });
+
   it('registra anche una ricetta con i suoi valori attuali', async () => {
     const recipe = await createRecipe(
       db,
