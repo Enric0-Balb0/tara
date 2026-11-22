@@ -5,6 +5,7 @@ import { Alert, Modal, ScrollView, StyleSheet, View } from 'react-native';
 
 import { DayGoals } from '@/components/DayGoals';
 import { DayTypeCard } from '@/components/DayTypeCard';
+import { WaterIncrements } from '@/components/WaterIncrements';
 import { DiaryRow } from '@/components/DiaryRow';
 import { GramSheet } from '@/components/GramSheet';
 import { Icon } from '@/components/Icon';
@@ -26,6 +27,12 @@ import {
   setTarget,
   targetOn,
 } from '@/data/targetsStore';
+import {
+  setWaterIncrements,
+  setWaterTarget,
+  waterIncrements,
+  waterTarget,
+} from '@/data/waterStore';
 import { entryAmount, toLocalDate, totals } from '@/domain/diary';
 import type { MacroTargets } from '@/domain/targets';
 import { radius, space, touch } from '@/theme/layout';
@@ -34,6 +41,8 @@ import { useTheme } from '@/theme/useTheme';
 interface Loaded {
   types: DayType[];
   targets: Record<string, DayTarget | undefined>;
+  waters: Record<string, number | null>;
+  increments: number[];
   slots: MealSlot[];
   plan: PlanItem[];
 }
@@ -67,11 +76,16 @@ export default function PlanScreen() {
           ensureMealSlots(db, userId, new Date()),
         ]);
         const targets: Loaded['targets'] = {};
-        for (const type of types) targets[type.id] = await targetOn(db, userId, type.id, today);
+        const waters: Loaded['waters'] = {};
+        for (const type of types) {
+          targets[type.id] = await targetOn(db, userId, type.id, today);
+          waters[type.id] = await waterTarget(db, userId, type.id);
+        }
+        const increments = await waterIncrements(db, userId);
         const chosen = types.find((type) => type.id === (wanted ?? selected.current)) ?? types[0];
         const plan = chosen ? await planFor(db, userId, chosen.id) : [];
         if (request !== latest.current) return;
-        setLoaded({ types, targets, slots, plan });
+        setLoaded({ types, targets, waters, increments, slots, plan });
         selected.current = chosen?.id;
         setSelectedId(chosen?.id);
       } catch (error: unknown) {
@@ -87,7 +101,7 @@ export default function PlanScreen() {
     }, [load]),
   );
 
-  async function save(type: DayType, name: string, values: MacroTargets) {
+  async function save(type: DayType, name: string, values: MacroTargets, water: number | null) {
     if (userId === undefined) return;
     const now = new Date();
     const current = loaded?.targets[type.id];
@@ -100,6 +114,10 @@ export default function PlanScreen() {
     try {
       if (name !== type.name) await renameDayType(db, userId, type.id, name, now);
       if (changed) await setTarget(db, userId, type.id, toLocalDate(now), values, now);
+      // L'acqua non ha storia: vale il valore di adesso (RF-61).
+      if (water !== (loaded?.waters[type.id] ?? null)) {
+        await setWaterTarget(db, userId, type.id, water, now);
+      }
     } catch (error: unknown) {
       console.error('Target non salvato', error);
       Alert.alert('Target non salvato', 'Il telefono non è riuscito a salvarlo. Riprova.');
@@ -129,6 +147,18 @@ export default function PlanScreen() {
         },
       ],
     );
+  }
+
+  async function saveIncrements(values: number[]) {
+    if (userId === undefined) return;
+    try {
+      await setWaterIncrements(db, userId, values, new Date());
+    } catch (error: unknown) {
+      console.error('Incrementi non salvati', error);
+      Alert.alert('Incrementi non salvati', 'Il telefono non è riuscito a salvarli. Riprova.');
+      return;
+    }
+    await load();
   }
 
   async function add() {
@@ -200,12 +230,13 @@ export default function PlanScreen() {
             </View>
             <DayTypeCard
               // Rimonta la scheda quando arriva un target diverso, così i campi ripartono da lì.
-              key={`${type.id}:${target?.id ?? 'nessuno'}:${target?.validFrom ?? ''}:${type.name}`}
+              key={`${type.id}:${target?.id ?? 'nessuno'}:${target?.validFrom ?? ''}:${type.name}:${loaded.waters[type.id] ?? ''}`}
               testID={`tipo-${index}`}
               name={type.name}
               target={target}
+              water={loaded.waters[type.id] ?? null}
               canDelete={loaded.types.length > 1}
-              onSave={(name, values) => save(type, name, values)}
+              onSave={(name, values, water) => save(type, name, values, water)}
               onDelete={() => remove(type, loaded.types)}
             />
 
@@ -255,6 +286,14 @@ export default function PlanScreen() {
             })}
           </>
         ) : null}
+
+        <WaterIncrements
+          // Rimonta quando cambiano i valori salvati, così i campi ripartono da lì.
+          key={loaded.increments.join(',')}
+          testID="incrementi"
+          increments={loaded.increments}
+          onSave={saveIncrements}
+        />
 
         <PressableScale
           onPress={() => void add()}
