@@ -26,6 +26,8 @@ interface Props {
   items: readonly SavedMealItem[];
   /** Grammi cambiati a mano, per id della voce; le altre restano come nel pasto salvato. */
   quantities: Readonly<Record<string, number>>;
+  /** Id degli alimenti che non ci sono più: le loro voci non si registrano. */
+  missingFoodIds?: ReadonlySet<string>;
   busy?: boolean;
   onEditItem: (item: SavedMealItem) => void;
   onConfirm: () => void;
@@ -41,6 +43,7 @@ export function SavedMealSheet({
   mealName,
   items,
   quantities,
+  missingFoodIds,
   busy = false,
   onEditItem,
   onConfirm,
@@ -57,6 +60,8 @@ export function SavedMealSheet({
   const sheetOut = reduceMotion
     ? fadeOut
     : SlideOutDown.duration(durations.sheetOut).easing(Easing.bezier(...curves.exit));
+  const isMissing = (item: SavedMealItem) => missingFoodIds?.has(item.foodId) ?? false;
+  const available = items.filter((item) => !isMissing(item)).length;
   return (
     <>
       <Animated.View entering={fadeIn} exiting={fadeOut} style={StyleSheet.absoluteFill}>
@@ -91,6 +96,26 @@ export function SavedMealSheet({
           {items.map((item) => {
             const quantity = quantities[item.id] ?? item.quantity;
             const unitWord = item.unit === 'ml' ? 'millilitri' : 'grammi';
+            if (isMissing(item)) {
+              // Senza alimento non si registra né si corregge: solo l'avviso.
+              return (
+                <View
+                  key={item.id}
+                  accessible
+                  accessibilityLabel={`${item.foodName}, non c’è più e non verrà registrato`}
+                  style={[styles.item, { borderBottomColor: colors.border }]}
+                >
+                  <View style={styles.itemName}>
+                    <TaraText numberOfLines={2} color="textSecondary" style={styles.itemText}>
+                      {item.foodName}
+                    </TaraText>
+                  </View>
+                  <TaraText variant="caption" color="review">
+                    non c’è più
+                  </TaraText>
+                </View>
+              );
+            }
             return (
               <PressableScale
                 key={item.id}
@@ -111,10 +136,13 @@ export function SavedMealSheet({
             );
           })}
         </ScrollView>
+        {items.length > 0 && available === 0 ? (
+          <TaraText color="review">Gli alimenti di questo pasto non ci sono più.</TaraText>
+        ) : null}
         <Button
           label={`Registra a ${mealName}`}
           onPress={onConfirm}
-          disabled={items.length === 0}
+          disabled={available === 0}
           loading={busy}
           testID="registra-pasto-salvato"
         />

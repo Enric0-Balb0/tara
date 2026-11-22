@@ -13,6 +13,7 @@ import {
   saveMealFromDiary,
   savedMealItems,
   savedMeals,
+  unavailableFoodIds,
   updateSavedMealItem,
 } from './savedMealsStore';
 import { initDatabase } from './schema';
@@ -244,6 +245,27 @@ describe('logSavedMeal (RF-31)', () => {
     expect(logged).toBe(1);
     const entries = await entriesForDay(db, USER, TARGET_DAY);
     expect(entries.map((e) => e.foodId)).toEqual(['albume-crudo']);
+  });
+
+  it('elenca gli alimenti che la registrazione salterebbe: eliminati o spariti', async () => {
+    const id = await breakfastMeal();
+    expect(await unavailableFoodIds(db, ['albume-crudo', oats])).toEqual([]);
+    await deleteFood(db, USER, oats, ms(100));
+    expect(await unavailableFoodIds(db, ['albume-crudo', oats, 'non-esiste'])).toEqual([
+      oats,
+      'non-esiste',
+    ]);
+    expect(await unavailableFoodIds(db, [])).toEqual([]);
+    // Coerente con logSavedMeal: le voci segnalate sono quelle saltate.
+    const logged = await logSavedMeal(db, {
+      userId: USER,
+      savedMealId: id,
+      date: TARGET_DAY,
+      mealSlotId: lunch,
+      quantities: {},
+      now: ms(200),
+    });
+    expect(logged).toBe(1);
   });
 
   it('rifiuta un pasto del diario di un altro utente o eliminato, senza scrivere', async () => {

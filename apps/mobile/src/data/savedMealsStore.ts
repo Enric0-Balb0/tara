@@ -208,6 +208,23 @@ export async function removeSavedMealItem(
 }
 
 /**
+ * Gli id tra `foodIds` il cui alimento non c'è o è eliminato: gli stessi che `logSavedMeal`
+ * salta (`getFood` restituisce null), nell'ordine dato.
+ */
+export async function unavailableFoodIds(
+  db: SqlDatabase,
+  foodIds: readonly string[],
+): Promise<string[]> {
+  if (foodIds.length === 0) return [];
+  const present = await db.getAllAsync<{ id: string }>(
+    `SELECT id FROM food WHERE deleted_at IS NULL AND id IN (SELECT value FROM json_each(?))`,
+    JSON.stringify(foodIds),
+  );
+  const alive = new Set(present.map((row) => row.id));
+  return [...new Set(foodIds)].filter((id) => !alive.has(id));
+}
+
+/**
  * Registra il pasto nel diario con i valori di adesso di ogni alimento. `quantities` può
  * sostituire il peso di singole voci (per id) solo per questa registrazione. Le voci il cui
  * alimento non c'è più si saltano. Tutto o niente; un millisecondo in più per voce tiene

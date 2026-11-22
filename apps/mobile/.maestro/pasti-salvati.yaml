@@ -124,3 +124,11 @@ tags:
     timeout: 10000
 - assertVisible: "Albume d'uovo, 200 grammi. Modifica"
 - takeScreenshot: screenshots/pasto-salvato
+
+# Togliere una voce chiede conferma: con "Annulla" l'albume resta nel pasto.
+- tapOn: "Rimuovi Albume d'uovo dal pasto"
+- extendedWaitUntil:
+    visible: "Togliere «Albume d'uovo» dal pasto?"
+    timeout: 10000
+- tapOn: Annulla
+- assertVisible: "Albume d'uovo, 200 grammi. Modifica"

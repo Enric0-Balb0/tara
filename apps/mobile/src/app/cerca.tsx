@@ -30,6 +30,7 @@ import {
   type SavedMealSummary,
   savedMealItems,
   savedMeals as loadSavedMeals,
+  unavailableFoodIds,
 } from '@/data/savedMealsStore';
 import { useSession } from '@/data/SessionProvider';
 import type { SqlDatabase } from '@/data/sql';
@@ -83,6 +84,8 @@ export default function SearchScreen() {
     mealName: string;
     // Valori per 100 degli alimenti, per l'anteprima dei macro nel foglio dei grammi.
     values: Record<string, Record<string, number>>;
+    // Alimenti spariti o eliminati: la registrazione li salta.
+    missing: ReadonlySet<string>;
   } | null>(null);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [editingItem, setEditingItem] = useState<SavedMealItem | null>(null);
@@ -148,13 +151,14 @@ export default function SearchScreen() {
         Alert.alert('Pasto non trovato', 'Il pasto di Oggi non c’è più. Torna indietro e riprova.');
         return;
       }
-      const { values } = await ingredientValues(
-        db,
-        items.map((item) => item.foodId),
-      );
+      const foodIds = items.map((item) => item.foodId);
+      const [{ values }, missing] = await Promise.all([
+        ingredientValues(db, foodIds),
+        unavailableFoodIds(db, foodIds),
+      ]);
       setQuantities({});
       setEditingItem(null);
-      setOpenMeal({ meal, items, mealName, values });
+      setOpenMeal({ meal, items, mealName, values, missing: new Set(missing) });
     } catch (error: unknown) {
       console.error('Pasto salvato non letto', error);
       Alert.alert('Pasto non aperto', 'Il telefono non è riuscito a leggerlo. Riprova.');
@@ -178,6 +182,11 @@ export default function SearchScreen() {
         quantities,
         now: new Date(),
       });
+      if (logged === 0) {
+        // Niente scritto (alimenti spariti nel frattempo): il foglio resta aperto.
+        Alert.alert('Pasto non registrato', 'Gli alimenti di questo pasto non ci sono più.');
+        return;
+      }
       const skipped = openMeal.items.length - logged;
       if (skipped > 0) {
         Alert.alert(
@@ -424,6 +433,7 @@ export default function SearchScreen() {
               mealName={openMeal.mealName}
               items={openMeal.items}
               quantities={quantities}
+              missingFoodIds={openMeal.missing}
               busy={logging}
               onEditItem={setEditingItem}
               onConfirm={() => void logMeal()}

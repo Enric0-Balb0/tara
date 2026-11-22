@@ -124,6 +124,23 @@ export default function SavedMealScreen() {
     );
   }
 
+  // Togliere una voce non si annulla: si chiede conferma. Il doppio tocco è già coperto da `busy`.
+  function confirmRemove(item: SavedMealItem) {
+    Alert.alert(`Togliere «${item.foodName}» dal pasto?`, 'La voce non si può recuperare.', [
+      { text: 'Annulla', style: 'cancel' },
+      {
+        text: 'Togli',
+        style: 'destructive',
+        onPress: () => {
+          void write(
+            (owner) => removeSavedMealItem(db, owner, item.id, new Date()),
+            'Alimento non rimosso',
+          );
+        },
+      },
+    ]);
+  }
+
   return (
     // Come in ricetta: intestazione propria e padding per la tastiera su Android.
     <KeyboardAvoidingView
@@ -210,12 +227,7 @@ export default function SavedMealScreen() {
                       </TaraText>
                     </PressableScale>
                     <PressableScale
-                      onPress={() =>
-                        void write(
-                          (owner) => removeSavedMealItem(db, owner, item.id, new Date()),
-                          'Alimento non rimosso',
-                        )
-                      }
+                      onPress={() => confirmRemove(item)}
                       accessibilityLabel={`Rimuovi ${item.foodName} dal pasto`}
                       style={styles.remove}
                     >
