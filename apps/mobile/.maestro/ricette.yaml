@@ -161,10 +161,10 @@ tags:
     visible: Aggiungi a Pranzo
     timeout: 10000
 - tapOn: Aggiungi a Pranzo
-- assertVisible: '1 porzione · 60 g'
-- assertVisible: '2 porzioni · 120 g'
+- assertVisible: '1 porzione · 60 grammi'
+- assertVisible: '2 porzioni · 120 grammi'
 - takeScreenshot: screenshots/foglio-porzioni
-- tapOn: '1 porzione · 60 g'
+- tapOn: '1 porzione · 60 grammi'
 - tapOn: Aggiungi 60 grammi
 - extendedWaitUntil:
     visible: 'Pancake, 60 grammi, .*'

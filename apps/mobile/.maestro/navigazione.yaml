@@ -29,7 +29,8 @@ tags:
 - tapOn:
     id: tab-andamento
     retryTapIfNoChange: true
-- assertVisible: Peso con media mobile, misure, foto e check-in settimanale.
+- assertVisible:
+    id: pesati
 
 # Le tab per id, ritoccando se lo schermo non cambia: a volte il primo tocco si perde.
 - tapOn:

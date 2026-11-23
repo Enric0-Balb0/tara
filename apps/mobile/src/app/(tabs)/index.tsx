@@ -55,6 +55,7 @@ import {
   waterOn,
   waterTarget,
 } from '@/data/waterStore';
+import { weights } from '@/data/weightStore';
 import {
   addDays,
   dayLabel,
@@ -65,6 +66,7 @@ import {
   toLocalDate,
   totals,
 } from '@/domain/diary';
+import { movingAverage } from '@/domain/weight';
 import { radius, space, touch } from '@/theme/layout';
 import { useTheme } from '@/theme/useTheme';
 
@@ -97,6 +99,8 @@ export default function TodayScreen() {
     target: null as number | null,
     increments: [250],
   });
+  // Media mobile del peso alla data mostrata, per le proteine in g/kg (RF-57).
+  const [averageKg, setAverageKg] = useState<number | null>(null);
   const [plan, setPlan] = useState<PlanItem[]>([]);
   const [pending, setPending] = useState<PlanItem[]>([]);
   // Pasti completi riaperti a mano; gli altri completi restano chiusi in una riga.
@@ -146,11 +150,12 @@ export default function TodayScreen() {
       if (dayEntries.length > 0) await keepDayType(db, userId, date, new Date());
       const typeId = await dayTypeFor(db, userId, date);
       const dayTarget = typeId ? await targetOn(db, userId, typeId, date) : undefined;
-      const [dayWater, dayLast, dayWaterTarget, steps] = await Promise.all([
+      const [dayWater, dayLast, dayWaterTarget, steps, dayWeights] = await Promise.all([
         waterOn(db, userId, date),
         lastWater(db, userId, date),
         typeId ? waterTarget(db, userId, typeId) : null,
         waterIncrements(db, userId),
+        weights(db, userId, addDays(date, -6), date),
       ]);
       // Il piano vale da oggi in avanti, come i target: un giorno passato non ha voci
       // previste, e cambiare il piano oggi non riapre i pasti di ieri.
@@ -164,6 +169,7 @@ export default function TodayScreen() {
       setDayTypes(types);
       setDayTypeId(typeId);
       setTarget(dayTarget);
+      setAverageKg(movingAverage(dayWeights, date));
       setWater({ ml: dayWater, last: dayLast, target: dayWaterTarget, increments: steps });
       setPlan(dayPlan);
       setPending(dayPending);
@@ -368,6 +374,7 @@ export default function TodayScreen() {
           planned={totals(pending)}
           target={target}
           dayTypeName={dayTypeName}
+          averageKg={averageKg}
           onSetTargets={() => router.navigate('/piano')}
         />
 

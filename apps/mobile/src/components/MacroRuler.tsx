@@ -27,10 +27,12 @@ interface Props {
   /** Ancora previsto dal piano, disegnato a tratteggio dopo il registrato. */
   planned?: number;
   target: number | null;
+  /** Una nota accanto al nome, come "2,1 g/kg" per le proteine, e come la legge lo schermo. */
+  note?: { text: string; spoken: string; testID?: string };
 }
 
 /** Barra graduata: tacche ogni 10%, pieno il registrato, tratteggio il previsto, segno al traguardo. */
-export function MacroRuler({ macro, label, logged, planned = 0, target }: Props) {
+export function MacroRuler({ macro, label, logged, planned = 0, target, note }: Props) {
   const { colors, reduceMotion } = useTheme();
   const [width, setWidth] = useState(0);
   const geometry = rulerGeometry(logged, planned, target);
@@ -57,13 +59,20 @@ export function MacroRuler({ macro, label, logged, planned = 0, target }: Props)
   return (
     <View
       accessible
-      accessibilityLabel={`${label} ${formatAmount(logged, 'grams')} di ${targetText} grammi${plannedText}`}
+      accessibilityLabel={`${label} ${formatAmount(logged, 'grams')} di ${targetText} grammi${plannedText}${note ? `, ${note.spoken}` : ''}`}
       style={styles.ruler}
     >
       <View style={styles.header}>
-        <TaraText variant="bodyStrong" color={macro}>
-          {label}
-        </TaraText>
+        <View style={styles.title}>
+          <TaraText variant="bodyStrong" color={macro}>
+            {label}
+          </TaraText>
+          {note ? (
+            <TaraText testID={note.testID} variant="caption" color="textSecondary">
+              {note.text}
+            </TaraText>
+          ) : null}
+        </View>
         <TaraText color="textSecondary">
           <TaraText variant="bigNumber">{formatAmount(logged, 'grams')}</TaraText> / {targetText} g
         </TaraText>
@@ -137,6 +146,7 @@ export function MacroRuler({ macro, label, logged, planned = 0, target }: Props)
 const styles = StyleSheet.create({
   ruler: { gap: space.s },
   header: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+  title: { flexDirection: 'row', alignItems: 'baseline', gap: space.s },
   track: { height: ruler.track, justifyContent: 'flex-end' },
   fill: {
     position: 'absolute',

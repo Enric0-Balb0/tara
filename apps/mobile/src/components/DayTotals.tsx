@@ -36,7 +36,14 @@ const CELLS: readonly {
  * Riepilogo della giornata (RF-45): kcal e macro registrati. I target per tipo di giornata e
  * le barre graduate arrivano con RF-50; un totale con "≥" ha voci senza quel valore.
  */
-export function DayTotals({ totals }: { totals: Record<DiaryNutrient, Total> }) {
+export function DayTotals({
+  totals,
+  proteinNote,
+}: {
+  totals: Record<DiaryNutrient, Total>;
+  /** "2,1 g/kg" sotto "Proteine", e come lo legge lo schermo. */
+  proteinNote?: { text: string; spoken: string; testID?: string };
+}) {
   const { colors } = useTheme();
   const incomplete = CELLS.some((cell) => totals[cell.code].incomplete);
   return (
@@ -54,7 +61,9 @@ export function DayTotals({ totals }: { totals: Record<DiaryNutrient, Total> }) 
             <View
               key={cell.code}
               accessible
-              accessibilityLabel={`${value} ${cell.spoken}`}
+              accessibilityLabel={`${value} ${cell.spoken}${
+                cell.code === 'protein_g' && proteinNote ? `, ${proteinNote.spoken}` : ''
+              }`}
               style={styles.cell}
             >
               <TaraText variant="bigNumber" numberOfLines={1} adjustsFontSizeToFit>
@@ -66,6 +75,16 @@ export function DayTotals({ totals }: { totals: Record<DiaryNutrient, Total> }) 
               <TaraText variant="minimum" color={cell.color} numberOfLines={1}>
                 {cell.label}
               </TaraText>
+              {cell.code === 'protein_g' && proteinNote ? (
+                <TaraText
+                  testID={proteinNote.testID}
+                  variant="minimum"
+                  color="textSecondary"
+                  numberOfLines={1}
+                >
+                  {proteinNote.text}
+                </TaraText>
+              ) : null}
             </View>
           );
         })}
