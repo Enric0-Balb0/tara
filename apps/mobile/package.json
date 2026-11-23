@@ -21,7 +21,7 @@
     "e2e:dev": "node scripts/e2e.mjs --dev"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.119.1",
+    "@supabase/supabase-js": "^2.119.2",
     "expo": "~58.0.26",
     "expo-constants": "~58.0.13",
     "expo-dev-client": "~58.0.21",
@@ -43,7 +43,7 @@
   "devDependencies": {
     "@types/node": "^22.20.5",
     "@types/react": "~19.3.0",
-    "@vitest/coverage-v8": "^5.1.0",
+    "@vitest/coverage-v8": "^5.1.1",
     "eslint": "^9.39.5",
     "eslint-config-expo": "~58.0.4",
     "typescript": "~6.0.3",
