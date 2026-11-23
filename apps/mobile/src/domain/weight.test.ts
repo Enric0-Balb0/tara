@@ -6,6 +6,7 @@ import {
   movingAverage,
   pressWeightKey,
   proteinPerKg,
+  proteinPerKgText,
   startWeightInput,
   weeklyChange,
   weightFromInput,
@@ -74,6 +75,27 @@ describe('proteinPerKg', () => {
   it('è null senza media o con una media non valida', () => {
     expect(proteinPerKg(180, null)).toBeNull();
     expect(proteinPerKg(180, 0)).toBeNull();
+  });
+});
+
+describe('proteinPerKgText', () => {
+  it('scrive il valore e come lo legge lo schermo', () => {
+    expect(proteinPerKgText(189, false, 90)).toEqual({
+      text: '2,1 g/kg',
+      spoken: '2,1 grammi per chilo',
+    });
+  });
+
+  it('con le proteine incomplete è un minimo (principio 2)', () => {
+    expect(proteinPerKgText(180, true, 90)).toEqual({
+      text: '≥ 2,0 g/kg',
+      spoken: 'almeno 2,0 grammi per chilo',
+    });
+  });
+
+  it('è null senza pesate', () => {
+    expect(proteinPerKgText(180, false, null)).toBeNull();
+    expect(proteinPerKgText(180, true, null)).toBeNull();
   });
 });
 

@@ -1,9 +1,9 @@
 import { StyleSheet, View } from 'react-native';
 
 import { type DiaryNutrient, formatTotal, type Total } from '@/domain/diary';
-import { formatAmount, formatNumber } from '@/domain/format';
+import { formatAmount } from '@/domain/format';
 import { type MacroTargets, remaining, remainingText } from '@/domain/targets';
-import { proteinPerKg } from '@/domain/weight';
+import { proteinPerKgText } from '@/domain/weight';
 import type { MacroToken } from '@/theme/colors';
 import { radius, space, touch } from '@/theme/layout';
 import { useTheme } from '@/theme/useTheme';
@@ -59,15 +59,8 @@ export function DayGoals({
   averageKg = null,
 }: Props) {
   const { colors } = useTheme();
-  const perKg = proteinPerKg(totals.protein_g.amount, averageKg);
-  const proteinNote =
-    perKg === null
-      ? undefined
-      : {
-          text: `${formatNumber(perKg, 1)} g/kg`,
-          spoken: `${formatNumber(perKg, 1)} grammi per chilo`,
-          testID: 'proteine-per-kg',
-        };
+  const perKg = proteinPerKgText(totals.protein_g.amount, totals.protein_g.incomplete, averageKg);
+  const proteinNote = perKg === null ? undefined : { ...perKg, testID: 'proteine-per-kg' };
   const plannedKcal = planned?.energy_kcal.amount ?? 0;
   if (!hasAnyTarget(target)) {
     return (

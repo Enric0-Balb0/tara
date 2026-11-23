@@ -129,6 +129,9 @@ function OpenSheet({ title, startKg, onConfirm, onDelete, onClose }: Props) {
           <TaraText variant="minimum" color="textSecondary">
             Tra 20 e 400 kg, con un decimale
           </TaraText>
+          <TaraText variant="minimum" color="textSecondary">
+            Al mattino, a digiuno, dopo il bagno.
+          </TaraText>
         </View>
 
         <Keypad decimal onKey={(key) => setInput((current) => pressWeightKey(current, key))} />

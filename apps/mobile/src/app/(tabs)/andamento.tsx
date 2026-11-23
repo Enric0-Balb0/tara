@@ -1,7 +1,7 @@
 import { useFocusEffect } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useRef, useState } from 'react';
-import { Alert, Modal, ScrollView, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert, AppState, Modal, ScrollView, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { PressableScale } from '@/components/PressableScale';
@@ -63,6 +63,14 @@ export default function TrendScreen() {
     }
   }, [db, userId]);
 
+  // Dopo mezzanotte, con l'app rimasta aperta, "oggi" va avanti.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void load();
+    });
+    return () => subscription.remove();
+  }, [load]);
+
   useFocusEffect(
     useCallback(() => {
       void load();
@@ -110,14 +118,14 @@ export default function TrendScreen() {
           {todayWeight === undefined ? (
             <Button
               label="Pesati"
-              onPress={() => setEditing({ date: today })}
+              onPress={() => setEditing({ date: toLocalDate(new Date()) })}
               accessibilityLabel="Pesati: registra il peso di oggi"
               testID="pesati"
             />
           ) : (
             <PressableScale
               testID="peso-oggi"
-              onPress={() => setEditing({ date: today, kg: todayWeight })}
+              onPress={() => setEditing({ date: toLocalDate(new Date()), kg: todayWeight })}
               accessibilityLabel={`Peso di oggi ${kgSpoken(todayWeight)}, tocca per modificarlo`}
               style={styles.todayValue}
             >
@@ -141,9 +149,7 @@ export default function TrendScreen() {
             Ultimi 30 giorni
           </TaraText>
           {series.points.length === 0 ? (
-            <TaraText color="textSecondary">
-              Nessuna pesata negli ultimi 30 giorni: il grafico compare con la prima.
-            </TaraText>
+            <TaraText color="textSecondary">Il grafico compare con la prima pesata.</TaraText>
           ) : (
             <>
               <WeightChart
@@ -160,14 +166,12 @@ export default function TrendScreen() {
           )}
         </View>
 
-        <View style={styles.section}>
-          <TaraText variant="section" accessibilityRole="header">
-            Ultime pesate
-          </TaraText>
-          {latest.length === 0 ? (
-            <TaraText color="textSecondary">Ancora nessuna pesata.</TaraText>
-          ) : (
-            latest.map((entry) => (
+        {latest.length === 0 ? null : (
+          <View style={styles.section}>
+            <TaraText variant="section" accessibilityRole="header">
+              Ultime pesate
+            </TaraText>
+            {latest.map((entry) => (
               <PressableScale
                 key={entry.date}
                 onPress={() => setEditing({ date: entry.date, kg: entry.kg })}
@@ -177,9 +181,9 @@ export default function TrendScreen() {
                 <TaraText>{dayLabel(entry.date)}</TaraText>
                 <TaraText variant="number">{kgText(entry.kg)}</TaraText>
               </PressableScale>
-            ))
-          )}
-        </View>
+            ))}
+          </View>
+        )}
       </ScrollView>
 
       <Modal

@@ -45,6 +45,23 @@ export function proteinPerKg(proteinG: number, averageKg: number | null): number
   return proteinG / averageKg;
 }
 
+/**
+ * "2,1 g/kg" e come lo legge lo schermo. Con proteine incomplete è un minimo: "≥ 2,0 g/kg",
+ * "almeno 2,0 grammi per chilo" (principio 2, come `formatTotal`). Null senza pesate.
+ */
+export function proteinPerKgText(
+  proteinG: number,
+  incomplete: boolean,
+  averageKg: number | null,
+): { text: string; spoken: string } | null {
+  const perKg = proteinPerKg(proteinG, averageKg);
+  if (perKg === null) return null;
+  const value = formatNumber(perKg, 1);
+  return incomplete
+    ? { text: `≥ ${value} g/kg`, spoken: `almeno ${value} grammi per chilo` }
+    : { text: `${value} g/kg`, spoken: `${value} grammi per chilo` };
+}
+
 /** "−0,4 kg (−0,5%) in una settimana", con il segno meno vero. */
 export function formatChange(change: WeeklyChange): string {
   const kg = formatNumber(Math.abs(change.kg), 1);
