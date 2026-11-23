@@ -90,9 +90,9 @@ tags:
 - tapOn:
     id: tasto-0
 - tapOn: Aggiungi 200 grammi
-- extendedWaitUntil:
-    visible:
-      id: proteine-per-kg
-    timeout: 10000
-- assertVisible: '.*g/kg'
+# Le proteine in g/kg: l'etichetta del riquadro dice "… grammi per chilo".
+- runFlow:
+    file: subflows/vedi.yaml
+    env:
+      ELEMENTO: '.*grammi per chilo.*'
 - takeScreenshot: screenshots/oggi-proteine-per-kg

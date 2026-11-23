@@ -101,6 +101,7 @@ export default function TrendScreen() {
         accessibilityElementsHidden={editing !== null}
       >
         <View
+          testID="peso-pannello"
           style={[styles.panel, { backgroundColor: colors.surface, borderColor: colors.border }]}
         >
           <TaraText variant="caption" color="textSecondary">

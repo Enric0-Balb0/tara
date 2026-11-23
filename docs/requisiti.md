@@ -139,7 +139,7 @@ Il diario è pensato per chi conosce già le grammature: un alimento noto si reg
 | RF-54 | Fasi della dieta (bulk, cut, mantenimento, reverse, mini-cut, diet break) con date, peso obiettivo e tasso obiettivo in kg o % a settimana. | S | F2 |
 | RF-55 | Progressione pianificata dei target dentro una fase (es. taper o reverse di N kcal ogni N settimane), applicata solo dopo conferma. | C | F2 |
 | RF-56 | Suggerimento settimanale di aggiustamento del target in base al tasso reale rispetto a quello della fase (usa RF-71). | S | F2 |
-| RF-57 | Proteine mostrate anche in g/kg di peso corporeo (sulla media mobile) e per pasto. | S | F1 |
+| RF-57 | Proteine mostrate anche in g/kg di peso corporeo (sulla media mobile) e per pasto. Fatto il 23/11 solo il g/kg del giorno sulla media mobile a 7 giorni; il valore per pasto è rimandato. | S | F1 |
 | RF-58 | Limiti giornalieri opzionali per sodio, potassio e caffeina; caffeina tracciata come nutriente, anche da integratori e bevande. | S | F2 |
 | RF-59 | Colori dei macro personalizzabili; un colore sotto 4,5:1 di contrasto viene corretto. | C | F1 |
 

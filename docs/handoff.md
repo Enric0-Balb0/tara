@@ -2,7 +2,7 @@
 
 Questo file riassume la conversazione di progettazione del 22 ottobre 2026 (claude.ai) da cui nasce il repository, così che una nuova sessione di Claude Code possa ripartire senza perdere contesto.
 
-## Riprendere il lavoro (aggiornato al 22/11/2026)
+## Riprendere il lavoro (aggiornato al 23/11/2026)
 
 - **Fase:** F1 (MVP «disinstallo FatSecret»), passo 8 di 9 (i passi d'interfaccia prima della sincronizzazione, che va fatta prima della build per il telefono). Dal 21/11 Enrico chiede di completare in autonomia l'MVP lato interfaccia; le funzioni AI vengono dopo. La F0 è chiusa salvo il ruleset (vedi sotto); gate F0 superato il 18/11, autenticazione fatta il 19/11.
   - Backend online dall'08/11: ogni merge su `main` con CI verde va online da solo su `https://tara-api-eu.onrender.com`.

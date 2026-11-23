@@ -30,7 +30,7 @@ tags:
     id: tab-andamento
     retryTapIfNoChange: true
 - assertVisible:
-    id: pesati
+    id: peso-pannello
 
 # Le tab per id, ritoccando se lo schermo non cambia: a volte il primo tocco si perde.
 - tapOn:
