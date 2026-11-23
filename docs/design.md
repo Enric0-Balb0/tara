@@ -154,6 +154,8 @@ Linee da 2 px su una griglia di 24, estremità arrotondate, disegnate come set u
 | **Selettore del tipo di giornata** | in alto in "Oggi" | mostra i tipi definiti dall'utente (RF-50), es. Allenamento e Riposo |
 | **Etichetta** | valori per 100 g o per la quantità scelta, nell'ordine dell'etichetta europea | in sola lettura (scheda alimento, condivisione) o da compilare (inserimento manuale, lettura della foto) |
 | **Riga dell'acqua** | in Oggi sotto gli obiettivi, una riga sola: "Acqua" con "1,25 di 3 l" e sottile avanzamento a sinistra; a destra pulsanti a pillola ("+250", "+500") e "Annulla +500" che dice cosa annulla | i pulsanti vanno a capo solo se non stanno a 360 dp; senza target niente barra |
+| **Grafico del peso** | in Andamento, ultimi 30 giorni: punti delle pesate in `testoSecondario`, linea della media a 7 giorni in `testo` (2 dp), asse zoomato sull'intervallo reale con i soli estremi scritti a sinistra, due righe sottili in alto e in basso, niente riempimento; sotto "Punti: pesate. Linea: media 7 giorni." | nessuna animazione; il lettore dello schermo legge il numero di pesate e il primo e l'ultimo valore, il dettaglio sta nell'elenco sotto; con una sola pesata c'è il punto senza linea |
+| **Tastierino del peso** | lo stesso tastierino con la virgola al posto di Tara: 82,4, un decimale, tre cifre intere | la prima cifra sostituisce il peso proposto; "Salva 82,4 kg" |
 | **Immagine della giornata** | la giornata come etichetta: totali contro il piano, pasti con le voci e i grammi, attribuzione di CIQUAL | si condivide dal menu di "Oggi" |
 
 ### L'etichetta da compilare
