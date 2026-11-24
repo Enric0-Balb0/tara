@@ -28,10 +28,10 @@ tags:
 - eraseText: 30
 - inputText: Pre-workout
 - pressKey: Enter
-- hideKeyboard
-- assertVisible:
+# Invio chiude la tastiera: niente hideKeyboard, che altrimenti farebbe da Indietro.
+- copyTextFrom:
     id: pasto-nome-3
-    text: Pre-workout
+- assertTrue: ${maestro.copiedText === 'Pre-workout'}
 
 # Nuovo pasto in coda e poi un passo in su: va prima di Cena (posizione 5, poi 4).
 - scrollUntilVisible:
@@ -46,7 +46,7 @@ tags:
     env:
       CAMPO: nuovo-pasto-nome
       TESTO: Post-workout
-- hideKeyboard
+# La tastiera resta aperta: i tocchi seguenti funzionano comunque.
 - scrollUntilVisible:
     element:
       id: aggiungi-pasto
