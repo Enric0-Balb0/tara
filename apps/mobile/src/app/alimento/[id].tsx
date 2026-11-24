@@ -114,21 +114,27 @@ export default function FoodScreen() {
     }, [load]),
   );
 
-  useEffect(() => {
-    if (userId === undefined) return undefined;
-    let current = true;
-    void (async () => {
-      const mealSlots = await ensureMealSlots(db, userId, new Date());
-      if (!current) return;
-      setSlots(mealSlots);
-      setSlotId(
-        (chosen) => chosen ?? slotForTime(mealSlots, minutesOfDay(formatTime(new Date())))?.id,
-      );
-    })();
-    return () => {
-      current = false;
-    };
-  }, [db, userId]);
+  // I pasti si rileggono a ogni ritorno: possono essere stati cambiati in Profilo (RF-40).
+  useFocusEffect(
+    useCallback(() => {
+      if (userId === undefined) return undefined;
+      let current = true;
+      void (async () => {
+        const mealSlots = await ensureMealSlots(db, userId, new Date());
+        if (!current) return;
+        setSlots(mealSlots);
+        // Il pasto scelto che non c'è più si sostituisce con quello dell'ora.
+        setSlotId((chosen) =>
+          chosen !== undefined && mealSlots.some((candidate) => candidate.id === chosen)
+            ? chosen
+            : slotForTime(mealSlots, minutesOfDay(formatTime(new Date())))?.id,
+        );
+      })().catch((error: unknown) => console.error('Pasti non letti', error));
+      return () => {
+        current = false;
+      };
+    }, [db, userId]),
+  );
 
   useEffect(() => {
     if (userId === undefined) return undefined;

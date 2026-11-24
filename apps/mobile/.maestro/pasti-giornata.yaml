@@ -1,0 +1,74 @@
+# Pasti configurabili (RF-40; serve il backend per l'accesso): da Profilo apro "Pasti della
+# giornata", rinomino Merenda in "Pre-workout", aggiungo "Post-workout" e lo sposto in su
+# (prima di Cena); in Oggi compaiono Pre-workout e poi Post-workout, nell'ordine giusto.
+appId: com.enricobalbo.tara
+name: Pasti della giornata
+tags:
+  - api
+---
+- runFlow: subflows/avvio.yaml
+- runFlow: subflows/accedi.yaml
+- extendedWaitUntil:
+    visible:
+      id: diario
+    timeout: 30000
+
+- tapOn: Profilo
+- tapOn:
+    id: pasti-giornata
+- extendedWaitUntil:
+    visible:
+      id: pasto-nome-3
+    timeout: 10000
+- takeScreenshot: screenshots/pasti-elenco
+
+# Merenda (il quarto pasto) diventa Pre-workout; Invio salva il nome.
+- tapOn:
+    id: pasto-nome-3
+- eraseText: 30
+- inputText: Pre-workout
+- pressKey: Enter
+- extendedWaitUntil:
+    visible:
+      id: pasto-su-3
+    timeout: 10000
+
+# Nuovo pasto in coda e poi un passo in su: va prima di Cena (posizione 5, poi 4).
+- tapOn:
+    id: nuovo-pasto-nome
+- runFlow:
+    file: subflows/scrivi.yaml
+    env:
+      CAMPO: nuovo-pasto-nome
+      TESTO: Post-workout
+- hideKeyboard
+- tapOn:
+    id: aggiungi-pasto
+- extendedWaitUntil:
+    visible:
+      id: pasto-su-5
+    timeout: 10000
+- tapOn:
+    id: pasto-su-5
+- takeScreenshot: screenshots/pasti-modificati
+
+# In Oggi l'ordine è Pre-workout, Post-workout, Cena.
+- tapOn:
+    id: pasti-indietro
+- back
+- extendedWaitUntil:
+    visible:
+      id: diario
+    timeout: 10000
+- runFlow:
+    file: subflows/vedi.yaml
+    env:
+      ELEMENTO: Pre-workout
+- runFlow:
+    file: subflows/vedi.yaml
+    env:
+      ELEMENTO: Post-workout
+- assertVisible:
+    text: Post-workout
+    below: Pre-workout
+- takeScreenshot: screenshots/oggi-pasti
