@@ -207,7 +207,7 @@ export default function MealSlotsScreen() {
               style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
             >
               <TextField
-                label="Nome del pasto"
+                label={`Nome del pasto ${slot.name}`}
                 value={draft?.name ?? slot.name}
                 onChangeText={(name) => setDraft(slot.id, { name })}
                 onEndEditing={() => void commit(slot, drafts[slot.id])}
@@ -218,7 +218,7 @@ export default function MealSlotsScreen() {
               <View style={styles.controls}>
                 <View style={styles.time}>
                   <TextField
-                    label="Orario"
+                    label={`Orario di ${slot.name}`}
                     value={draft?.time ?? slot.expectedTime ?? ''}
                     onChangeText={(time) => setDraft(slot.id, { time })}
                     onEndEditing={() => void commit(slot, drafts[slot.id])}

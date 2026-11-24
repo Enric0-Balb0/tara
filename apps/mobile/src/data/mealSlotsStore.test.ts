@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { addEntry, ensureMealSlots } from './diaryStore';
+import { addEntry, deleteEntry, ensureMealSlots } from './diaryStore';
 import {
   addMealSlot,
   deleteMealSlot,
@@ -9,7 +9,7 @@ import {
   renameMealSlot,
   setMealSlotTime,
 } from './mealSlotsStore';
-import { addPlanItem } from './planStore';
+import { addPlanItem, deletePlanItem } from './planStore';
 import { initDatabase } from './schema';
 import type { SqlDatabase } from './sql';
 import { ensureDayTypes } from './targetsStore';
@@ -202,6 +202,49 @@ describe('deleteMealSlot', () => {
       code: 'in_use',
     });
     expect(await names()).toContain('Cena');
+  });
+
+  it('le voci eliminate di diario e piano non bloccano l eliminazione', async () => {
+    const pranzo = await slotNamed('Pranzo');
+    const entry = await addEntry(db, {
+      userId: USER,
+      date: '2026-11-24',
+      mealSlotId: pranzo.id,
+      food: ALBUME,
+      quantity: 100,
+      now: NOW,
+    });
+    const types = await ensureDayTypes(db, USER, NOW);
+    const item = await addPlanItem(db, {
+      userId: USER,
+      dayTypeId: types[0]?.id ?? '',
+      mealSlotId: pranzo.id,
+      food: ALBUME,
+      quantity: 100,
+      now: NOW,
+    });
+    await deleteEntry(db, USER, entry.id, NOW);
+    await deletePlanItem(db, USER, item.id, NOW);
+    await deleteMealSlot(db, USER, pranzo.id, NOW);
+    expect(await names()).not.toContain('Pranzo');
+  });
+
+  it('un rifiuto non scrive: deleted_at resta NULL', async () => {
+    const cena = await slotNamed('Cena');
+    await addEntry(db, {
+      userId: USER,
+      date: '2026-11-24',
+      mealSlotId: cena.id,
+      food: ALBUME,
+      quantity: 100,
+      now: NOW,
+    });
+    await rejection(deleteMealSlot(db, USER, cena.id, NOW));
+    const row = await db.getFirstAsync<{ deleted_at: string | null }>(
+      'SELECT deleted_at FROM meal_slot WHERE id = ?',
+      cena.id,
+    );
+    expect(row?.deleted_at).toBeNull();
   });
 
   it('rifiuta l ultimo pasto rimasto', async () => {

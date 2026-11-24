@@ -51,7 +51,7 @@ function Screens() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="profilo" options={{ title: 'Profilo' }} />
         <Stack.Screen name="pasti" options={{ headerShown: false }} />
-        <Stack.Screen name="cerca"options={{ title: 'Cerca un alimento' }} />
+        <Stack.Screen name="cerca" options={{ title: 'Cerca un alimento' }} />
         <Stack.Screen name="alimento/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="nuovo-alimento" options={{ headerShown: false }} />
         <Stack.Screen name="ricetta" options={{ headerShown: false }} />

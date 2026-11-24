@@ -28,12 +28,17 @@ tags:
 - eraseText: 30
 - inputText: Pre-workout
 - pressKey: Enter
-- extendedWaitUntil:
-    visible:
-      id: pasto-su-3
-    timeout: 10000
+- hideKeyboard
+- assertVisible:
+    id: pasto-nome-3
+    text: Pre-workout
 
 # Nuovo pasto in coda e poi un passo in su: va prima di Cena (posizione 5, poi 4).
+- scrollUntilVisible:
+    element:
+      id: nuovo-pasto-nome
+    direction: DOWN
+    centerElement: true
 - tapOn:
     id: nuovo-pasto-nome
 - runFlow:
@@ -42,12 +47,29 @@ tags:
       CAMPO: nuovo-pasto-nome
       TESTO: Post-workout
 - hideKeyboard
+- scrollUntilVisible:
+    element:
+      id: aggiungi-pasto
+    direction: DOWN
+    centerElement: true
 - tapOn:
     id: aggiungi-pasto
-- extendedWaitUntil:
-    visible:
+- scrollUntilVisible:
+    element:
       id: pasto-su-5
-    timeout: 10000
+    direction: UP
+    centerElement: true
+    timeout: 4000
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: pasto-su-5
+    direction: DOWN
+    centerElement: true
+    timeout: 4000
+    optional: true
+- assertVisible:
+    id: pasto-su-5
 - tapOn:
     id: pasto-su-5
 - takeScreenshot: screenshots/pasti-modificati
