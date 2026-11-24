@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { type DiaryNutrient, formatTotal, type Total } from '@/domain/diary';
 import { formatAmount } from '@/domain/format';
 import { type MacroTargets, remaining, remainingText } from '@/domain/targets';
+import { proteinPerKgText } from '@/domain/weight';
 import type { MacroToken } from '@/theme/colors';
 import { radius, space, touch } from '@/theme/layout';
 import { useTheme } from '@/theme/useTheme';
@@ -33,6 +34,8 @@ interface Props {
   dayTypeName?: string;
   /** Senza, niente invito al Piano quando manca il target (nel Piano stesso). */
   onSetTargets?: () => void;
+  /** Media mobile del peso alla data mostrata, per le proteine in g/kg (RF-57); null senza pesate. */
+  averageKg?: number | null;
 }
 
 function hasAnyTarget(target: MacroTargets | undefined): target is MacroTargets {
@@ -53,13 +56,16 @@ export function DayGoals({
   label = 'Obiettivi della giornata',
   dayTypeName,
   onSetTargets,
+  averageKg = null,
 }: Props) {
   const { colors } = useTheme();
+  const perKg = proteinPerKgText(totals.protein_g.amount, totals.protein_g.incomplete, averageKg);
+  const proteinNote = perKg === null ? undefined : { ...perKg, testID: 'proteine-per-kg' };
   const plannedKcal = planned?.energy_kcal.amount ?? 0;
   if (!hasAnyTarget(target)) {
     return (
       <View style={styles.stack}>
-        <DayTotals totals={totals} />
+        <DayTotals totals={totals} proteinNote={proteinNote} />
         {plannedKcal > 0 ? (
           <TaraText variant="caption" color="textSecondary" style={styles.note}>
             Previste dal piano: {formatAmount(plannedKcal, 'kcal')} kcal
@@ -118,6 +124,7 @@ export function DayGoals({
           logged={totals[macro.code].amount}
           planned={planned?.[macro.code].amount ?? 0}
           target={target[macro.code]}
+          note={macro.code === 'protein_g' ? proteinNote : undefined}
         />
       ))}
       {incomplete ? (

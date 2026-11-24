@@ -342,6 +342,24 @@ export const MIGRATIONS: readonly string[] = [
     PRIMARY KEY (user_id, key)
   ) STRICT;
   `,
+  // 12: peso (RF-70): una pesata al giorno per utente, in chili.
+  `
+  CREATE TABLE weight_entry (
+    id TEXT PRIMARY KEY NOT NULL,
+    user_id TEXT NOT NULL,
+    date TEXT NOT NULL CONSTRAINT weight_entry_date_valid
+      CHECK (date GLOB '[0-9][0-9][0-9][0-9]-[0-1][0-9]-[0-3][0-9]'),
+    kg REAL NOT NULL CONSTRAINT weight_entry_kg_range CHECK (kg BETWEEN 20 AND 400),
+    source TEXT NOT NULL DEFAULT 'manual'
+      CONSTRAINT weight_entry_source_valid CHECK (source IN ('manual', 'health')),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    deleted_at TEXT
+  ) STRICT;
+
+  CREATE UNIQUE INDEX weight_entry_one_per_day ON weight_entry (user_id, date)
+    WHERE deleted_at IS NULL;
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

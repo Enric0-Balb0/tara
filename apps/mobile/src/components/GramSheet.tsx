@@ -276,7 +276,7 @@ function OpenSheet({
                   <PressableScale
                     key={shortcut.label}
                     onPress={() => setEntry(startEntry(shortcut.grams))}
-                    accessibilityLabel={shortcut.label}
+                    accessibilityLabel={shortcut.label.replace(/ (g|ml)$/, ` ${unitWord}`)}
                     style={[styles.lastUsed, { borderColor: colors.borderStrong }]}
                   >
                     <TaraText variant="caption">{shortcut.label}</TaraText>

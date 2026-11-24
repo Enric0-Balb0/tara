@@ -1,0 +1,98 @@
+# Peso (RF-70, RF-57; serve il backend per l'accesso e il primo download): in Andamento
+# premo Pesati e scrivo 82,4 con il tastierino; la media a 7 giorni dice 82,4 kg. Poi
+# correggo la pesata a 82,0 e in Oggi, dopo aver registrato albume 200 g, compaiono le
+# proteine in g/kg.
+appId: com.enricobalbo.tara
+name: Peso
+tags:
+  - api
+---
+- runFlow: subflows/avvio.yaml
+- runFlow: subflows/accedi.yaml
+- extendedWaitUntil:
+    visible:
+      id: diario
+    timeout: 30000
+
+# Le tab per id, ritoccando se lo schermo non cambia: a volte il primo tocco si perde.
+- tapOn:
+    id: tab-andamento
+    retryTapIfNoChange: true
+- extendedWaitUntil:
+    visible:
+      id: pesati
+    timeout: 10000
+- tapOn:
+    id: pesati
+- tapOn:
+    id: tasto-8
+- tapOn:
+    id: tasto-2
+- tapOn:
+    id: tasto-virgola
+- tapOn:
+    id: tasto-4
+- assertVisible:
+    id: salva-peso
+- takeScreenshot: screenshots/peso-foglio
+- tapOn:
+    id: salva-peso
+- extendedWaitUntil:
+    visible: Media 7 giorni 82,4 kg
+    timeout: 10000
+- takeScreenshot: screenshots/andamento-peso
+
+# La pesata di oggi si corregge con un tocco: 82,0 kg (la prima cifra sostituisce il peso).
+- tapOn:
+    id: peso-oggi
+- tapOn:
+    id: tasto-8
+- tapOn:
+    id: tasto-2
+- tapOn:
+    id: salva-peso
+- extendedWaitUntil:
+    visible: Media 7 giorni 82,0 kg
+    timeout: 10000
+
+# In Oggi: albume 200 g e le proteine in g/kg.
+- tapOn:
+    id: tab-oggi
+    retryTapIfNoChange: true
+- extendedWaitUntil:
+    visible:
+      id: diario
+    timeout: 10000
+- runFlow:
+    file: subflows/tocca.yaml
+    env:
+      ELEMENTO: Aggiungi a Pranzo
+- runFlow:
+    file: subflows/scrivi.yaml
+    env:
+      CAMPO: campo-ricerca
+      TESTO: albume
+# Il primo download comprende circa 3500 alimenti: la ricerca riparte quando arrivano.
+- extendedWaitUntil:
+    visible: "Albume d'uovo in polvere"
+    timeout: 90000
+- tapOn:
+    text: "Albume d'uovo"
+    index: 0
+- extendedWaitUntil:
+    visible: Aggiungi a Pranzo
+    timeout: 10000
+- tapOn: Aggiungi a Pranzo
+- tapOn:
+    id: tasto-2
+- tapOn:
+    id: tasto-0
+- tapOn:
+    id: tasto-0
+- tapOn: Aggiungi 200 grammi
+# Le proteine in g/kg: l'etichetta del riquadro dice "… grammi per chilo".
+- runFlow:
+    file: subflows/vedi.yaml
+    env:
+      ELEMENTO: '.*grammi per chilo.*'
+- takeScreenshot: screenshots/oggi-proteine-per-kg
