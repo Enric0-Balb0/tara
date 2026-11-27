@@ -50,7 +50,7 @@ describe('initDatabase', () => {
     ]);
     const version = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
     expect(version?.user_version).toBe(SCHEMA_VERSION);
-    expect(SCHEMA_VERSION).toBe(13);
+    expect(SCHEMA_VERSION).toBe(14);
   });
 
   it('chi trova il database occupato aspetta invece di fallire subito', async () => {
@@ -197,5 +197,19 @@ describe('migrazione alla versione 3', () => {
         "INSERT INTO food (id, name, state, base_unit, search_text, cooking) VALUES ('f3', 'Broccoli', 'cooked', 'g', 'broccoli', ' ')",
       ),
     ).rejects.toThrow(/food_cooking_valid/);
+  });
+
+  it('la porzione dichiarata è positiva e il nome non sta senza grammi', async () => {
+    const insert = (serving: string) =>
+      db.runAsync(
+        `INSERT INTO food (id, name, state, base_unit, search_text, serving_g, serving_name)
+         VALUES ('p${serving.length}', 'Skyr', 'not_applicable', 'g', 'skyr', ${serving})`,
+      );
+    await expect(insert("0, 'vasetto'")).rejects.toThrow(/food_serving_positive/);
+    await expect(insert('-5, NULL')).rejects.toThrow(/food_serving_positive/);
+    await expect(insert("NULL, 'vasetto'")).rejects.toThrow(/food_serving_name_needs_grams/);
+    await insert('170, NULL');
+    await insert("170, 'vasetto'");
+    await insert('NULL, NULL');
   });
 });

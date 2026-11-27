@@ -55,7 +55,7 @@ Un nuovo prodotto entra nel catalogo da barcode, foto dell'etichetta o inserimen
 | ID | Requisito | Priorità | Fase |
 | --- | --- | --- | --- |
 | RF-01 | Catalogo di alimenti generici importato da CIQUAL 2025 con nomi in italiano; USDA FoodData Central si aggiunge quando manca un generico usato davvero. | M | F0 |
-| RF-02 | Prodotti di marca con nome, marca, categoria, barcode, unità base (g o ml), porzione dichiarata e alimento generico di riferimento. | M | F1 |
+| RF-02 | Prodotti di marca con nome, marca, categoria, barcode, unità base (g o ml), porzione dichiarata e alimento generico di riferimento. Fatti: nome, marca, unità, porzione (grammi o ml e nome facoltativo, che nel foglio dei grammi diventa la scorciatoia «1 vasetto · 150 g»); restano da fare la categoria (RF-05) e il generico di riferimento (RF-17). | M | F1 |
 | RF-03 | Valori nutrizionali salvati per 100 g o 100 ml, un record per nutriente con provenienza e confidenza. | M | F0 |
 | RF-04 | Varianti crudo e cotto come alimenti distinti, etichettate nella ricerca; il crudo è la variante predefinita. | M | F1 |
 | RF-05 | Categoria scelta da una tassonomia fissa, non testo libero. | M | F1 |
@@ -119,7 +119,7 @@ Il diario è pensato per chi conosce già le grammature: un alimento noto si reg
 | ID | Requisito | Priorità | Fase |
 | --- | --- | --- | --- |
 | RF-40 | Voci organizzate per data e slot pasto; numero e nomi degli slot configurabili. Un pasto con voci non si elimina: si archivia (sparisce dai pasti futuri e Oggi lo mostra solo nei giorni in cui ha voci) e si ripristina. I nomi dei pasti attivi sono unici. | M | F1 |
-| RF-41 | Quantità in grammi o ml con tastierino numerico in primo piano; porzioni come scorciatoia per alimenti a pezzo e ricette a porzioni. | M | F1 |
+| RF-41 | Quantità in grammi o ml con tastierino numerico in primo piano; porzioni come scorciatoia per alimenti a pezzo (porzione dichiarata dell'alimento, con plurale italiano) e ricette a porzioni. | M | F1 |
 | RF-42 | Quantità proposta = ultima usata per quell'alimento nello stesso slot. | M | F1 |
 | RF-43 | Snapshot dei valori nutrizionali al momento della registrazione: modifiche successive ad alimenti o ricette non alterano il passato. | M | F1 |
 | RF-44 | Preferiti, recenti, copia di un pasto da un altro giorno, copia di una giornata intera. | M | F1 |

@@ -148,6 +148,30 @@ describe('personalFoods e ricette', () => {
   });
 });
 
+describe('porzione dichiarata (RF-02)', () => {
+  it('si salva con il nome, si legge, si cambia e si toglie', async () => {
+    const id = await createFood(
+      db,
+      USER,
+      { ...SKYR, serving: { grams: 170, name: ' vasetto ' } },
+      NOW,
+    );
+    expect((await getFood(db, id))?.serving).toEqual({ grams: 170, name: 'vasetto' });
+    await updateFood(db, USER, id, { ...SKYR, serving: { grams: 150, name: null } }, later(1));
+    expect((await getFood(db, id))?.serving).toEqual({ grams: 150, name: null });
+    await updateFood(db, USER, id, SKYR, later(2));
+    expect((await getFood(db, id))?.serving).toBeNull();
+  });
+
+  it('un nome vuoto vale nessun nome; i grammi non positivi sono rifiutati', async () => {
+    const id = await createFood(db, USER, { ...SKYR, serving: { grams: 30, name: '  ' } }, NOW);
+    expect((await getFood(db, id))?.serving).toEqual({ grams: 30, name: null });
+    await expect(
+      createFood(db, USER, { ...SKYR, serving: { grams: 0, name: 'uovo' } }, NOW),
+    ).rejects.toThrow(/food_serving_positive/);
+  });
+});
+
 describe('updateFood e deleteFood', () => {
   it('la modifica sostituisce nome, marca e valori', async () => {
     const id = await createFood(db, USER, SKYR, NOW);

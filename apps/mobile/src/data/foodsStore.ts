@@ -21,6 +21,8 @@ export interface PersonalFoodInput {
   values: Readonly<Record<string, number>>;
   /** I valori calcolati da altri (kcal dai kJ, sodio dal sale): provenienza `estimated`. */
   derived?: readonly string[];
+  /** Porzione dichiarata (RF-02): grammi o ml e nome facoltativo; il nome senza grammi non c'è. */
+  serving?: { grams: number; name: string | null } | null;
 }
 
 export interface PersonalFood {
@@ -38,6 +40,12 @@ function searchText(input: PersonalFoodInput): string {
     .filter((text): text is string => text !== null && text.trim() !== '')
     .map(searchKey)
     .join('\n');
+}
+
+function servingOf(input: PersonalFoodInput): [number | null, string | null] {
+  const grams = input.serving?.grams ?? null;
+  const name = input.serving?.name?.trim() ?? '';
+  return [grams, grams === null || name === '' ? null : name];
 }
 
 function brandOf(input: PersonalFoodInput): string | null {
@@ -75,8 +83,8 @@ export async function createFood(
   await db.withTransactionAsync(async () => {
     await db.runAsync(
       `INSERT INTO food (id, user_id, name, state, base_unit, search_text, source, brand,
-         created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, 'manual', ?, ?, ?)`,
+         serving_g, serving_name, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'manual', ?, ?, ?, ?, ?)`,
       id,
       userId,
       input.name.trim(),
@@ -84,6 +92,7 @@ export async function createFood(
       input.baseUnit,
       searchText(input),
       brandOf(input),
+      ...servingOf(input),
       at,
       at,
     );
@@ -92,7 +101,7 @@ export async function createFood(
   return id;
 }
 
-/** Sostituisce nome, marca, stato, unità e valori; false se l'alimento non è dell'utente. */
+/** Sostituisce nome, marca, stato, unità, porzione e valori; false se l'alimento non è dell'utente. */
 export async function updateFood(
   db: SqlDatabase,
   userId: string,
@@ -104,13 +113,14 @@ export async function updateFood(
   await db.withTransactionAsync(async () => {
     const { changes } = await db.runAsync(
       `UPDATE food SET name = ?, state = ?, base_unit = ?, search_text = ?, brand = ?,
-         updated_at = ?
+         serving_g = ?, serving_name = ?, updated_at = ?
        WHERE id = ? AND user_id = ? AND source IS NOT 'recipe' AND deleted_at IS NULL`,
       input.name.trim(),
       input.state,
       input.baseUnit,
       searchText(input),
       brandOf(input),
+      ...servingOf(input),
       now.toISOString(),
       id,
       userId,

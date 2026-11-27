@@ -369,6 +369,14 @@ export const MIGRATIONS: readonly string[] = [
   CREATE UNIQUE INDEX meal_slot_name_once ON meal_slot (user_id, lower(trim(name)))
     WHERE deleted_at IS NULL AND archived_at IS NULL;
   `,
+  // 14: porzione dichiarata (RF-02, RF-41): grammi (o ml) e nome facoltativo ("vasetto").
+  // I grammi senza nome valgono "porzione"; il nome senza grammi no.
+  `
+  ALTER TABLE food ADD COLUMN serving_g REAL
+    CONSTRAINT food_serving_positive CHECK (serving_g IS NULL OR serving_g > 0);
+  ALTER TABLE food ADD COLUMN serving_name TEXT
+    CONSTRAINT food_serving_name_needs_grams CHECK (serving_name IS NULL OR serving_g IS NOT NULL);
+  `,
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

@@ -260,6 +260,8 @@ export interface FoodDetail {
   personal: boolean;
   /** Solo i nutrienti noti, nell'ordine di visualizzazione. */
   nutrients: FoodNutrient[];
+  /** Porzione dichiarata (RF-02): grammi o ml e nome ("vasetto"), se c'è. */
+  serving: { grams: number; name: string | null } | null;
 }
 
 interface FoodRow {
@@ -337,9 +339,14 @@ export async function searchFoods(
 
 export async function getFood(db: SqlDatabase, id: string): Promise<FoodDetail | null> {
   const food = await db.getFirstAsync<
-    FoodRow & { source: FoodSource | null; user_id: string | null }
+    FoodRow & {
+      source: FoodSource | null;
+      user_id: string | null;
+      serving_g: number | null;
+      serving_name: string | null;
+    }
   >(
-    `SELECT id, name, state, cooking, base_unit, brand, source, user_id
+    `SELECT id, name, state, cooking, base_unit, brand, source, user_id, serving_g, serving_name
      FROM food WHERE id = ? AND deleted_at IS NULL`,
     id,
   );
@@ -362,6 +369,7 @@ export async function getFood(db: SqlDatabase, id: string): Promise<FoodDetail |
     brand: food.brand,
     personal: food.user_id !== null,
     nutrients,
+    serving: food.serving_g === null ? null : { grams: food.serving_g, name: food.serving_name },
   };
 }
 

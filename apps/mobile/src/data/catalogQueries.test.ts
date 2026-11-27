@@ -146,6 +146,7 @@ describe('getFood', () => {
       source: 'ciqual',
       brand: null,
       personal: false,
+      serving: null,
       nutrients: [
         {
           code: 'energy_kcal',

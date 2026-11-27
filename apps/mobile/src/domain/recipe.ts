@@ -4,7 +4,7 @@
  * vale zero (principio 2).
  */
 
-import { formatAmount } from './format';
+import { servingShortcuts } from './serving';
 
 export interface RecipeItemValues {
   /** Grammi a crudo nella ricetta. */
@@ -75,9 +75,5 @@ export const MISSING_INGREDIENT_TEXT =
 
 /** Le scorciatoie del foglio dei grammi per una ricetta a porzioni: una e due porzioni. */
 export function portionShortcuts(servingG: number): { label: string; grams: number }[] {
-  if (!(servingG > 0)) return [];
-  return [1, 2].map((count) => ({
-    label: `${count} ${count === 1 ? 'porzione' : 'porzioni'} · ${formatAmount(servingG * count, 'grams')} g`,
-    grams: servingG * count,
-  }));
+  return servingShortcuts(servingG);
 }
