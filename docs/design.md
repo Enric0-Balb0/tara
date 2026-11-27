@@ -174,6 +174,7 @@ Idea di Enrico: quando si inserisce un alimento a mano, il modulo ha la forma de
 
 - **Oggi**: selettore del tipo di giornata, barre degli obiettivi in grammi (registrato e previsto), pasti del piano con voci registrate e previste, barra di ricerca. Riferimento: "Proposta · Oggi dal piano" con i colori dei dischi.
 - **Piano**: per ogni tipo di giornata, i pasti (numero e nomi liberi) con alimenti e grammi, e gli obiettivi.
+- **Pasti della giornata** (Profilo, RF-40): una scheda compatta per pasto, senza etichette sopra i campi: nome e orario (96 px, "--:--") sulla stessa riga, sotto le azioni a destra (su, giù, "Archivia", elimina solo se il pasto è vuoto), tutte da 44 px; gli archiviati in fondo con "Ripristina".
 - **Dispensa**: gli alimenti personali, le ricette e i pasti salvati. È il nome scelto da Enrico per il catalogo personale.
 - **Andamento**: grafico del peso con l'asse zoomato sull'intervallo reale, punti delle pesate, linea della media mobile a 7 giorni e variazione settimanale (RF-70); niente riempimenti sotto la linea.
 - **Scheda alimento**: nome, stato e cottura in secondo piano, etichetta con i valori per 100 g e la loro fonte; da qui il foglio di inserimento.

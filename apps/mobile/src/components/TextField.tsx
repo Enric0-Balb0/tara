@@ -15,6 +15,8 @@ interface Props extends Omit<TextInputProps, 'style' | 'placeholderTextColor'> {
   variant?: TextRole;
   /** Bordo `error` quando il valore è stato rifiutato; il messaggio lo mostra chi lo usa. */
   invalid?: boolean;
+  /** Senza etichetta visibile e alto 44, per le righe di una lista; resta quella letta dal lettore. */
+  compact?: boolean;
 }
 
 /**
@@ -26,6 +28,7 @@ export function TextField({
   label,
   variant = 'body',
   invalid = false,
+  compact = false,
   onFocus,
   onBlur,
   ...rest
@@ -36,9 +39,11 @@ export function TextField({
   const border = invalid ? colors.error : focused ? colors.text : colors.borderStrong;
   return (
     <View style={styles.wrapper}>
-      <TaraText variant="minimum" color="textSecondary">
-        {label}
-      </TaraText>
+      {compact ? null : (
+        <TaraText variant="minimum" color="textSecondary">
+          {label}
+        </TaraText>
+      )}
       <TextInput
         ref={ref}
         accessibilityLabel={label}
@@ -57,6 +62,7 @@ export function TextField({
         {...rest}
         style={[
           styles.input,
+          compact ? styles.compact : null,
           {
             backgroundColor: colors.raised,
             borderColor: border,
@@ -73,6 +79,7 @@ export function TextField({
 
 const styles = StyleSheet.create({
   wrapper: { gap: space.s },
+  compact: { minHeight: touch.min, paddingHorizontal: space.m, paddingVertical: space.s },
   input: {
     minHeight: touch.primary,
     borderRadius: radius.field,

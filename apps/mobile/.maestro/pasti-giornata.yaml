@@ -18,11 +18,18 @@ tags:
     id: pasti-giornata
 - extendedWaitUntil:
     visible:
-      id: pasto-nome-3
+      id: pasti-indietro
     timeout: 10000
 - takeScreenshot: screenshots/pasti-elenco
 
 # Merenda (il quarto pasto) diventa Pre-workout; Invio salva il nome.
+- scrollUntilVisible:
+    element:
+      id: pasto-nome-3
+    direction: DOWN
+    centerElement: true
+    timeout: 4000
+    optional: true
 - tapOn:
     id: pasto-nome-3
 - eraseText: 30

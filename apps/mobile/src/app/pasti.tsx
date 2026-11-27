@@ -184,6 +184,8 @@ export default function MealSlotsScreen() {
       setNewTime('');
     }, 'Pasto non aggiunto');
 
+  const cardColors = { backgroundColor: colors.surface, borderColor: colors.border };
+
   async function back() {
     if (locked.current) return;
     await flush();
@@ -220,34 +222,43 @@ export default function MealSlotsScreen() {
         </TaraText>
         {slots.map((slot, index) => {
           const draft = drafts[slot.id];
+          const used = inUse.has(slot.id);
           return (
-            <View
-              key={slot.id}
-              style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
-            >
-              <TextField
-                label={`Nome del pasto ${slot.name}`}
-                value={draft?.name ?? slot.name}
-                onChangeText={(name) => setDraft(slot.id, { name })}
-                onEndEditing={() => void commit(slot, drafts[slot.id])}
-                autoCapitalize="sentences"
-                returnKeyType="done"
-                testID={`pasto-nome-${index}`}
-              />
-              <View style={styles.controls}>
+            <View key={slot.id} style={[styles.card, cardColors]}>
+              <View style={styles.row}>
+                <View style={styles.name}>
+                  <TextField
+                    compact
+                    label={`Nome del pasto ${slot.name}`}
+                    value={draft?.name ?? slot.name}
+                    onChangeText={(name) => setDraft(slot.id, { name })}
+                    onEndEditing={() => void commit(slot, drafts[slot.id])}
+                    autoCapitalize="sentences"
+                    returnKeyType="done"
+                    testID={`pasto-nome-${index}`}
+                  />
+                </View>
                 <View style={styles.time}>
                   <TextField
+                    compact
                     label={`Orario di ${slot.name}`}
                     value={draft?.time ?? slot.expectedTime ?? ''}
                     onChangeText={(time) => setDraft(slot.id, { time })}
                     onEndEditing={() => void commit(slot, drafts[slot.id])}
-                    placeholder="HH:MM"
+                    placeholder="--:--"
                     keyboardType="numbers-and-punctuation"
                     maxLength={5}
                     returnKeyType="done"
                     testID={`pasto-orario-${index}`}
                   />
                 </View>
+              </View>
+              <View style={styles.row}>
+                <TaraText variant="caption" color="textSecondary" style={styles.note}>
+                  {used
+                    ? 'Ha voci nel diario: lo nascondo dai pasti futuri, i giorni passati restano.'
+                    : ''}
+                </TaraText>
                 <PressableScale
                   onPress={() => void move(slot, 'up')}
                   disabled={busy || index === 0}
@@ -266,7 +277,16 @@ export default function MealSlotsScreen() {
                 >
                   <Icon name="chevronDown" color="text" />
                 </PressableScale>
-                {inUse.has(slot.id) ? null : (
+                <PressableScale
+                  onPress={() => void archive(slot)}
+                  disabled={busy}
+                  accessibilityLabel={`Archivia ${slot.name}`}
+                  testID={`pasto-archivia-${index}`}
+                  style={styles.textButton}
+                >
+                  <TaraText variant="caption">Archivia</TaraText>
+                </PressableScale>
+                {used ? null : (
                   <PressableScale
                     onPress={() => confirmDelete(slot)}
                     disabled={busy}
@@ -278,45 +298,38 @@ export default function MealSlotsScreen() {
                   </PressableScale>
                 )}
               </View>
-              {inUse.has(slot.id) ? (
-                <TaraText variant="caption" color="textSecondary">
-                  Ha voci nel diario: lo nascondo dai pasti futuri, i giorni passati restano.
-                </TaraText>
-              ) : null}
-              <Button
-                kind="quiet"
-                label="Archivia"
-                accessibilityLabel={`Archivia ${slot.name}`}
-                onPress={() => void archive(slot)}
-                disabled={busy}
-                testID={`pasto-archivia-${index}`}
-              />
             </View>
           );
         })}
 
-        <View
-          style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
-        >
-          <TextField
-            label="Nuovo pasto"
-            value={newName}
-            onChangeText={setNewName}
-            placeholder="per esempio Post-workout"
-            autoCapitalize="sentences"
-            returnKeyType="done"
-            testID="nuovo-pasto-nome"
-          />
-          <TextField
-            label="Orario (facoltativo)"
-            value={newTime}
-            onChangeText={setNewTime}
-            placeholder="HH:MM"
-            keyboardType="numbers-and-punctuation"
-            maxLength={5}
-            returnKeyType="done"
-            testID="nuovo-pasto-orario"
-          />
+        <View style={[styles.card, cardColors]}>
+          <View style={styles.row}>
+            <View style={styles.name}>
+              <TextField
+                compact
+                label="Nome del nuovo pasto"
+                value={newName}
+                onChangeText={setNewName}
+                placeholder="Nuovo pasto"
+                autoCapitalize="sentences"
+                returnKeyType="done"
+                testID="nuovo-pasto-nome"
+              />
+            </View>
+            <View style={styles.time}>
+              <TextField
+                compact
+                label="Orario del nuovo pasto"
+                value={newTime}
+                onChangeText={setNewTime}
+                placeholder="--:--"
+                keyboardType="numbers-and-punctuation"
+                maxLength={5}
+                returnKeyType="done"
+                testID="nuovo-pasto-orario"
+              />
+            </View>
+          </View>
           <Button
             kind="secondary"
             label="Aggiungi un pasto"
@@ -332,25 +345,19 @@ export default function MealSlotsScreen() {
               Archiviati
             </TaraText>
             {archived.map((slot, index) => (
-              <View
-                key={slot.id}
-                style={[
-                  styles.card,
-                  styles.archivedCard,
-                  { backgroundColor: colors.surface, borderColor: colors.border },
-                ]}
-              >
-                <TaraText numberOfLines={1} style={styles.archivedName}>
+              <View key={slot.id} style={[styles.card, styles.row, cardColors]}>
+                <TaraText numberOfLines={1} style={styles.note}>
                   {slot.name}
                 </TaraText>
-                <Button
-                  kind="quiet"
-                  label="Ripristina"
-                  accessibilityLabel={`Ripristina ${slot.name}`}
+                <PressableScale
                   onPress={() => void restore(slot)}
                   disabled={busy}
+                  accessibilityLabel={`Ripristina ${slot.name}`}
                   testID={`pasto-ripristina-${index}`}
-                />
+                  style={styles.textButton}
+                >
+                  <TaraText variant="caption">Ripristina</TaraText>
+                </PressableScale>
               </View>
             ))}
           </View>
@@ -369,16 +376,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  content: { padding: space.l, gap: space.m },
+  content: { padding: space.l, gap: space.s },
   card: {
     borderRadius: radius.button,
     borderWidth: 1,
-    padding: space.l,
-    gap: space.m,
+    paddingHorizontal: space.m,
+    paddingVertical: space.s,
+    gap: space.xs,
   },
-  controls: { flexDirection: 'row', alignItems: 'flex-end', gap: space.xs },
-  time: { flex: 1, marginRight: space.s },
+  row: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
+  name: { flex: 1 },
+  time: { width: 96 },
+  note: { flex: 1 },
+  textButton: {
+    minHeight: touch.min,
+    minWidth: touch.min,
+    paddingHorizontal: space.s,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   archived: { gap: space.s, marginTop: space.s },
-  archivedCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  archivedName: { flex: 1 },
 });
