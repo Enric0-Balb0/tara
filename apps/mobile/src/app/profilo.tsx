@@ -37,6 +37,21 @@ export default function ProfileScreen() {
 
       <View style={styles.section}>
         <TaraText variant="minimum" color="textSecondary">
+          Dieta
+        </TaraText>
+        <PressableScale
+          testID="pasti-giornata"
+          onPress={() => router.push('/pasti')}
+          accessibilityLabel="Pasti della giornata"
+          style={rowStyle}
+        >
+          <TaraText>Pasti della giornata</TaraText>
+          <Icon name="chevronRight" color="textSecondary" />
+        </PressableScale>
+      </View>
+
+      <View style={styles.section}>
+        <TaraText variant="minimum" color="textSecondary">
           Account
         </TaraText>
         <View
@@ -69,7 +84,9 @@ export default function ProfileScreen() {
           <TaraText variant="minimum" color="textSecondary">
             Sviluppo
           </TaraText>
-          <View style={[styles.panel, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <View
+            style={[styles.panel, { backgroundColor: colors.surface, borderColor: colors.border }]}
+          >
             <TaraText>{status.title}</TaraText>
             <TaraText variant="caption" color="textSecondary">
               {status.detail}

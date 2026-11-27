@@ -27,18 +27,53 @@ interface MealSlotRow {
 async function activeSlots(db: SqlDatabase, userId: string): Promise<MealSlot[]> {
   const rows = await db.getAllAsync<MealSlotRow>(
     `SELECT id, name, position, expected_time FROM meal_slot
-     WHERE user_id = ? AND deleted_at IS NULL ORDER BY position, id`,
+     WHERE user_id = ? AND deleted_at IS NULL AND archived_at IS NULL ORDER BY position, id`,
     userId,
   );
-  return rows.map((row) => ({
+  return rows.map(toSlot);
+}
+
+function toSlot(row: MealSlotRow): MealSlot {
+  return {
     id: row.id,
     name: row.name,
     position: row.position,
     expectedTime: row.expected_time,
-  }));
+  };
 }
 
-/** I pasti dell'utente; la prima volta crea quelli predefiniti. */
+/** I pasti archiviati (RF-40), nell'ordine di sempre. */
+export async function archivedMealSlots(db: SqlDatabase, userId: string): Promise<MealSlot[]> {
+  const rows = await db.getAllAsync<MealSlotRow>(
+    `SELECT id, name, position, expected_time FROM meal_slot
+     WHERE user_id = ? AND deleted_at IS NULL AND archived_at IS NOT NULL ORDER BY position, id`,
+    userId,
+  );
+  return rows.map(toSlot);
+}
+
+/** I pasti archiviati che quel giorno hanno voci: Oggi li mostra perché restino visibili. */
+export async function archivedSlotsWithEntries(
+  db: SqlDatabase,
+  userId: string,
+  date: string,
+): Promise<MealSlot[]> {
+  const rows = await db.getAllAsync<MealSlotRow>(
+    `SELECT s.id, s.name, s.position, s.expected_time FROM meal_slot AS s
+     WHERE s.user_id = ? AND s.deleted_at IS NULL AND s.archived_at IS NOT NULL
+       AND EXISTS (SELECT 1 FROM diary_entry AS e WHERE e.meal_slot_id = s.id
+                   AND e.user_id = s.user_id AND e.date = ? AND e.deleted_at IS NULL)
+     ORDER BY s.position, s.id`,
+    userId,
+    date,
+  );
+  return rows.map(toSlot);
+}
+
+/**
+ * I pasti attivi dell'utente (non archiviati); la prima volta crea quelli predefiniti. Un
+ * pasto archiviato conta come esistente, così i predefiniti non tornano.
+ */
 export async function ensureMealSlots(
   db: SqlDatabase,
   userId: string,

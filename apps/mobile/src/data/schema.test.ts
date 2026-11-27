@@ -50,7 +50,7 @@ describe('initDatabase', () => {
     ]);
     const version = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
     expect(version?.user_version).toBe(SCHEMA_VERSION);
-    expect(SCHEMA_VERSION).toBe(12);
+    expect(SCHEMA_VERSION).toBe(13);
   });
 
   it('chi trova il database occupato aspetta invece di fallire subito', async () => {

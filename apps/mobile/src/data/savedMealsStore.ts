@@ -256,7 +256,7 @@ export async function logSavedMeal(
   let logged = 0;
   await db.withTransactionAsync(async () => {
     const slot = await db.getFirstAsync<{ id: string }>(
-      'SELECT id FROM meal_slot WHERE id = ? AND user_id = ? AND deleted_at IS NULL',
+      'SELECT id FROM meal_slot WHERE id = ? AND user_id = ? AND deleted_at IS NULL AND archived_at IS NULL',
       input.mealSlotId,
       input.userId,
     );

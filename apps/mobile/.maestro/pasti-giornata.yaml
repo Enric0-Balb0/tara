@@ -1,0 +1,139 @@
+# Pasti configurabili (RF-40; serve il backend per l'accesso): da Profilo apro "Pasti della
+# giornata", rinomino Merenda in "Pre-workout", aggiungo "Post-workout" e lo sposto in su
+# (prima di Cena); in Oggi compaiono Pre-workout e poi Post-workout, nell'ordine giusto.
+appId: com.enricobalbo.tara
+name: Pasti della giornata
+tags:
+  - api
+---
+- runFlow: subflows/avvio.yaml
+- runFlow: subflows/accedi.yaml
+- extendedWaitUntil:
+    visible:
+      id: diario
+    timeout: 30000
+
+- tapOn: Profilo
+- tapOn:
+    id: pasti-giornata
+- extendedWaitUntil:
+    visible:
+      id: pasti-indietro
+    timeout: 10000
+- takeScreenshot: screenshots/pasti-elenco
+
+# Merenda (il quarto pasto) diventa Pre-workout; Invio salva il nome.
+- scrollUntilVisible:
+    element:
+      id: pasto-nome-3
+    direction: DOWN
+    centerElement: true
+    timeout: 4000
+    optional: true
+- tapOn:
+    id: pasto-nome-3
+- eraseText: 30
+- inputText: Pre-workout
+- pressKey: Enter
+# Invio chiude la tastiera: niente hideKeyboard, che altrimenti farebbe da Indietro.
+- copyTextFrom:
+    id: pasto-nome-3
+- assertTrue: ${maestro.copiedText === 'Pre-workout'}
+
+# Nuovo pasto in coda e poi un passo in su: va prima di Cena (posizione 5, poi 4).
+- scrollUntilVisible:
+    element:
+      id: nuovo-pasto-nome
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: nuovo-pasto-nome
+- runFlow:
+    file: subflows/scrivi.yaml
+    env:
+      CAMPO: nuovo-pasto-nome
+      TESTO: Post-workout
+# La tastiera resta aperta: i tocchi seguenti funzionano comunque.
+- scrollUntilVisible:
+    element:
+      id: aggiungi-pasto
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: aggiungi-pasto
+- scrollUntilVisible:
+    element:
+      id: pasto-su-5
+    direction: UP
+    centerElement: true
+    timeout: 4000
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: pasto-su-5
+    direction: DOWN
+    centerElement: true
+    timeout: 4000
+    optional: true
+- assertVisible:
+    id: pasto-su-5
+- tapOn:
+    id: pasto-su-5
+- takeScreenshot: screenshots/pasti-modificati
+
+# In Oggi l'ordine è Pre-workout, Post-workout, Cena.
+- tapOn:
+    id: pasti-indietro
+- back
+- extendedWaitUntil:
+    visible:
+      id: diario
+    timeout: 10000
+- runFlow:
+    file: subflows/vedi.yaml
+    env:
+      ELEMENTO: Pre-workout
+- runFlow:
+    file: subflows/vedi.yaml
+    env:
+      ELEMENTO: Post-workout
+- assertVisible:
+    text: Post-workout
+    below: Pre-workout
+- takeScreenshot: screenshots/oggi-pasti
+
+# Archivio: "Post-workout" (quinto pasto) si archivia e si ripristina, in coda.
+- tapOn: Profilo
+- tapOn:
+    id: pasti-giornata
+- scrollUntilVisible:
+    element:
+      id: pasto-archivia-4
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: pasto-archivia-4
+- scrollUntilVisible:
+    element:
+      id: pasto-ripristina-0
+    direction: DOWN
+    centerElement: true
+- assertVisible: Archiviati
+- takeScreenshot: screenshots/pasti-archiviati
+- tapOn:
+    id: pasto-ripristina-0
+- scrollUntilVisible:
+    element:
+      id: pasto-nome-5
+    direction: DOWN
+    timeout: 4000
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: pasto-nome-5
+    direction: UP
+    timeout: 4000
+    optional: true
+- copyTextFrom:
+    id: pasto-nome-5
+- assertTrue: ${maestro.copiedText === 'Post-workout'}

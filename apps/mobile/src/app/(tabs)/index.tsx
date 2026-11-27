@@ -28,6 +28,7 @@ import { WaterRow } from '@/components/WaterRow';
 import {
   type DiaryEntry,
   deleteEntry,
+  archivedSlotsWithEntries,
   ensureMealSlots,
   entriesForDay,
   type MealSlot,
@@ -88,6 +89,7 @@ export default function TodayScreen() {
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   // Le voci del giorno prima, per "Copia da ieri" (RF-44).
   const [previous, setPrevious] = useState<DiaryEntry[]>([]);
+  const [skippedPrevious, setSkippedPrevious] = useState(0);
   const [editing, setEditing] = useState<DiaryEntry | null>(null);
   const [dayTypes, setDayTypes] = useState<DayType[]>([]);
   const [dayTypeId, setDayTypeId] = useState<string | undefined>(undefined);
@@ -140,8 +142,9 @@ export default function TodayScreen() {
     // arrivata dopo, mostrerebbe le voci di un altro giorno.
     const request = ++latest.current;
     try {
-      const [mealSlots, dayEntries, types, previousEntries] = await Promise.all([
+      const [activeSlots, archivedSlots, dayEntries, types, previousEntries] = await Promise.all([
         ensureMealSlots(db, userId, new Date()),
+        archivedSlotsWithEntries(db, userId, date),
         entriesForDay(db, userId, date),
         ensureDayTypes(db, userId, new Date()),
         entriesForDay(db, userId, addDays(date, -1)),
@@ -163,9 +166,14 @@ export default function TodayScreen() {
       const dayPlan = planned ? await planFor(db, userId, typeId) : [];
       const dayPending = planned ? await pendingPlan(db, userId, date, typeId) : [];
       if (request !== latest.current) return;
-      setSlots(mealSlots);
+      // I pasti archiviati compaiono solo nei giorni in cui hanno voci, dopo gli attivi.
+      setSlots([...activeSlots, ...archivedSlots]);
       setEntries(dayEntries);
-      setPrevious(previousEntries);
+      // Si copiano solo le voci dei pasti attivi: le altre si contano per dirlo.
+      const activeIds = new Set(activeSlots.map((slot) => slot.id));
+      const copiable = previousEntries.filter((entry) => activeIds.has(entry.mealSlotId));
+      setPrevious(copiable);
+      setSkippedPrevious(previousEntries.length - copiable.length);
       setDayTypes(types);
       setDayTypeId(typeId);
       setTarget(dayTarget);
@@ -253,6 +261,12 @@ export default function TodayScreen() {
       Alert.alert('Voci non copiate', 'Il telefono non è riuscito a copiarle. Riprova.');
     } finally {
       copying.current = false;
+    }
+    if (!mealSlotId && skippedPrevious > 0) {
+      Alert.alert(
+        'Alcune voci non copiate',
+        `${skippedPrevious} ${skippedPrevious === 1 ? 'voce' : 'voci'} di pasti archiviati non ${skippedPrevious === 1 ? 'copiata' : 'copiate'}.`,
+      );
     }
     await load();
   }
