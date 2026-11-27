@@ -100,7 +100,8 @@ Un'unica famiglia: **Archivo** (licenza OFL), in più larghezze. La larghezza di
 | --- | --- | --- | --- |
 | `lettura` | Archivo Expanded ExtraBold | 72 / 76 | grammi nel foglio di inserimento |
 | `titolo` | Archivo SemiExpanded ExtraBold | 30 / 34 | titolo della schermata |
-| `numeroGrande` | Archivo Expanded Bold | 26 / 28 | numeri del riepilogo |
+| `numeroGrande` | Archivo Expanded Bold | 26 / 28 | numeri grandi (peso del giorno) |
+| `cifra` | Archivo Expanded Bold | 17 / 22 | il registrato negli obiettivi di Oggi ("**49** / 240"), totali compatti |
 | `sezione` | Archivo Bold | 17 / 22 | nomi dei pasti, titoli di sezione |
 | `corpo` | Archivo Regular | 15 / 20 | testo, nomi degli alimenti |
 | `corpoForte` | Archivo SemiBold | 15 / 20 | etichette dei macro, pulsanti |
@@ -118,6 +119,7 @@ Un'unica famiglia: **Archivo** (licenza OFL), in più larghezze. La larghezza di
 - **Raggi**: etichetta 4 (è un foglio), campi e tasti 10–12, pulsanti e pannelli 14–16, foglio di inserimento 24 in alto.
 - **Tocchi**: ogni elemento toccabile è almeno 44 × 44; i tasti del tastierino 54 di altezza; i pulsanti principali 52.
 - **Colonne delle righe**: nome flessibile, peso 56, kcal 44, proteine 44, con 8 di spazio. Le stesse in ogni lista.
+- **Righe degli obiettivi** (Oggi, Piano): nome del macro 92, barra flessibile, valore 84, con 8 di spazio; l'acqua usa la stessa colonna del nome.
 
 ### Movimento e vibrazione
 
@@ -143,17 +145,19 @@ Linee da 2 px su una griglia di 24, estremità arrotondate, disegnate come set u
 
 | Componente | Cosa fa | Stati e regole |
 | --- | --- | --- |
+| **Intestazione delle tab** | al posto di quella nativa, uguale nelle quattro tab: titolo grande (`titolo`) a sinistra, azioni da 44 a destra; sotto, in secondario, un sottotitolo e un eventuale selettore a destra. Resta ferma sopra il contenuto che scorre | in Oggi: titolo "Oggi", "Ieri", "Domani" (sotto la data per esteso) o il giorno della settimana (sotto "19 novembre"); a destra le frecce "Giorno precedente" e "Giorno successivo", "Oggi" tra le due quando si guarda un altro giorno (si legge "…, torna a oggi") e il profilo; sotto, a destra della data, il tipo di giornata compatto |
 | **Barra di ricerca** | "Cerca un alimento" e pulsante scanner, sempre in basso sopra le tab | lo scanner è il pulsante principale, quadrato, colore `azione` |
 | **Riga di risultato** | nome su due righe al massimo, stato (solo "cotto"; il crudo è il predefinito) con sotto la cottura in secondo piano se c'è ("al vapore"), kcal e proteine per 100 g | tocco → scheda alimento |
 | **Barra graduata** | avanzamento di un macro verso l'obiettivo | parte piena = registrato; tratteggio a colore pieno = previsto dal piano, detto anche dal lettore dello schermo; tacche ogni 10% in `testoSecondario` (≥ 3:1); segno al traguardo; oltre il 100% la parte in eccesso resta visibile oltre il segno |
+| **Barra sottile** (obiettivi di Oggi e del Piano) | la barra graduata in una riga: 8 dp, binario `bordo` decorativo | stesse regole della barra graduata, ma le tacche ogni 10% sono tagli da 1 dp del colore della superficie (si vedono sulla parte piena senza appesantire il binario vuoto) e il segno del traguardo, in `testo`, sporge di 2 dp sopra e sotto. Il valore lo dice la riga: la barra è nascosta al lettore dello schermo |
 | **Barra di avanzamento** | attese vere, come il primo download degli alimenti: stessa forma della barra graduata (binario, tacche ogni 10%), parte piena in `testo` | piena solo con una frazione misurata (byte ricevuti su un totale dichiarato); altrimenti tratteggio che scorre (`attesa`). Mai una percentuale stimata dal tempo; sotto, la fase in parole |
-| **Voce di diario** | una riga allineata: nome, peso, kcal, proteine | **registrata**: testo pieno; **prevista**: bordo tratteggiato, testo attenuato, pulsante "Conferma" |
-| **Intestazione del pasto** | nome, "2 di 3", totali nelle stesse colonne delle voci | pasto completo → si chiude in una riga ("6 di 6, come da piano"); si riapre con un tocco |
+| **Voce di diario** | una riga allineata: nome, peso, kcal, proteine; nessuna scheda per riga, solo un separatore sottile sotto | **registrata**: testo pieno, peso in `numero`; **prevista**: bordo tratteggiato, testo attenuato, pulsante "Conferma" |
+| **Intestazione del pasto** | nome e "2 di 3" in secondario; a destra la legenda delle colonne ("peso", "kcal", "prot.") allineata alle voci; in fondo al pasto "Aggiungi" discreto a sinistra e i totali del pasto (RF-45) nelle colonne di kcal e proteine | pasto vuoto → una riga sola, con il nome e a destra "Aggiungi" (e "Copia da ieri"); pasto tutto da piano (due o più previste, nessuna registrata) → le previste nelle colonne dentro un contenitore tratteggiato, con "Registra come da piano" in fondo (una voce sola si conferma toccandola); pasto completo → si chiude in una riga ("6 di 6, come da piano"), si riapre con un tocco; pasto archiviato (compare solo nei giorni con voci) → niente "Aggiungi" |
 | **Foglio di inserimento** | alimento, crudo/cotto, lettura dei grammi, macro aggiornati mentre si digita, tastierino | "Ultima volta a cena: 500 g" (RF-42); "Aggiungi e continua" e "Aggiungi 500 g" |
 | **Tastierino** | cifre 0–9, Tara, cancella | Tara: si digita il peso del contenitore, che viene sottratto e mostrato sopra la lettura ("tara 38 g"); in F1 si sceglie tra i contenitori salvati (es. vaschetta del meal prep) *(scelta di progetto)* |
-| **Selettore del tipo di giornata** | in alto in "Oggi" | mostra i tipi definiti dall'utente (RF-50), es. Allenamento e Riposo |
+| **Selettore del tipo di giornata** | in "Oggi" nell'intestazione, a destra della data: pillole compatte larghe quanto il testo, alte 36 con il tocco esteso a 44; nel Piano a tutta larghezza | mostra i tipi definiti dall'utente (RF-50), es. Allenamento e Riposo; con molti tipi va a capo sotto la data |
 | **Etichetta** | valori per 100 g o per la quantità scelta, nell'ordine dell'etichetta europea | in sola lettura (scheda alimento, condivisione) o da compilare (inserimento manuale, lettura della foto) |
-| **Riga dell'acqua** | in Oggi sotto gli obiettivi, una riga sola: "Acqua" con "1,25 di 3 l" e sottile avanzamento a sinistra; a destra pulsanti a pillola ("+250", "+500") e "Annulla +500" che dice cosa annulla | i pulsanti vanno a capo solo se non stanno a 360 dp; senza target niente barra |
+| **Riga dell'acqua** | l'ultima riga della scheda degli obiettivi di Oggi, dopo un separatore: "Acqua" con sotto "**1,25** / 3 l" nella colonna dei nomi, la barra sottile in `testo`, a destra le pillole "+250", "+500" (alte 36, tocco 44); "Annulla +500", che dice cosa annulla, nella riga sotto | una riga a 412 dp, due con "Annulla"; senza target niente barra e solo i litri; il lettore dello schermo dice "1,25 di 3 l" |
 | **Grafico del peso** | in Andamento, ultimi 30 giorni: punti delle pesate in `testoSecondario`, linea della media a 7 giorni in `testo` (2 dp), asse zoomato sull'intervallo reale con i soli estremi scritti a sinistra, due righe sottili in alto e in basso, niente riempimento; sotto "Punti: pesate. Linea: media 7 giorni." | nessuna animazione; il lettore dello schermo legge il numero di pesate e il primo e l'ultimo valore, il dettaglio sta nell'elenco sotto; con una sola pesata c'è il punto senza linea |
 | **Tastierino del peso** | lo stesso tastierino con la virgola al posto di Tara: 82,4, un decimale, tre cifre intere | la prima cifra sostituisce il peso proposto; "Salva 82,4 kg" |
 | **Immagine della giornata** | la giornata come etichetta: totali contro il piano, pasti con le voci e i grammi, attribuzione di CIQUAL | si condivide dal menu di "Oggi" |
@@ -170,9 +174,11 @@ Idea di Enrico: quando si inserisce un alimento a mano, il modulo ha la forma de
 
 ## Schermate
 
-**Tab** *(scelta di progetto)*: **Oggi**, **Piano**, **Dispensa**, **Andamento**. Il profilo e le impostazioni si aprono dall'intestazione di Oggi. La Community non esiste.
+**Tab** *(scelta di progetto)*: **Oggi**, **Piano**, **Dispensa**, **Andamento**, ognuna con la sua intestazione (titolo grande, niente intestazione nativa: vedi "Intestazione delle tab"). Il profilo e le impostazioni si aprono dall'intestazione di Oggi. La Community non esiste.
 
-- **Oggi**: selettore del tipo di giornata, barre degli obiettivi in grammi (registrato e previsto), pasti del piano con voci registrate e previste, barra di ricerca. Riferimento: "Proposta · Oggi dal piano" con i colori dei dischi.
+- **Oggi**: intestazione con il giorno, le frecce, il profilo e il tipo di giornata; una scheda compatta degli obiettivi; i pasti; la barra di ricerca sopra le tab. Riferimento: "Proposta · Oggi dal piano" e "Bilancia con i colori dei dischi", con i colori dei token di questo documento *(fatta il 27/11, scelte di progetto)*.
+  - **Scheda degli obiettivi**: in prima riga le kcal, "**1478** / 4800 kcal" con a destra "mancano 3322" (o "oltre di 20" in `errore`) e "previste 800" se c'è un piano; poi una riga per macro: nome colorato | barra sottile | "**49** / 240" (senza target "/ –"), con i g/kg sotto "Proteine"; la legenda "registrato · previsto" solo se c'è qualcosa di previsto (le tavole dicono "ancora da piano", ma il Linguaggio vuole "previsto"); in fondo l'acqua. Senza target: kcal e macro in una riga di quattro celle e l'invito al Piano. Lo stesso pannello è il "Totale del piano" nel Piano.
+  - **Pasti**: vedi "Intestazione del pasto" e "Voce di diario"; "Copia la giornata di ieri" sta sotto la scheda quando la giornata è vuota.
 - **Piano**: per ogni tipo di giornata, i pasti (numero e nomi liberi) con alimenti e grammi, e gli obiettivi.
 - **Pasti della giornata** (Profilo, RF-40): una scheda compatta per pasto, senza etichette sopra i campi: nome e orario (96 px, "--:--") sulla stessa riga, sotto le azioni a destra (su, giù, "Archivia", elimina solo se il pasto è vuoto), tutte da 44 px; gli archiviati in fondo con "Ripristina".
 - **Dispensa**: gli alimenti personali, le ricette e i pasti salvati. È il nome scelto da Enrico per il catalogo personale.
@@ -229,12 +235,21 @@ Il gate F0 è "cerco albume, vedo i valori giusti, inserisco i grammi, funziona 
 - Il foglio di inserimento ha due modi. Nel **diario** (F1) ha il pasto, "Aggiungi e continua" e "Aggiungi 500 g". **Solo calcolo** (F0, decisione di Enrico) non ha il pasto né il pulsante secondario: "Usa 200 g" riporta l'etichetta della scheda a 200 g, e la scorciatoia dice "Ultima volta: 200 g" (nel diario "Ultima volta a cena: 500 g").
 - *Dal diario in F1*: la scheda alimento non calcola più, aggiunge. Sopra "Aggiungi a Pranzo" c'è la fila dei pasti, con quello scelto in evidenza: quello toccato in Oggi ("Aggiungi" sotto il pasto) oppure, dalla barra di ricerca, quello con l'orario più vicino. "Aggiungi e continua" torna ai risultati per il prossimo alimento dello stesso pasto; "Aggiungi" torna a Oggi. Una voce toccata in Oggi apre lo stesso foglio con "Elimina" e "Salva 250 g", senza la scorciatoia "Ultima volta", che lì sarebbe la voce stessa; il foglio copre anche ricerca e tab.
 - *Ricette (F1, 7a)*: nella Dispensa "Nuovo alimento" e "Nuova ricetta" stanno affiancati (il secondo è secondario), poi le sezioni "Ricette" e "I tuoi alimenti"; la riga della ricetta ha sotto il nome "porzione 60 g". La scheda di una ricetta mostra gli ingredienti a crudo, due etichette ("Per porzione", se la resa è a porzioni, e "Per 100 g"), "Duplica" in fondo e, con la resa a peso, il campo "Peso da cotto di oggi (g)". Nel foglio dei grammi le scorciatoie ("1 porzione · 60 g") hanno la stessa forma tratteggiata di "Ultima volta" e vanno a capo accanto a lei; per i prodotti in ml il foglio dice "ml" e "millilitri".
-- In Oggi un pasto senza voci mostra solo "Aggiungi": il bordo tratteggiato resta riservato alle voci previste dal piano.
+- In Oggi un pasto senza voci mostra solo "Aggiungi", nella riga del nome: il bordo tratteggiato resta riservato alle voci previste dal piano.
 - *Piano in F1*: il Piano ha in alto lo stesso selettore del tipo di giornata di Oggi; sotto, per il tipo scelto, la scheda dei target, il totale del piano (stesso pannello degli obiettivi di Oggi) e i pasti con alimenti e grammi. "Aggiungi" sotto un pasto cerca un alimento in modalità piano: la scheda dice "Aggiungi al piano: Pranzo" e torna al Piano.
 - In Oggi le voci previste sono quelle del piano del tipo di giornata non ancora confermate quel giorno, da oggi in avanti: i giorni passati non le mostrano, così cambiare il piano non riscrive il passato. "Conferma" usa i grammi del piano; un tocco sulla riga apre il foglio con "Conferma 200 g" per cambiarli; "Registra come da piano" compare con almeno due voci previste nel pasto.
 - Il selettore crudo/cotto compare solo se il nome ha esattamente un crudo e un cotto: con più preparazioni dello stesso nome si sceglierebbe a caso.
 - Con il foglio aperto la scheda dietro è nascosta al lettore dello schermo; pulsanti e scorciatoie si leggono in grammi ("Usa 200 grammi").
 - La scheda alimento nasconde l'intestazione nativa, così il foglio copre tutta la schermata; in alto c'è un pulsante "Indietro".
+
+### Oggi come nelle tavole (27/11)
+
+Il passaggio di design di Oggi (vedi "Schermate") cambia alcuni testi che i flussi Maestro leggono:
+
+- la data non è più un'etichetta tra le frecce: il titolo dice "Oggi" o "Ieri", e "…, torna a oggi" è il pulsante "Oggi" tra le frecce; "Giorno precedente", "Giorno successivo", "Profilo", "Allenamento"/"Riposo" e l'id `diario` restano, e l'intestazione resta ferma, quindi è sempre in vista;
+- l'acqua sta nella scheda degli obiettivi: gli id `acqua`, `acqua-<ml>`, `acqua-annulla`, `acqua-totale` restano, e `acqua.yaml` legge ancora "0 di 3 l", il testo per il lettore dello schermo (a vista "0 / 3 l");
+- il totale del pasto si legge "Totale Pranzo: 96 kcal, 21,8 grammi di proteine" (prima "96 kcal" sull'intestazione del pasto);
+- `previste.yaml` aggiunge un pasto tutto da piano (Cena con due voci) e "Registra Cena come da piano"; `navigazione.yaml` fotografa le intestazioni di Piano, Dispensa e Andamento.
 
 ### Dopo
 
