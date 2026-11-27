@@ -119,6 +119,7 @@ export async function copyEntries(
   const source = await db.getAllAsync<{ id: string }>(
     `SELECT e.id FROM diary_entry AS e
        JOIN meal_slot AS s ON s.id = e.meal_slot_id AND s.user_id = e.user_id AND s.deleted_at IS NULL
+         AND s.archived_at IS NULL
      WHERE e.user_id = ? AND e.date = ? AND e.deleted_at IS NULL
        AND (? IS NULL OR e.meal_slot_id = ?)
      ORDER BY s.position, e.created_at, e.id`,

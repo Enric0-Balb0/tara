@@ -9,14 +9,17 @@ import { Icon } from '@/components/Icon';
 import { PressableScale } from '@/components/PressableScale';
 import { TaraText } from '@/components/TaraText';
 import { TextField } from '@/components/TextField';
-import { ensureMealSlots, type MealSlot } from '@/data/diaryStore';
+import { archivedMealSlots, ensureMealSlots, type MealSlot } from '@/data/diaryStore';
 import {
   addMealSlot,
+  archiveMealSlot,
   deleteMealSlot,
   MealSlotError,
   moveMealSlot,
   renameMealSlot,
+  restoreMealSlot,
   setMealSlotTime,
+  slotsInUse,
 } from '@/data/mealSlotsStore';
 import { useSession } from '@/data/SessionProvider';
 import type { SqlDatabase } from '@/data/sql';
@@ -50,6 +53,9 @@ export default function MealSlotsScreen() {
   const userId = session?.user.id;
 
   const [slots, setSlots] = useState<MealSlot[]>([]);
+  const [archived, setArchived] = useState<MealSlot[]>([]);
+  // I pasti con voci di diario o di piano: non si eliminano, si archiviano.
+  const [inUse, setInUse] = useState<ReadonlySet<string>>(new Set());
   // Ciò che si sta scrivendo e non è ancora salvato, per pasto.
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
   const [newName, setNewName] = useState('');
@@ -62,7 +68,14 @@ export default function MealSlotsScreen() {
 
   const reload = useCallback(async () => {
     if (userId === undefined) return;
-    setSlots(await ensureMealSlots(db, userId, new Date()));
+    const [active, hidden, used] = await Promise.all([
+      ensureMealSlots(db, userId, new Date()),
+      archivedMealSlots(db, userId),
+      slotsInUse(db, userId),
+    ]);
+    setSlots(active);
+    setArchived(hidden);
+    setInUse(used);
   }, [db, userId]);
 
   useFocusEffect(
@@ -158,6 +171,12 @@ export default function MealSlotsScreen() {
     ]);
   }
 
+  const archive = (slot: MealSlot) =>
+    act(() => archiveMealSlot(db, userId ?? '', slot.id, new Date()), 'Pasto non archiviato');
+
+  const restore = (slot: MealSlot) =>
+    act(() => restoreMealSlot(db, userId ?? '', slot.id, new Date()), 'Pasto non ripristinato');
+
   const add = () =>
     act(async () => {
       await addMealSlot(db, userId ?? '', newName, normalizeTime(newTime), new Date());
@@ -247,16 +266,31 @@ export default function MealSlotsScreen() {
                 >
                   <Icon name="chevronDown" color="text" />
                 </PressableScale>
-                <PressableScale
-                  onPress={() => confirmDelete(slot)}
-                  disabled={busy}
-                  accessibilityLabel={`Elimina ${slot.name}`}
-                  testID={`pasto-elimina-${index}`}
-                  style={styles.iconButton}
-                >
-                  <Icon name="delete" color="text" />
-                </PressableScale>
+                {inUse.has(slot.id) ? null : (
+                  <PressableScale
+                    onPress={() => confirmDelete(slot)}
+                    disabled={busy}
+                    accessibilityLabel={`Elimina ${slot.name}`}
+                    testID={`pasto-elimina-${index}`}
+                    style={styles.iconButton}
+                  >
+                    <Icon name="delete" color="text" />
+                  </PressableScale>
+                )}
               </View>
+              {inUse.has(slot.id) ? (
+                <TaraText variant="caption" color="textSecondary">
+                  Ha voci nel diario: lo nascondo dai pasti futuri, i giorni passati restano.
+                </TaraText>
+              ) : null}
+              <Button
+                kind="quiet"
+                label="Archivia"
+                accessibilityLabel={`Archivia ${slot.name}`}
+                onPress={() => void archive(slot)}
+                disabled={busy}
+                testID={`pasto-archivia-${index}`}
+              />
             </View>
           );
         })}
@@ -292,6 +326,35 @@ export default function MealSlotsScreen() {
             testID="aggiungi-pasto"
           />
         </View>
+        {archived.length > 0 ? (
+          <View style={styles.archived}>
+            <TaraText variant="minimum" color="textSecondary">
+              Archiviati
+            </TaraText>
+            {archived.map((slot, index) => (
+              <View
+                key={slot.id}
+                style={[
+                  styles.card,
+                  styles.archivedCard,
+                  { backgroundColor: colors.surface, borderColor: colors.border },
+                ]}
+              >
+                <TaraText numberOfLines={1} style={styles.archivedName}>
+                  {slot.name}
+                </TaraText>
+                <Button
+                  kind="quiet"
+                  label="Ripristina"
+                  accessibilityLabel={`Ripristina ${slot.name}`}
+                  onPress={() => void restore(slot)}
+                  disabled={busy}
+                  testID={`pasto-ripristina-${index}`}
+                />
+              </View>
+            ))}
+          </View>
+        ) : null}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -315,4 +378,7 @@ const styles = StyleSheet.create({
   },
   controls: { flexDirection: 'row', alignItems: 'flex-end', gap: space.xs },
   time: { flex: 1, marginRight: space.s },
+  archived: { gap: space.s, marginTop: space.s },
+  archivedCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  archivedName: { flex: 1 },
 });

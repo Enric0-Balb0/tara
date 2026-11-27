@@ -118,7 +118,7 @@ Il diario è pensato per chi conosce già le grammature: un alimento noto si reg
 
 | ID | Requisito | Priorità | Fase |
 | --- | --- | --- | --- |
-| RF-40 | Voci organizzate per data e slot pasto; numero e nomi degli slot configurabili. | M | F1 |
+| RF-40 | Voci organizzate per data e slot pasto; numero e nomi degli slot configurabili. Un pasto con voci non si elimina: si archivia (sparisce dai pasti futuri e Oggi lo mostra solo nei giorni in cui ha voci) e si ripristina. I nomi dei pasti attivi sono unici. | M | F1 |
 | RF-41 | Quantità in grammi o ml con tastierino numerico in primo piano; porzioni come scorciatoia per alimenti a pezzo e ricette a porzioni. | M | F1 |
 | RF-42 | Quantità proposta = ultima usata per quell'alimento nello stesso slot. | M | F1 |
 | RF-43 | Snapshot dei valori nutrizionali al momento della registrazione: modifiche successive ad alimenti o ricette non alterano il passato. | M | F1 |

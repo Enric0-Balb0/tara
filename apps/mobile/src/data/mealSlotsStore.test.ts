@@ -1,18 +1,29 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { addEntry, deleteEntry, ensureMealSlots } from './diaryStore';
+import {
+  addEntry,
+  archivedMealSlots,
+  archivedSlotsWithEntries,
+  deleteEntry,
+  ensureMealSlots,
+} from './diaryStore';
 import {
   addMealSlot,
+  archiveMealSlot,
   deleteMealSlot,
   MealSlotError,
   moveMealSlot,
   renameMealSlot,
+  restoreMealSlot,
   setMealSlotTime,
+  slotsInUse,
 } from './mealSlotsStore';
 import { addPlanItem, deletePlanItem } from './planStore';
+import { copyEntries } from './quickStore';
+import { logSavedMeal, saveMealFromDiary } from './savedMealsStore';
 import { initDatabase } from './schema';
 import type { SqlDatabase } from './sql';
-import { ensureDayTypes } from './targetsStore';
+import { deleteDayType, ensureDayTypes } from './targetsStore';
 import { openTestDatabase } from './testing/nodeDatabase';
 
 const USER = '0195f1a2-0000-7000-8000-000000000001';
@@ -265,5 +276,157 @@ describe('deleteMealSlot', () => {
       code: 'missing',
     });
     expect(await names()).toContain('Merenda');
+  });
+});
+
+const entryIn = (mealSlotId: string, date = '2026-11-24') =>
+  addEntry(db, { userId: USER, date, mealSlotId, food: ALBUME, quantity: 100, now: NOW });
+
+describe('nomi duplicati', () => {
+  it('addMealSlot e renameMealSlot rifiutano un nome già usato, senza maiuscole né spazi', async () => {
+    const cena = await slotNamed('Cena');
+    expect(await rejection(addMealSlot(db, USER, '  pranzo ', null, NOW))).toMatchObject({
+      code: 'duplicate',
+    });
+    expect(await rejection(renameMealSlot(db, USER, cena.id, 'COLAZIONE', NOW))).toMatchObject({
+      code: 'duplicate',
+    });
+    await renameMealSlot(db, USER, cena.id, 'cena', NOW);
+    expect(await names()).toHaveLength(5);
+  });
+
+  it('un nome archiviato si può riusare, ma non ripristinare in conflitto', async () => {
+    const merenda = await slotNamed('Merenda');
+    await archiveMealSlot(db, USER, merenda.id, NOW);
+    await addMealSlot(db, USER, 'Merenda', null, NOW);
+    expect(await rejection(restoreMealSlot(db, USER, merenda.id, NOW))).toMatchObject({
+      code: 'duplicate',
+    });
+  });
+});
+
+describe('deleteMealSlot e piani di tipi eliminati', () => {
+  it('le voci di piano di un tipo di giornata eliminato non bloccano', async () => {
+    const cena = await slotNamed('Cena');
+    const types = await ensureDayTypes(db, USER, NOW);
+    const type = types[0]?.id ?? '';
+    await addPlanItem(db, {
+      userId: USER,
+      dayTypeId: type,
+      mealSlotId: cena.id,
+      food: ALBUME,
+      quantity: 100,
+      now: NOW,
+    });
+    expect(await slotsInUse(db, USER)).toEqual(new Set([cena.id]));
+    await deleteDayType(db, USER, type, NOW);
+    expect((await slotsInUse(db, USER)).size).toBe(0);
+    await deleteMealSlot(db, USER, cena.id, NOW);
+    expect(await names()).not.toContain('Cena');
+  });
+});
+
+describe('archivio dei pasti (RF-40)', () => {
+  it('archivia e ripristina in coda; l archiviato non è tra i pasti attivi', async () => {
+    const pranzo = await slotNamed('Pranzo');
+    await entryIn(pranzo.id);
+    expect(await slotsInUse(db, USER)).toEqual(new Set([pranzo.id]));
+    await archiveMealSlot(db, USER, pranzo.id, NOW);
+    expect(await names()).toEqual(['Colazione', 'Spuntino', 'Merenda', 'Cena']);
+    expect((await archivedMealSlots(db, USER)).map((s) => s.name)).toEqual(['Pranzo']);
+    await restoreMealSlot(db, USER, pranzo.id, NOW);
+    expect(await names()).toEqual(['Colazione', 'Spuntino', 'Merenda', 'Cena', 'Pranzo']);
+    expect(await archivedMealSlots(db, USER)).toEqual([]);
+  });
+
+  it('i predefiniti non tornano e il pasto non si può archiviare due volte', async () => {
+    const merenda = await slotNamed('Merenda');
+    await archiveMealSlot(db, USER, merenda.id, NOW);
+    expect(await names()).toHaveLength(4);
+    expect(await rejection(archiveMealSlot(db, USER, merenda.id, NOW))).toMatchObject({
+      code: 'missing',
+    });
+  });
+
+  it('rifiuta l ultimo pasto attivo e i pasti di altri', async () => {
+    for (const name of ['Colazione', 'Spuntino', 'Pranzo', 'Merenda']) {
+      await archiveMealSlot(db, USER, (await slotNamed(name)).id, NOW);
+    }
+    const cena = await slotNamed('Cena');
+    expect(await rejection(archiveMealSlot(db, USER, cena.id, NOW))).toMatchObject({
+      code: 'last',
+    });
+    expect(await names()).toEqual(['Cena']);
+    expect(await rejection(restoreMealSlot(db, OTHER, cena.id, NOW))).toMatchObject({
+      code: 'missing',
+    });
+    await ensureMealSlots(db, OTHER, NOW);
+    const [first] = await archivedMealSlots(db, USER);
+    expect(await rejection(restoreMealSlot(db, OTHER, first?.id ?? '', NOW))).toMatchObject({
+      code: 'missing',
+    });
+  });
+
+  it('Oggi mostra l archiviato solo nei giorni con voci vive', async () => {
+    const pranzo = await slotNamed('Pranzo');
+    const entry = await entryIn(pranzo.id);
+    await archiveMealSlot(db, USER, pranzo.id, NOW);
+    expect((await archivedSlotsWithEntries(db, USER, '2026-11-24')).map((s) => s.name)).toEqual([
+      'Pranzo',
+    ]);
+    expect(await archivedSlotsWithEntries(db, USER, '2026-11-25')).toEqual([]);
+    await deleteEntry(db, USER, entry.id, NOW);
+    expect(await archivedSlotsWithEntries(db, USER, '2026-11-24')).toEqual([]);
+  });
+
+  it('un pasto archiviato non è un bersaglio: piano, pasti salvati, copia', async () => {
+    const cena = await slotNamed('Cena');
+    const pranzo = await slotNamed('Pranzo');
+    await entryIn(cena.id);
+    const saved = await saveMealFromDiary(db, {
+      userId: USER,
+      name: 'Cena tipo',
+      date: '2026-11-24',
+      mealSlotId: cena.id,
+      now: NOW,
+    });
+    await archiveMealSlot(db, USER, cena.id, NOW);
+    const types = await ensureDayTypes(db, USER, NOW);
+    await expect(
+      addPlanItem(db, {
+        userId: USER,
+        dayTypeId: types[0]?.id ?? '',
+        mealSlotId: cena.id,
+        food: ALBUME,
+        quantity: 100,
+        now: NOW,
+      }),
+    ).rejects.toThrow();
+    await expect(
+      logSavedMeal(db, {
+        userId: USER,
+        savedMealId: saved ?? '',
+        date: '2026-11-25',
+        mealSlotId: cena.id,
+        quantities: {},
+        now: NOW,
+      }),
+    ).rejects.toThrow();
+    await entryIn(pranzo.id);
+    expect(
+      await copyEntries(db, {
+        userId: USER,
+        fromDate: '2026-11-24',
+        toDate: '2026-11-25',
+        now: NOW,
+      }),
+    ).toBe(1);
+  });
+
+  it('si può eliminare un pasto archiviato senza voci', async () => {
+    const merenda = await slotNamed('Merenda');
+    await archiveMealSlot(db, USER, merenda.id, NOW);
+    await deleteMealSlot(db, USER, merenda.id, NOW);
+    expect(await archivedMealSlots(db, USER)).toEqual([]);
   });
 });

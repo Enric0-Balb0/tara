@@ -360,6 +360,9 @@ export const MIGRATIONS: readonly string[] = [
   CREATE UNIQUE INDEX weight_entry_one_per_day ON weight_entry (user_id, date)
     WHERE deleted_at IS NULL;
   `,
+  // 13: un pasto con voci non si elimina, si archivia (RF-40): sparisce dai pasti futuri e
+  // Oggi lo mostra solo nei giorni in cui ha voci.
+  'ALTER TABLE meal_slot ADD COLUMN archived_at TEXT',
 ];
 
 export const SCHEMA_VERSION = MIGRATIONS.length;

@@ -27,7 +27,10 @@ function replaceV1() {
 
 function valueCount(foodId: string) {
   return db
-    .getFirstAsync<{ n: number }>('SELECT count(*) AS n FROM nutrient_value WHERE food_id = ?', foodId)
+    .getFirstAsync<{ n: number }>(
+      'SELECT count(*) AS n FROM nutrient_value WHERE food_id = ?',
+      foodId,
+    )
     .then((row) => row?.n);
 }
 
@@ -54,14 +57,18 @@ describe('replaceCatalog', () => {
 
   it('salva la fonte di ogni alimento', async () => {
     await replaceV1();
-    const sources = await db.getAllAsync<{ source: string | null }>('SELECT DISTINCT source FROM food');
+    const sources = await db.getAllAsync<{ source: string | null }>(
+      'SELECT DISTINCT source FROM food',
+    );
     expect(sources).toEqual([{ source: 'ciqual' }]);
   });
 
   it('uno snapshot senza fonte lascia la fonte vuota', async () => {
     const formatOne = TEST_FOODS.map(({ source: _source, ...food }) => food);
     await replaceCatalog(db, snapshotText(formatOne), { etag: null, syncedAt: SYNCED_AT });
-    const sources = await db.getAllAsync<{ source: string | null }>('SELECT DISTINCT source FROM food');
+    const sources = await db.getAllAsync<{ source: string | null }>(
+      'SELECT DISTINCT source FROM food',
+    );
     expect(sources).toEqual([{ source: null }]);
   });
 
@@ -70,9 +77,7 @@ describe('replaceCatalog', () => {
       food.id === 'albume-cotto' ? { ...food, cooking: 'al vapore' } : food,
     );
     await replaceCatalog(db, snapshotText(foods), { etag: null, syncedAt: SYNCED_AT });
-    expect(
-      await db.getAllAsync('SELECT id, cooking, search_text FROM food ORDER BY id'),
-    ).toEqual([
+    expect(await db.getAllAsync('SELECT id, cooking, search_text FROM food ORDER BY id')).toEqual([
       { id: 'albume-cotto', cooking: 'al vapore', search_text: "albume d'uovo al vapore" },
       { id: 'albume-crudo', cooking: null, search_text: "albume d'uovo" },
       { id: 'caffe-espresso', cooking: null, search_text: 'caffe espresso\nespresso' },
@@ -120,10 +125,16 @@ describe('replaceCatalog', () => {
     const [eggWhite, ...rest] = TEST_FOODS;
     const ghost = {
       ...eggWhite!,
-      values: { ...eggWhite!.values, ghost_g: { amount: 1, provenance: 'reference', confidence: 1 } },
+      values: {
+        ...eggWhite!.values,
+        ghost_g: { amount: 1, provenance: 'reference', confidence: 1 },
+      },
     };
     await expect(
-      replaceCatalog(db, snapshotText([ghost, ...rest], 'v2'), { etag: '"v2"', syncedAt: SYNCED_AT }),
+      replaceCatalog(db, snapshotText([ghost, ...rest], 'v2'), {
+        etag: '"v2"',
+        syncedAt: SYNCED_AT,
+      }),
     ).rejects.toBeInstanceOf(SnapshotError);
     expect(await catalogInfo(db)).toEqual(before);
   });
@@ -140,9 +151,7 @@ describe('replaceCatalog', () => {
   it('testo non JSON o senza foods dà SnapshotError', async () => {
     const meta = { etag: null, syncedAt: SYNCED_AT };
     await expect(replaceCatalog(db, '<html>', meta)).rejects.toBeInstanceOf(SnapshotError);
-    await expect(replaceCatalog(db, '{"version":"x"}', meta)).rejects.toBeInstanceOf(
-      SnapshotError,
-    );
+    await expect(replaceCatalog(db, '{"version":"x"}', meta)).rejects.toBeInstanceOf(SnapshotError);
   });
 
   it('un alimento senza nomi validi dà SnapshotError', async () => {
@@ -152,7 +161,7 @@ describe('replaceCatalog', () => {
     ).rejects.toBeInstanceOf(SnapshotError);
   });
 
-  it("senza ETag non resta quello del catalogo di prima", async () => {
+  it('senza ETag non resta quello del catalogo di prima', async () => {
     await replaceV1();
     await replaceCatalog(db, snapshotText(TEST_FOODS, 'v2'), { etag: null, syncedAt: SYNCED_AT });
     expect((await catalogInfo(db)).etag).toBeNull();

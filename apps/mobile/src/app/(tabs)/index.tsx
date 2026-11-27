@@ -28,6 +28,7 @@ import { WaterRow } from '@/components/WaterRow';
 import {
   type DiaryEntry,
   deleteEntry,
+  archivedSlotsWithEntries,
   ensureMealSlots,
   entriesForDay,
   type MealSlot,
@@ -140,8 +141,9 @@ export default function TodayScreen() {
     // arrivata dopo, mostrerebbe le voci di un altro giorno.
     const request = ++latest.current;
     try {
-      const [mealSlots, dayEntries, types, previousEntries] = await Promise.all([
+      const [activeSlots, archivedSlots, dayEntries, types, previousEntries] = await Promise.all([
         ensureMealSlots(db, userId, new Date()),
+        archivedSlotsWithEntries(db, userId, date),
         entriesForDay(db, userId, date),
         ensureDayTypes(db, userId, new Date()),
         entriesForDay(db, userId, addDays(date, -1)),
@@ -163,7 +165,8 @@ export default function TodayScreen() {
       const dayPlan = planned ? await planFor(db, userId, typeId) : [];
       const dayPending = planned ? await pendingPlan(db, userId, date, typeId) : [];
       if (request !== latest.current) return;
-      setSlots(mealSlots);
+      // I pasti archiviati compaiono solo nei giorni in cui hanno voci, dopo gli attivi.
+      setSlots([...activeSlots, ...archivedSlots]);
       setEntries(dayEntries);
       setPrevious(previousEntries);
       setDayTypes(types);

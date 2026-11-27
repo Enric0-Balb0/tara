@@ -94,3 +94,39 @@ tags:
     text: Post-workout
     below: Pre-workout
 - takeScreenshot: screenshots/oggi-pasti
+
+# Archivio: "Post-workout" (quinto pasto) si archivia e si ripristina, in coda.
+- tapOn: Profilo
+- tapOn:
+    id: pasti-giornata
+- scrollUntilVisible:
+    element:
+      id: pasto-archivia-4
+    direction: DOWN
+    centerElement: true
+- tapOn:
+    id: pasto-archivia-4
+- scrollUntilVisible:
+    element:
+      id: pasto-ripristina-0
+    direction: DOWN
+    centerElement: true
+- assertVisible: Archiviati
+- takeScreenshot: screenshots/pasti-archiviati
+- tapOn:
+    id: pasto-ripristina-0
+- scrollUntilVisible:
+    element:
+      id: pasto-nome-5
+    direction: DOWN
+    timeout: 4000
+    optional: true
+- scrollUntilVisible:
+    element:
+      id: pasto-nome-5
+    direction: UP
+    timeout: 4000
+    optional: true
+- copyTextFrom:
+    id: pasto-nome-5
+- assertTrue: ${maestro.copiedText === 'Post-workout'}

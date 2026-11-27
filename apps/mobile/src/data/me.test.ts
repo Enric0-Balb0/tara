@@ -18,11 +18,13 @@ function server(reply: Reply) {
   return { fetch, requests };
 }
 
-const json = (status: number, body: unknown): Reply => async () =>
-  new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' },
-  });
+const json =
+  (status: number, body: unknown): Reply =>
+  async () =>
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { 'Content-Type': 'application/json' },
+    });
 
 describe('registerMe', () => {
   it('chiama GET /v1/me con il token e restituisce l’utente', async () => {
