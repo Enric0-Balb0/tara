@@ -12,6 +12,9 @@ import { type PlannedItem, PlannedLine, PlannedRow } from './PlannedRow';
 import { PressableScale } from './PressableScale';
 import { TaraText } from './TaraText';
 
+// Azioni secondarie del pasto: icona piccola accanto al testo normale, tocco sempre da 44.
+const ACTION_ICON = 18;
+
 interface Props {
   name: string;
   kcal: Total;
@@ -110,10 +113,8 @@ export function MealSection({
       accessibilityLabel={addLabel ?? `Aggiungi a ${name}`}
       style={styles.action}
     >
-      <Icon name="plus" color="textSecondary" size={20} />
-      <TaraText variant="bodyStrong" color="textSecondary">
-        Aggiungi
-      </TaraText>
+      <Icon name="plus" color="textSecondary" size={ACTION_ICON} />
+      <TaraText color="textSecondary">Aggiungi</TaraText>
     </PressableScale>
   ) : null;
   const copyButton = copy ? (
@@ -122,9 +123,7 @@ export function MealSection({
       accessibilityLabel={`${copy.label}: ${name}`}
       style={styles.action}
     >
-      <TaraText variant="bodyStrong" color="textSecondary">
-        {copy.label}
-      </TaraText>
+      <TaraText color="textSecondary">{copy.label}</TaraText>
     </PressableScale>
   ) : null;
 
@@ -247,9 +246,7 @@ export function MealSection({
               testID={`salva-pasto-${name.toLowerCase()}`}
               style={styles.action}
             >
-              <TaraText variant="bodyStrong" color="textSecondary">
-                Salva come pasto
-              </TaraText>
+              <TaraText color="textSecondary">Salva come pasto</TaraText>
             </PressableScale>
           ) : null}
         </View>
@@ -259,10 +256,10 @@ export function MealSection({
             accessibilityLabel={`Totale ${name}: ${kcalText} kcal, ${proteinText} grammi di proteine`}
             style={styles.totals}
           >
-            <TaraText variant="number" numberOfLines={1} style={styles.kcal}>
+            <TaraText numberOfLines={1} style={styles.kcal}>
               {kcalText}
             </TaraText>
-            <TaraText variant="number" numberOfLines={1} style={styles.protein}>
+            <TaraText numberOfLines={1} style={styles.protein}>
               {proteinText}
             </TaraText>
           </View>
@@ -321,19 +318,15 @@ const styles = StyleSheet.create({
     gap: space.xs,
     paddingHorizontal: space.m,
   },
+  // Un pasto vuoto è una riga sola: il nome si accorcia, le azioni restano intere.
   emptyRow: {
     minHeight: touch.min,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: space.s,
+    gap: space.xs,
     paddingLeft: space.m,
   },
-  emptyActions: {
-    flexShrink: 1,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'flex-end',
-  },
+  emptyActions: { flexShrink: 0, flexDirection: 'row', alignItems: 'center' },
   collapsed: {
     minHeight: touch.min + space.xs,
     flexDirection: 'row',

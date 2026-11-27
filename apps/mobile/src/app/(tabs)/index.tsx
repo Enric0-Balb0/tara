@@ -623,7 +623,8 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: space.l,
     paddingTop: space.xs,
-    gap: space.l,
+    // Tra un pasto e l'altro poco spazio, come nelle tavole: i pasti vuoti sono una riga.
+    gap: space.m,
     paddingBottom: space.xxxl,
   },
   iconButton: {

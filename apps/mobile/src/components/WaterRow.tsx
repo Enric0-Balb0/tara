@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { formatNumber } from '@/domain/format';
 import { waterFigures, waterText } from '@/domain/water';
 import { goals, space, touch } from '@/theme/layout';
+import { textStyles } from '@/theme/typography';
 import { useTheme } from '@/theme/useTheme';
 
 import { GoalBar } from './GoalBar';
@@ -26,9 +27,10 @@ interface Props {
 }
 
 /**
- * Acqua del giorno (RF-60), l'ultima riga della scheda degli obiettivi: "Acqua" con "1,25 / 3
- * l" sotto nella colonna dei nomi, la barra sottile (solo con un target) e a destra una pillola
- * per incremento. "Annulla +500", che dice cosa toglie, sta nella riga sotto.
+ * Acqua del giorno (RF-60), l'ultima riga della scheda degli obiettivi, come quelle dei macro:
+ * "Acqua" nella colonna dei nomi, la barra sottile (solo con un target), una pillola per
+ * incremento e "1,25 / 3 l" nella colonna dei valori. Se a 412 dp non ci sta, il valore va a
+ * capo a destra. "Annulla +500", che dice cosa toglie, sta nella riga sotto.
  */
 export function WaterRow({ ml, target, increments, lastAdded, onAdd, onUndo }: Props) {
   const { colors } = useTheme();
@@ -36,21 +38,9 @@ export function WaterRow({ ml, target, increments, lastAdded, onAdd, onUndo }: P
   return (
     <View testID="acqua" style={styles.stack}>
       <View style={styles.row}>
-        <View style={styles.label}>
-          <TaraText variant="bodyStrong" numberOfLines={1}>
-            Acqua
-          </TaraText>
-          <TaraText
-            testID="acqua-totale"
-            color="textSecondary"
-            numberOfLines={1}
-            adjustsFontSizeToFit
-            accessibilityLabel={waterText(ml, target)}
-          >
-            <TaraText variant="figure">{figures.value}</TaraText>
-            {figures.rest}
-          </TaraText>
-        </View>
+        <TaraText variant="bodyStrong" numberOfLines={1} style={styles.label}>
+          Acqua
+        </TaraText>
         <View style={styles.bar}>
           {target === null ? null : <GoalBar color="text" logged={ml} target={target} />}
         </View>
@@ -64,10 +54,23 @@ export function WaterRow({ ml, target, increments, lastAdded, onAdd, onUndo }: P
               hitSlop={PILL_SLOP}
               style={[styles.pill, { backgroundColor: colors.raised }]}
             >
-              <TaraText variant="bodyStrong">+{formatNumber(step, 0)}</TaraText>
+              <TaraText variant="caption" style={styles.pillText}>
+                +{formatNumber(step, 0)}
+              </TaraText>
             </PressableScale>
           ))}
         </View>
+        <TaraText
+          testID="acqua-totale"
+          color="textSecondary"
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          accessibilityLabel={waterText(ml, target)}
+          style={styles.value}
+        >
+          <TaraText variant="figure">{figures.value}</TaraText>
+          {figures.rest}
+        </TaraText>
       </View>
       {lastAdded === null ? null : (
         <PressableScale
@@ -77,7 +80,9 @@ export function WaterRow({ ml, target, increments, lastAdded, onAdd, onUndo }: P
           hitSlop={PILL_SLOP}
           style={[styles.pill, styles.undo, { borderColor: colors.borderStrong }]}
         >
-          <TaraText variant="bodyStrong">Annulla +{formatNumber(lastAdded, 0)}</TaraText>
+          <TaraText variant="caption" style={styles.pillText}>
+            Annulla +{formatNumber(lastAdded, 0)}
+          </TaraText>
         </PressableScale>
       )}
     </View>
@@ -96,14 +101,17 @@ const styles = StyleSheet.create({
   },
   label: { width: goals.label },
   bar: { flex: 1, minWidth: space.xxxl },
-  actions: { flexDirection: 'row', gap: space.xs, marginLeft: 'auto' },
+  actions: { flexDirection: 'row', gap: space.xs },
+  // Allineato ai valori dei macro; se la riga non basta va a capo, a destra.
+  value: { width: goals.value, marginLeft: 'auto', textAlign: 'right' },
   pill: {
     height: PILL_HEIGHT,
     minWidth: touch.min,
-    paddingHorizontal: space.m,
+    paddingHorizontal: space.s,
     borderRadius: PILL_HEIGHT / 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  pillText: { fontFamily: textStyles.bodyStrong.fontFamily },
   undo: { alignSelf: 'flex-end', borderWidth: 1 },
 });
