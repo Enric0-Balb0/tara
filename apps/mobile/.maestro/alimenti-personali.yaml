@@ -62,6 +62,10 @@ tags:
     env:
       CAMPO: campo-salt_g
       TESTO: '0.13'
+- scrollUntilVisible:
+    element: 'Le calorie tornano con i macro: 63 dichiarate, 62 calcolate.'
+    direction: DOWN
+- takeScreenshot: screenshots/nuovo-alimento
 - runFlow:
     file: subflows/etichetta.yaml
     env:
@@ -72,10 +76,6 @@ tags:
     env:
       CAMPO: campo-porzione-grammi
       TESTO: '170'
-- scrollUntilVisible:
-    element: 'Le calorie tornano con i macro: 63 dichiarate, 62 calcolate.'
-    direction: DOWN
-- takeScreenshot: screenshots/nuovo-alimento
 - tapOn: Salva nel mio catalogo
 - extendedWaitUntil:
     visible: I tuoi alimenti
@@ -90,7 +90,9 @@ tags:
     visible: 'Fonte: Inserito a mano'
     timeout: 10000
 - tapOn: '.*Aggiungi a .*'
-- tapOn: '1 vasetto, 170 grammi'
+- assertVisible: '1 vasetto · 170 grammi'
+- assertVisible: '2 vasetti · 340 grammi'
+- tapOn: '1 vasetto · 170 grammi'
 - assertVisible: 'Aggiungi 170 grammi'
 - takeScreenshot: screenshots/porzione
 - tapOn: Aggiungi 170 grammi
@@ -98,6 +100,13 @@ tags:
     visible:
       id: diario
     timeout: 10000
+- tapOn:
+    id: tab-oggi
+    retryTapIfNoChange: true
+- runFlow:
+    file: subflows/vedi.yaml
+    env:
+      ELEMENTO: 'Skyr bianco, 170 grammi, .*'
 
 # Dalla ricerca: il prodotto che non c'è si crea con il nome già scritto.
 - tapOn:

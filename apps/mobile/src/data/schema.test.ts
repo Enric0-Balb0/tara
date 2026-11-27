@@ -198,18 +198,20 @@ describe('migrazione alla versione 3', () => {
       ),
     ).rejects.toThrow(/food_cooking_valid/);
   });
+});
 
+describe('migrazione alla versione 14', () => {
   it('la porzione dichiarata è positiva e il nome non sta senza grammi', async () => {
-    const insert = (serving: string) =>
+    const insert = (id: string, serving: string) =>
       db.runAsync(
         `INSERT INTO food (id, name, state, base_unit, search_text, serving_g, serving_name)
-         VALUES ('p${serving.length}', 'Skyr', 'not_applicable', 'g', 'skyr', ${serving})`,
+         VALUES ('${id}', 'Skyr', 'not_applicable', 'g', 'skyr', ${serving})`,
       );
-    await expect(insert("0, 'vasetto'")).rejects.toThrow(/food_serving_positive/);
-    await expect(insert('-5, NULL')).rejects.toThrow(/food_serving_positive/);
-    await expect(insert("NULL, 'vasetto'")).rejects.toThrow(/food_serving_name_needs_grams/);
-    await insert('170, NULL');
-    await insert("170, 'vasetto'");
-    await insert('NULL, NULL');
+    await expect(insert('p1', "0, 'vasetto'")).rejects.toThrow(/food_serving_positive/);
+    await expect(insert('p2', '-5, NULL')).rejects.toThrow(/food_serving_positive/);
+    await expect(insert('p3', "NULL, 'vasetto'")).rejects.toThrow(/food_serving_name_needs_grams/);
+    await insert('p4', 'NULL, NULL');
+    await insert('p5', '170, NULL');
+    await insert('p6', "170, 'vasetto'");
   });
 });

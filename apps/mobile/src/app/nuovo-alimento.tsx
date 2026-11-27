@@ -96,7 +96,18 @@ export default function NewFoodScreen() {
         setState(food.state);
         setUnit(food.baseUnit);
         setServingName(food.serving?.name ?? '');
-        setServingGrams(food.serving ? String(food.serving.grams).replace('.', ',') : '');
+        setServingGrams(
+          food.serving
+            ? formatNumber(
+                food.serving.grams,
+                Number.isInteger(food.serving.grams)
+                  ? 0
+                  : Number.isInteger(food.serving.grams * 10)
+                    ? 1
+                    : 2,
+              )
+            : '',
+        );
         setTexts(
           foodTextsOf(
             Object.fromEntries(food.nutrients.map((n) => [n.code, n.amountPer100])),
@@ -116,6 +127,8 @@ export default function NewFoodScreen() {
 
   const form = readFoodForm(name, texts);
   const serving = readServing(servingName, servingGrams);
+  const showServingError =
+    serving.errors.grams !== undefined && (tried || servingGrams.trim() !== '');
   const check = kcalCheckText(form.values);
   // Prima del primo tentativo solo gli errori dei valori scritti (un numero non valido, un
   // "di cui" troppo grande); dopo, anche ciò che manca.
@@ -324,12 +337,12 @@ export default function NewFoodScreen() {
                     value={servingGrams}
                     onChangeText={setServingGrams}
                     keyboardType="decimal-pad"
-                    invalid={serving.errors.grams !== undefined}
+                    invalid={showServingError}
                     testID="campo-porzione-grammi"
                   />
                 </View>
               </View>
-              {serving.errors.grams ? (
+              {showServingError ? (
                 <TaraText variant="caption" color="error" accessibilityLiveRegion="polite">
                   {serving.errors.grams}
                 </TaraText>

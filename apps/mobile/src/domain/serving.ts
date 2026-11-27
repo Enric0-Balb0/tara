@@ -5,6 +5,15 @@ const IRREGULAR: Readonly<Record<string, string>> = {
   uovo: 'uova',
   paio: 'paia',
   dito: 'dita',
+  arancia: 'arance',
+  goccia: 'gocce',
+  fico: 'fichi',
+  brioche: 'brioche',
+  pancake: 'pancake',
+  plumcake: 'plumcake',
+  mousse: 'mousse',
+  crêpe: 'crêpe',
+  cookie: 'cookie',
 };
 
 /** Il plurale di una parola italiana: irregolari, poi -io→-i, -ca/-ga→-che/-ghe, -o→-i, -a→-e, -e→-i. */
