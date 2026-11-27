@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_DAY_TYPES,
   formatTargetInput,
+  goalFigures,
   macroKcalCheck,
   parseTargetInput,
   remaining,
@@ -100,5 +101,21 @@ describe('macroKcalCheck', () => {
 
   it('serve un target completo per confrontare', () => {
     expect(macroKcalCheck({ kcal: 2800, protein_g: 240, carbs_g: null, fat_g: 70 })).toBeNull();
+  });
+});
+
+describe('goalFigures', () => {
+  it('mette in evidenza il registrato e scrive il target accanto', () => {
+    expect(goalFigures('49', '240')).toEqual({ value: '49', rest: ' / 240' });
+    expect(goalFigures('1478', '4800', 'kcal')).toEqual({ value: '1478', rest: ' / 4800 kcal' });
+  });
+
+  it('senza target scrive il trattino, non zero', () => {
+    expect(goalFigures('≥ 49', null)).toEqual({ value: '≥ 49', rest: ' / –' });
+  });
+
+  it("senza target può lasciare solo l'unità", () => {
+    expect(goalFigures('1,25', null, 'l', 'omit')).toEqual({ value: '1,25', rest: ' l' });
+    expect(goalFigures('96', null, '', 'omit')).toEqual({ value: '96', rest: '' });
   });
 });

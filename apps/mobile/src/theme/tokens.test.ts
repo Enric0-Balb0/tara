@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { columns, radius, space, touch } from './layout';
+import { columns, goals, radius, space, touch } from './layout';
 import { curves, durations, INDETERMINATE_STEP_MS, PRESS_SCALE } from './motion';
 
 // Valori di docs/design.md: cambiano solo insieme al documento.
@@ -16,6 +16,11 @@ describe('layout', () => {
   it('ha colonne e raggi del documento', () => {
     expect(columns).toEqual({ weight: 56, kcal: 44, protein: 44, gap: 8 });
     expect(radius).toEqual({ label: 4, field: 10, key: 12, button: 14, panel: 16, sheet: 24 });
+  });
+
+  it('ha le colonne degli obiettivi sulla griglia da 4', () => {
+    expect(goals).toEqual({ label: 92, value: 84, gap: 8 });
+    for (const value of Object.values(goals)) expect(value % 4).toBe(0);
   });
 });
 

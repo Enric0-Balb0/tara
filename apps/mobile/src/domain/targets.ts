@@ -52,6 +52,22 @@ export function formatTargetInput(value: number | null): string {
   return Number.isInteger(value) ? String(value) : formatNumber(value, 1);
 }
 
+/**
+ * Un valore contro il suo target come si scrive negli obiettivi di Oggi: il registrato in
+ * evidenza e il resto accanto, "**49** / 240", "**1478** / 4800 kcal", "**1,25** / 3 l".
+ * Senza target "/ –" (un target mancante non vale zero); con `unit` e target null solo l'unità.
+ */
+export function goalFigures(
+  logged: string,
+  target: string | null,
+  unit = '',
+  missing: 'dash' | 'omit' = 'dash',
+): { value: string; rest: string } {
+  const suffix = unit === '' ? '' : ` ${unit}`;
+  if (target === null) return { value: logged, rest: missing === 'dash' ? ' / –' : suffix };
+  return { value: logged, rest: ` / ${target}${suffix}` };
+}
+
 /** Quanto manca al target; negativo se superato, null senza target. */
 export function remaining(target: number | null, logged: number): number | null {
   return target === null ? null : target - logged;

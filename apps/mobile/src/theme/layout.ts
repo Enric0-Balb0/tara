@@ -10,3 +10,9 @@ export const touch = { min: 44, key: 54, primary: 52 } as const;
 
 /** Colonne delle righe, uguali in ogni lista: il nome prende lo spazio che resta. */
 export const columns = { weight: 56, kcal: 44, protein: 44, gap: 8 } as const;
+
+/**
+ * Righe degli obiettivi di Oggi: etichetta del macro a larghezza fissa, barra sottile che prende
+ * lo spazio che resta, valore "49 / 240" a destra. Le stesse in ogni riga, acqua compresa.
+ */
+export const goals = { label: 92, value: 84, gap: 8 } as const;

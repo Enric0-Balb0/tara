@@ -6,6 +6,7 @@ import {
   parseIncrements,
   parseWaterTarget,
   validIncrements,
+  waterFigures,
   waterFraction,
   waterText,
 } from './water';
@@ -92,5 +93,13 @@ describe('parseWaterTarget', () => {
     expect(parseWaterTarget('2500.5')).toBeUndefined();
     expect(parseWaterTarget('abc')).toBeUndefined();
     expect(parseWaterTarget('100000')).toBeUndefined();
+  });
+});
+
+describe('waterFigures', () => {
+  it('scrive "1,25 / 3 l" con il target e solo i litri senza', () => {
+    expect(waterFigures(1250, 3000)).toEqual({ value: '1,25', rest: ' / 3 l' });
+    expect(waterFigures(0, 3000)).toEqual({ value: '0', rest: ' / 3 l' });
+    expect(waterFigures(500, null)).toEqual({ value: '0,5', rest: ' l' });
   });
 });
