@@ -8,6 +8,7 @@ import {
   LABEL_FIELDS,
   parseLabelValue,
   readFoodForm,
+  readServing,
 } from './foodForm';
 
 // Skyr bianco, per 100 g: 63 kcal, 0,2 g di grassi, 4 g di carboidrati, 11 g di proteine.
@@ -143,5 +144,23 @@ describe('foodTextsOf', () => {
 
   it("ha un campo per ogni riga dell'etichetta", () => {
     expect(Object.keys(emptyFoodTexts())).toEqual(LABEL_FIELDS.map((field) => field.code));
+  });
+});
+
+describe('readServing', () => {
+  it("senza nome e senza grammi non c'è porzione", () => {
+    expect(readServing('', ' ')).toEqual({ ok: true, serving: null, errors: {} });
+  });
+
+  it('i grammi bastano, il nome è facoltativo', () => {
+    expect(readServing('', '30').serving).toEqual({ grams: 30, name: null });
+    expect(readServing(' vasetto ', '170,5').serving).toEqual({ grams: 170.5, name: 'vasetto' });
+  });
+
+  it('il nome senza grammi e i grammi non positivi non valgono', () => {
+    expect(readServing('vasetto', '').ok).toBe(false);
+    expect(readServing('vasetto', '').errors.grams).toBeDefined();
+    expect(readServing('', '0').ok).toBe(false);
+    expect(readServing('', 'abc').ok).toBe(false);
   });
 });

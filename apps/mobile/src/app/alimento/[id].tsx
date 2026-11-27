@@ -30,6 +30,7 @@ import { minutesOfDay, slotForTime, toLocalDate } from '@/domain/diary';
 import { parseLabelValue } from '@/domain/foodForm';
 import { formatAmount, formatTime } from '@/domain/format';
 import { MISSING_INGREDIENT_TEXT, portionShortcuts } from '@/domain/recipe';
+import { servingShortcuts } from '@/domain/serving';
 import { sourceLabel } from '@/domain/sources';
 import { radius, space, touch } from '@/theme/layout';
 import { useTheme } from '@/theme/useTheme';
@@ -467,7 +468,13 @@ export default function FoodScreen() {
         lastGrams={params.ricetta ? undefined : (lastGrams ?? undefined)}
         confirmVerb="Aggiungi"
         unit={food.baseUnit}
-        shortcuts={recipe?.servingG ? portionShortcuts(recipe.servingG) : undefined}
+        shortcuts={
+          recipe?.servingG
+            ? portionShortcuts(recipe.servingG)
+            : food.serving
+              ? servingShortcuts(food.serving.grams, food.serving.name, food.baseUnit)
+              : undefined
+        }
         onConfirm={(quantity) =>
           params.ricetta ? addToRecipe(quantity) : void add(quantity, false)
         }

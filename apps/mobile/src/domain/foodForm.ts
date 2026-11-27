@@ -175,3 +175,24 @@ export function kcalCheckText(
         text: `Le calorie non tornano con i macro: ${numbers} Ricontrolla l'etichetta.`,
       };
 }
+
+export interface ServingForm {
+  ok: boolean;
+  /** La porzione da salvare; null se i due campi sono vuoti. */
+  serving: { grams: number; name: string | null } | null;
+  errors: { name?: string; grams?: string };
+}
+
+/** La porzione facoltativa: grammi > 0, il nome da solo non vale (RF-02). */
+export function readServing(nameText: string, gramsText: string): ServingForm {
+  const name = nameText.trim();
+  const grams = parseLabelValue(gramsText);
+  if (grams === undefined || (grams !== null && grams <= 0)) {
+    return { ok: false, serving: null, errors: { grams: 'Scrivi un numero maggiore di zero.' } };
+  }
+  if (grams === null) {
+    if (name === '') return { ok: true, serving: null, errors: {} };
+    return { ok: false, serving: null, errors: { grams: 'Servono i grammi della porzione.' } };
+  }
+  return { ok: true, serving: { grams, name: name === '' ? null : name }, errors: {} };
+}

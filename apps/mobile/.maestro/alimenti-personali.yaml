@@ -66,12 +66,47 @@ tags:
     element: 'Le calorie tornano con i macro: 63 dichiarate, 62 calcolate.'
     direction: DOWN
 - takeScreenshot: screenshots/nuovo-alimento
+- runFlow:
+    file: subflows/etichetta.yaml
+    env:
+      CAMPO: campo-porzione-nome
+      TESTO: vasetto
+- runFlow:
+    file: subflows/etichetta.yaml
+    env:
+      CAMPO: campo-porzione-grammi
+      TESTO: '170'
 - tapOn: Salva nel mio catalogo
 - extendedWaitUntil:
     visible: I tuoi alimenti
     timeout: 10000
 - assertVisible: 'Skyr bianco, Milbona, 63 kcal per 100 grammi'
 - takeScreenshot: screenshots/dispensa
+
+# La porzione dichiarata: dalla scheda dello skyr il foglio dei grammi offre "1 vasetto · 170 g"
+# e lo registra senza usare il tastierino.
+- tapOn: 'Skyr bianco, Milbona, 63 kcal per 100 grammi'
+- extendedWaitUntil:
+    visible: 'Fonte: Inserito a mano'
+    timeout: 10000
+- tapOn: '.*Aggiungi a .*'
+- assertVisible: '1 vasetto · 170 grammi'
+- assertVisible: '2 vasetti · 340 grammi'
+- tapOn: '1 vasetto · 170 grammi'
+- assertVisible: 'Aggiungi 170 grammi'
+- takeScreenshot: screenshots/porzione
+- tapOn: Aggiungi 170 grammi
+- extendedWaitUntil:
+    visible:
+      id: diario
+    timeout: 10000
+- tapOn:
+    id: tab-oggi
+    retryTapIfNoChange: true
+- runFlow:
+    file: subflows/vedi.yaml
+    env:
+      ELEMENTO: 'Skyr bianco, 170 grammi, .*'
 
 # Dalla ricerca: il prodotto che non c'è si crea con il nome già scritto.
 - tapOn:

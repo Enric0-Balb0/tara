@@ -23,6 +23,7 @@ import {
   foodTextsOf,
   kcalCheckText,
   readFoodForm,
+  readServing,
 } from '@/domain/foodForm';
 import { space, touch } from '@/theme/layout';
 import { useTheme } from '@/theme/useTheme';
@@ -69,6 +70,8 @@ export default function NewFoodScreen() {
   const [brand, setBrand] = useState('');
   const [state, setState] = useState<FoodState>('not_applicable');
   const [unit, setUnit] = useState<BaseUnit>('g');
+  const [servingName, setServingName] = useState('');
+  const [servingGrams, setServingGrams] = useState('');
   const [texts, setTexts] = useState<FoodTexts>(emptyFoodTexts);
   // In modifica il form si mostra quando l'alimento è letto, per non sovrascriverlo vuoto;
   // 'missing' se non c'è più (eliminato altrove) o non si legge.
@@ -92,6 +95,19 @@ export default function NewFoodScreen() {
         setBrand(food.brand ?? '');
         setState(food.state);
         setUnit(food.baseUnit);
+        setServingName(food.serving?.name ?? '');
+        setServingGrams(
+          food.serving
+            ? formatNumber(
+                food.serving.grams,
+                Number.isInteger(food.serving.grams)
+                  ? 0
+                  : Number.isInteger(food.serving.grams * 10)
+                    ? 1
+                    : 2,
+              )
+            : '',
+        );
         setTexts(
           foodTextsOf(
             Object.fromEntries(food.nutrients.map((n) => [n.code, n.amountPer100])),
@@ -110,6 +126,9 @@ export default function NewFoodScreen() {
   }, [db, editing]);
 
   const form = readFoodForm(name, texts);
+  const serving = readServing(servingName, servingGrams);
+  const showServingError =
+    serving.errors.grams !== undefined && (tried || servingGrams.trim() !== '');
   const check = kcalCheckText(form.values);
   // Prima del primo tentativo solo gli errori dei valori scritti (un numero non valido, un
   // "di cui" troppo grande); dopo, anche ciò che manca.
@@ -123,7 +142,7 @@ export default function NewFoodScreen() {
 
   async function save() {
     setTried(true);
-    if (!form.ok || userId === undefined || busy.current) return;
+    if (!form.ok || !serving.ok || userId === undefined || busy.current) return;
     busy.current = true;
     setSaving(true);
     const input = {
@@ -133,6 +152,7 @@ export default function NewFoodScreen() {
       baseUnit: unit,
       values: form.values,
       derived: form.derived,
+      serving: serving.serving,
     };
     try {
       if (editing !== undefined) {
@@ -294,6 +314,41 @@ export default function NewFoodScreen() {
               </TaraText>
             ) : null}
 
+            <View style={styles.serving}>
+              <TaraText variant="section">Porzione (facoltativa)</TaraText>
+              <TaraText variant="caption" color="textSecondary">
+                Per i prodotti a pezzo: nella scheda compare come scorciatoia, ad esempio «1 vasetto
+                · 150 g».
+              </TaraText>
+              <View style={styles.names}>
+                <View style={styles.name}>
+                  <TextField
+                    label="Nome"
+                    value={servingName}
+                    onChangeText={setServingName}
+                    placeholder="vasetto, uovo, fetta"
+                    autoCapitalize="none"
+                    testID="campo-porzione-nome"
+                  />
+                </View>
+                <View style={styles.brand}>
+                  <TextField
+                    label={unit === 'ml' ? 'Millilitri' : 'Grammi'}
+                    value={servingGrams}
+                    onChangeText={setServingGrams}
+                    keyboardType="decimal-pad"
+                    invalid={showServingError}
+                    testID="campo-porzione-grammi"
+                  />
+                </View>
+              </View>
+              {showServingError ? (
+                <TaraText variant="caption" color="error" accessibilityLiveRegion="polite">
+                  {serving.errors.grams}
+                </TaraText>
+              ) : null}
+            </View>
+
             {editing !== undefined ? (
               <Button label="Elimina alimento" kind="quiet" onPress={confirmDelete} />
             ) : null}
@@ -331,6 +386,7 @@ const styles = StyleSheet.create({
   names: { flexDirection: 'row', gap: space.m },
   name: { flex: 3, gap: space.xs },
   brand: { flex: 2 },
+  serving: { gap: space.s },
   check: { flexDirection: 'row', gap: space.s, alignItems: 'flex-start' },
   checkText: { flex: 1 },
   missing: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.l },
