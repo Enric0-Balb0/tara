@@ -5,6 +5,7 @@ import { SectionList, StyleSheet, View } from 'react-native';
 
 import { Button } from '@/components/Button';
 import { PressableScale } from '@/components/PressableScale';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { StateTag } from '@/components/StateTag';
 import { TaraText } from '@/components/TaraText';
 import { type PersonalFood, personalFoods } from '@/data/foodsStore';
@@ -70,117 +71,120 @@ export default function PantryScreen() {
   ];
 
   return (
-    <SectionList<PersonalFood | RecipeListItem | SavedMealSummary>
-      style={{ backgroundColor: colors.background }}
-      contentContainerStyle={styles.content}
-      sections={sections}
-      keyExtractor={(item) => item.id}
-      testID="dispensa"
-      stickySectionHeadersEnabled={false}
-      ListHeaderComponent={
-        <View style={styles.buttons}>
-          <View style={styles.button}>
-            <Button label="Nuovo alimento" onPress={() => router.push('/nuovo-alimento')} />
+    <View style={[styles.screen, { backgroundColor: colors.background }]}>
+      <ScreenHeader title="Dispensa" />
+      <SectionList<PersonalFood | RecipeListItem | SavedMealSummary>
+        contentContainerStyle={styles.content}
+        sections={sections}
+        keyExtractor={(item) => item.id}
+        testID="dispensa"
+        stickySectionHeadersEnabled={false}
+        ListHeaderComponent={
+          <View style={styles.buttons}>
+            <View style={styles.button}>
+              <Button label="Nuovo alimento" onPress={() => router.push('/nuovo-alimento')} />
+            </View>
+            <View style={styles.button}>
+              <Button
+                label="Nuova ricetta"
+                kind="secondary"
+                testID="nuova-ricetta"
+                onPress={() => {
+                  // La bozza riparte vuota qui, senza contare sulla pulizia dell'editor.
+                  startDraft();
+                  router.push('/ricetta');
+                }}
+              />
+            </View>
           </View>
-          <View style={styles.button}>
-            <Button
-              label="Nuova ricetta"
-              kind="secondary"
-              testID="nuova-ricetta"
-              onPress={() => {
-                // La bozza riparte vuota qui, senza contare sulla pulizia dell'editor.
-                startDraft();
-                router.push('/ricetta');
-              }}
-            />
-          </View>
-        </View>
-      }
-      renderSectionHeader={({ section }) => (
-        <TaraText variant="bodyStrong" accessibilityRole="header" style={styles.section}>
-          {section.title}
-        </TaraText>
-      )}
-      ListEmptyComponent={
-        foods ? (
-          <TaraText color="textSecondary" style={styles.empty}>
-            {failed
-              ? 'Il telefono non è riuscito a leggere i tuoi alimenti: riprova tornando qui.'
-              : "Qui trovi i prodotti che inserisci tu, le tue ricette e i pasti salvati: copi l'etichetta una volta, poi li cerchi come tutti gli altri."}
+        }
+        renderSectionHeader={({ section }) => (
+          <TaraText variant="bodyStrong" accessibilityRole="header" style={styles.section}>
+            {section.title}
           </TaraText>
-        ) : undefined
-      }
-      renderItem={({ item, section }) => {
-        if (section.key === 'pasti') {
-          const meal = item as SavedMealSummary;
-          const count = foodCountLabel(meal.itemCount);
+        )}
+        ListEmptyComponent={
+          foods ? (
+            <TaraText color="textSecondary" style={styles.empty}>
+              {failed
+                ? 'Il telefono non è riuscito a leggere i tuoi alimenti: riprova tornando qui.'
+                : "Qui trovi i prodotti che inserisci tu, le tue ricette e i pasti salvati: copi l'etichetta una volta, poi li cerchi come tutti gli altri."}
+            </TaraText>
+          ) : undefined
+        }
+        renderItem={({ item, section }) => {
+          if (section.key === 'pasti') {
+            const meal = item as SavedMealSummary;
+            const count = foodCountLabel(meal.itemCount);
+            return (
+              <PressableScale
+                onPress={() => router.push({ pathname: '/pasto/[id]', params: { id: meal.id } })}
+                accessibilityLabel={`${meal.name}, pasto salvato, ${count}`}
+                style={[styles.row, { borderBottomColor: colors.border }]}
+              >
+                <View style={styles.text}>
+                  <TaraText numberOfLines={2}>{meal.name}</TaraText>
+                </View>
+                <TaraText variant="caption" color="textSecondary">
+                  {count}
+                </TaraText>
+              </PressableScale>
+            );
+          }
+          const isRecipe = section.key === 'ricette';
+          const recipeItem = item as RecipeListItem;
+          const food = item as PersonalFood;
+          const kcal = formatAmount(isRecipe ? recipeItem.kcalPer100 : food.kcal, 'kcal');
+          const servingText =
+            isRecipe && recipeItem.servingG !== null
+              ? formatAmount(recipeItem.servingG, 'grams')
+              : null;
+          const serving = servingText === null ? null : `porzione ${servingText} g`;
+          const unit = isRecipe ? 'g' : food.baseUnit;
           return (
             <PressableScale
-              onPress={() => router.push({ pathname: '/pasto/[id]', params: { id: meal.id } })}
-              accessibilityLabel={`${meal.name}, pasto salvato, ${count}`}
+              onPress={() => router.push({ pathname: '/alimento/[id]', params: { id: item.id } })}
+              accessibilityLabel={
+                isRecipe
+                  ? `${recipeItem.name}, ricetta, ${kcal} kcal per 100 grammi${servingText ? `, porzione di ${servingText} grammi` : ''}`
+                  : `${food.name}${food.brand ? `, ${food.brand}` : ''}, ${kcal} kcal per 100 ${food.baseUnit === 'ml' ? 'millilitri' : 'grammi'}`
+              }
               style={[styles.row, { borderBottomColor: colors.border }]}
             >
               <View style={styles.text}>
-                <TaraText numberOfLines={2}>{meal.name}</TaraText>
+                <View style={styles.name}>
+                  <TaraText numberOfLines={2} style={styles.shrink}>
+                    {item.name}
+                  </TaraText>
+                  {isRecipe ? null : <StateTag state={food.state} />}
+                </View>
+                {!isRecipe && food.brand ? (
+                  <TaraText variant="minimum" color="textSecondary" numberOfLines={1}>
+                    {food.brand}
+                  </TaraText>
+                ) : null}
+                {serving ? (
+                  <TaraText variant="minimum" color="textSecondary" numberOfLines={1}>
+                    {serving}
+                  </TaraText>
+                ) : null}
               </View>
-              <TaraText variant="caption" color="textSecondary">
-                {count}
-              </TaraText>
+              <View style={styles.value}>
+                <TaraText variant="number">{kcal}</TaraText>
+                <TaraText variant="minimum" color="textSecondary">
+                  kcal/100 {unit}
+                </TaraText>
+              </View>
             </PressableScale>
           );
-        }
-        const isRecipe = section.key === 'ricette';
-        const recipeItem = item as RecipeListItem;
-        const food = item as PersonalFood;
-        const kcal = formatAmount(isRecipe ? recipeItem.kcalPer100 : food.kcal, 'kcal');
-        const servingText =
-          isRecipe && recipeItem.servingG !== null
-            ? formatAmount(recipeItem.servingG, 'grams')
-            : null;
-        const serving = servingText === null ? null : `porzione ${servingText} g`;
-        const unit = isRecipe ? 'g' : food.baseUnit;
-        return (
-          <PressableScale
-            onPress={() => router.push({ pathname: '/alimento/[id]', params: { id: item.id } })}
-            accessibilityLabel={
-              isRecipe
-                ? `${recipeItem.name}, ricetta, ${kcal} kcal per 100 grammi${servingText ? `, porzione di ${servingText} grammi` : ''}`
-                : `${food.name}${food.brand ? `, ${food.brand}` : ''}, ${kcal} kcal per 100 ${food.baseUnit === 'ml' ? 'millilitri' : 'grammi'}`
-            }
-            style={[styles.row, { borderBottomColor: colors.border }]}
-          >
-            <View style={styles.text}>
-              <View style={styles.name}>
-                <TaraText numberOfLines={2} style={styles.shrink}>
-                  {item.name}
-                </TaraText>
-                {isRecipe ? null : <StateTag state={food.state} />}
-              </View>
-              {!isRecipe && food.brand ? (
-                <TaraText variant="minimum" color="textSecondary" numberOfLines={1}>
-                  {food.brand}
-                </TaraText>
-              ) : null}
-              {serving ? (
-                <TaraText variant="minimum" color="textSecondary" numberOfLines={1}>
-                  {serving}
-                </TaraText>
-              ) : null}
-            </View>
-            <View style={styles.value}>
-              <TaraText variant="number">{kcal}</TaraText>
-              <TaraText variant="minimum" color="textSecondary">
-                kcal/100 {unit}
-              </TaraText>
-            </View>
-          </PressableScale>
-        );
-      }}
-    />
+        }}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1 },
   content: { paddingBottom: space.xl },
   buttons: { flexDirection: 'row', gap: space.s, padding: space.l },
   button: { flex: 1 },

@@ -2,8 +2,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { type DiaryNutrient, formatTotal, type Total } from '@/domain/diary';
 import type { ColorToken } from '@/theme/colors';
-import { radius, space } from '@/theme/layout';
-import { useTheme } from '@/theme/useTheme';
+import { space } from '@/theme/layout';
 
 import { TaraText } from './TaraText';
 
@@ -14,7 +13,7 @@ const CELLS: readonly {
   spoken: string;
   color: ColorToken;
 }[] = [
-  { code: 'energy_kcal', label: 'kcal', unit: '', spoken: 'kcal', color: 'text' },
+  { code: 'energy_kcal', label: 'kcal', unit: '', spoken: 'kcal', color: 'textSecondary' },
   {
     code: 'protein_g',
     label: 'Proteine',
@@ -33,8 +32,9 @@ const CELLS: readonly {
 ];
 
 /**
- * Riepilogo della giornata (RF-45): kcal e macro registrati. I target per tipo di giornata e
- * le barre graduate arrivano con RF-50; un totale con "≥" ha voci senza quel valore.
+ * Totali della giornata senza target (RF-45), in una riga compatta: kcal e i tre macro, ognuno
+ * con il nome colorato sotto. Sta dentro la scheda degli obiettivi (`DayGoals`); un totale con
+ * "≥" ha voci senza quel valore.
  */
 export function DayTotals({
   totals,
@@ -44,13 +44,9 @@ export function DayTotals({
   /** "2,1 g/kg" sotto "Proteine", e come lo legge lo schermo. */
   proteinNote?: { text: string; spoken: string; testID?: string };
 }) {
-  const { colors } = useTheme();
   const incomplete = CELLS.some((cell) => totals[cell.code].incomplete);
   return (
-    <View
-      accessibilityLabel="Totali della giornata"
-      style={[styles.panel, { backgroundColor: colors.surface, borderColor: colors.border }]}
-    >
+    <View accessibilityLabel="Totali della giornata" style={styles.stack}>
       <View style={styles.cells}>
         {CELLS.map((cell) => {
           const value = formatTotal(
@@ -66,7 +62,7 @@ export function DayTotals({
               }`}
               style={styles.cell}
             >
-              <TaraText variant="bigNumber" numberOfLines={1} adjustsFontSizeToFit>
+              <TaraText variant="figure" numberOfLines={1} adjustsFontSizeToFit>
                 {value}
                 <TaraText variant="caption" color="textSecondary">
                   {cell.unit}
@@ -99,13 +95,7 @@ export function DayTotals({
 }
 
 const styles = StyleSheet.create({
-  panel: {
-    borderRadius: radius.panel,
-    borderWidth: 1,
-    paddingHorizontal: space.l,
-    paddingVertical: space.m,
-    gap: space.s,
-  },
+  stack: { gap: space.s },
   cells: { flexDirection: 'row', gap: space.m },
-  cell: { flex: 1, gap: space.xs },
+  cell: { flex: 1, minWidth: 0 },
 });
