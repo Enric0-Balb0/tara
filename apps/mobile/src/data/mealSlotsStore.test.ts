@@ -18,7 +18,7 @@ import {
   setMealSlotTime,
   slotsInUse,
 } from './mealSlotsStore';
-import { addPlanItem, deletePlanItem } from './planStore';
+import { addPlanItem, deletePlanItem, pendingPlan, planFor } from './planStore';
 import { copyEntries } from './quickStore';
 import { logSavedMeal, saveMealFromDiary } from './savedMealsStore';
 import { initDatabase } from './schema';
@@ -428,5 +428,62 @@ describe('archivio dei pasti (RF-40)', () => {
     await archiveMealSlot(db, USER, merenda.id, NOW);
     await deleteMealSlot(db, USER, merenda.id, NOW);
     expect(await archivedMealSlots(db, USER)).toEqual([]);
+  });
+});
+
+describe('piano e pasti archiviati', () => {
+  it('le voci di piano di un pasto archiviato spariscono da piano e previste, e tornano col ripristino', async () => {
+    const cena = await slotNamed('Cena');
+    const types = await ensureDayTypes(db, USER, NOW);
+    const type = types[0]?.id ?? '';
+    await addPlanItem(db, {
+      userId: USER,
+      dayTypeId: type,
+      mealSlotId: cena.id,
+      food: ALBUME,
+      quantity: 100,
+      now: NOW,
+    });
+    expect(await planFor(db, USER, type)).toHaveLength(1);
+    await archiveMealSlot(db, USER, cena.id, NOW);
+    expect(await planFor(db, USER, type)).toEqual([]);
+    expect(await pendingPlan(db, USER, '2026-11-25', type)).toEqual([]);
+    await restoreMealSlot(db, USER, cena.id, NOW);
+    expect(await planFor(db, USER, type)).toHaveLength(1);
+    expect(await pendingPlan(db, USER, '2026-11-25', type)).toHaveLength(1);
+  });
+});
+
+describe('vincolo meal_slot_name_once', () => {
+  const insert = (name: string, user = USER, archivedAt: string | null = null) =>
+    db.runAsync(
+      `INSERT INTO meal_slot (id, user_id, name, position, updated_at, archived_at)
+       VALUES (?, ?, ?, 9, ?, ?)`,
+      `slot-${name}-${user}-${archivedAt ?? ''}`,
+      user,
+      name,
+      NOW.toISOString(),
+      archivedAt,
+    );
+
+  it('rifiuta lo stesso nome tra pasti attivi, senza maiuscole né spazi', async () => {
+    await ensureMealSlots(db, USER, NOW);
+    await expect(insert('  CENA ')).rejects.toThrow(/meal_slot_name_once/);
+  });
+
+  it('non vale tra utenti diversi né per gli archiviati', async () => {
+    await ensureMealSlots(db, USER, NOW);
+    await insert('Cena', OTHER);
+    await insert('Cena', USER, NOW.toISOString());
+  });
+
+  it('il ripristino in conflitto dice di rinominare', async () => {
+    const merenda = await slotNamed('Merenda');
+    await archiveMealSlot(db, USER, merenda.id, NOW);
+    await addMealSlot(db, USER, 'Merenda', null, NOW);
+    expect(await rejection(restoreMealSlot(db, USER, merenda.id, NOW))).toMatchObject({
+      code: 'duplicate',
+      message: 'Esiste già un pasto attivo con questo nome: rinominalo, poi ripristina.',
+    });
   });
 });

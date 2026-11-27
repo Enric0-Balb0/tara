@@ -46,13 +46,14 @@ async function assertFreeName(
   userId: string,
   name: string,
   exceptId?: string,
+  message = 'Esiste già un pasto con questo nome.',
 ): Promise<void> {
   const rows = await db.getAllAsync<{ id: string; name: string }>(
     'SELECT id, name FROM meal_slot WHERE user_id = ? AND deleted_at IS NULL AND archived_at IS NULL',
     userId,
   );
   if (rows.some((row) => row.id !== exceptId && sameName(row.name, name))) {
-    throw new MealSlotError('duplicate', 'Esiste già un pasto con questo nome.');
+    throw new MealSlotError('duplicate', message);
   }
 }
 
@@ -230,7 +231,8 @@ export async function slotsInUse(db: SqlDatabase, userId: string): Promise<Set<s
        AND (EXISTS (SELECT 1 FROM diary_entry AS e
                     WHERE e.meal_slot_id = s.id AND e.user_id = s.user_id AND e.deleted_at IS NULL)
          OR EXISTS (SELECT 1 FROM plan_item AS p
-                    JOIN day_type AS t ON t.id = p.day_type_id AND t.deleted_at IS NULL
+                    JOIN day_type AS t ON t.id = p.day_type_id AND t.user_id = p.user_id
+                         AND t.deleted_at IS NULL
                     WHERE p.meal_slot_id = s.id AND p.user_id = s.user_id AND p.deleted_at IS NULL))`,
     userId,
   );
@@ -288,7 +290,13 @@ export async function restoreMealSlot(
       userId,
     );
     if (slot === null) throw new MealSlotError('missing', 'Il pasto non è archiviato.');
-    await assertFreeName(db, userId, slot.name);
+    await assertFreeName(
+      db,
+      userId,
+      slot.name,
+      id,
+      'Esiste già un pasto attivo con questo nome: rinominalo, poi ripristina.',
+    );
     await db.runAsync(
       `UPDATE meal_slot SET archived_at = NULL, updated_at = ?,
          position = (SELECT coalesce(max(position), -1) + 1 FROM meal_slot

@@ -117,6 +117,7 @@ export async function planFor(
     `SELECT ${COLUMNS} FROM plan_item AS p
        JOIN meal_slot AS s
          ON s.id = p.meal_slot_id AND s.user_id = p.user_id AND s.deleted_at IS NULL
+         AND s.archived_at IS NULL
      WHERE p.user_id = ? AND p.day_type_id = ? AND p.deleted_at IS NULL
      ORDER BY s.position, p.created_at, p.id`,
     userId,
@@ -170,6 +171,7 @@ export async function pendingPlan(
     `SELECT ${COLUMNS} FROM plan_item AS p
        JOIN meal_slot AS s
          ON s.id = p.meal_slot_id AND s.user_id = p.user_id AND s.deleted_at IS NULL
+         AND s.archived_at IS NULL
      WHERE p.user_id = ? AND p.day_type_id = ? AND p.deleted_at IS NULL
        AND NOT EXISTS (
          SELECT 1 FROM diary_entry AS e

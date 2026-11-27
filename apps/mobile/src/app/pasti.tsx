@@ -254,11 +254,7 @@ export default function MealSlotsScreen() {
                 </View>
               </View>
               <View style={styles.row}>
-                <TaraText variant="caption" color="textSecondary" style={styles.note}>
-                  {used
-                    ? 'Ha voci nel diario: lo nascondo dai pasti futuri, i giorni passati restano.'
-                    : ''}
-                </TaraText>
+                <View style={styles.note} />
                 <PressableScale
                   onPress={() => void move(slot, 'up')}
                   disabled={busy || index === 0}
@@ -281,6 +277,11 @@ export default function MealSlotsScreen() {
                   onPress={() => void archive(slot)}
                   disabled={busy}
                   accessibilityLabel={`Archivia ${slot.name}`}
+                  accessibilityHint={
+                    used
+                      ? 'Ha voci nel diario o nel piano: lo nascondo dai pasti futuri, i giorni passati restano.'
+                      : undefined
+                  }
                   testID={`pasto-archivia-${index}`}
                   style={styles.textButton}
                 >
