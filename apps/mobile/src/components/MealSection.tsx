@@ -11,6 +11,7 @@ import { Icon } from './Icon';
 import { type PlannedItem, PlannedLine, PlannedRow } from './PlannedRow';
 import { PressableScale } from './PressableScale';
 import { TaraText } from './TaraText';
+import { useEntryColumns } from './useEntryColumns';
 
 // Azioni secondarie del pasto: icona piccola accanto al testo normale, tocco sempre da 44.
 const ACTION_ICON = 18;
@@ -64,6 +65,7 @@ export function MealSection({
   onSave,
 }: Props) {
   const { colors, reduceMotion } = useTheme();
+  const entry = useEntryColumns();
   // "voce": la riga nuova compare e le altre si spostano; con il movimento ridotto solo
   // la dissolvenza.
   const layout = reduceMotion
@@ -151,13 +153,25 @@ export function MealSection({
         accessibilityElementsHidden
         importantForAccessibility="no-hide-descendants"
       >
-        <TaraText variant="minimum" color="textSecondary" style={styles.weight}>
+        <TaraText
+          variant="minimum"
+          color="textSecondary"
+          style={[styles.number, { width: entry.weight }]}
+        >
           peso
         </TaraText>
-        <TaraText variant="minimum" color="textSecondary" style={styles.kcal}>
+        <TaraText
+          variant="minimum"
+          color="textSecondary"
+          style={[styles.number, { width: entry.kcal }]}
+        >
           kcal
         </TaraText>
-        <TaraText variant="minimum" color="textSecondary" style={styles.protein}>
+        <TaraText
+          variant="minimum"
+          color="textSecondary"
+          style={[styles.number, { width: entry.protein }]}
+        >
           prot.
         </TaraText>
       </View>
@@ -217,10 +231,10 @@ export function MealSection({
           <TaraText color="textSecondary" numberOfLines={1} style={styles.name}>
             Totale
           </TaraText>
-          <TaraText numberOfLines={1} style={styles.kcal}>
+          <TaraText numberOfLines={1} style={[styles.number, { width: entry.kcal }]}>
             {kcalText}
           </TaraText>
-          <TaraText numberOfLines={1} style={styles.protein}>
+          <TaraText numberOfLines={1} style={[styles.number, { width: entry.protein }]}>
             {proteinText}
           </TaraText>
         </View>
@@ -287,9 +301,8 @@ const styles = StyleSheet.create({
   },
   name: { flex: 1, minWidth: 0 },
   legend: { flexDirection: 'row', gap: columns.gap },
-  weight: { width: columns.weight, textAlign: 'right' },
-  kcal: { width: columns.kcal, textAlign: 'right' },
-  protein: { width: columns.protein, textAlign: 'right' },
+  // Larghezze da useEntryColumns: crescono con il testo, la stessa fonte per righe e legenda.
+  number: { textAlign: 'right' },
   divider: { borderBottomWidth: StyleSheet.hairlineWidth },
   planned: { marginTop: space.s },
   // Il bordo tratteggiato è largo 1: le righe dentro rientrano di 1 per restare in colonna.

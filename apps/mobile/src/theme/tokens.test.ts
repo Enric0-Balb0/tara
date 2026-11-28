@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   columns,
+  entryColumns,
   fitColumn,
   goalColumns,
   goals,
@@ -86,5 +87,26 @@ describe('verticalSlop', () => {
 
   it('niente tocco esteso per chi è già alto 44', () => {
     expect(verticalSlop(52)).toEqual({ top: 0, bottom: 0 });
+  });
+});
+
+describe('entryColumns', () => {
+  it('alla dimensione normale sono le colonne del documento', () => {
+    expect(entryColumns(1)).toEqual({ weight: 56, kcal: 44, protein: 44, gap: 8 });
+    expect(entryColumns(0.85)).toEqual({ weight: 56, kcal: 44, protein: 44, gap: 8 });
+  });
+
+  // Misurati sui font: "1250 g" in Archivo SemiExpanded SemiBold 15 è largo 53,5 (69,5 al
+  // 130%), "1250" e "125,5" in Archivo Regular 15 sono larghi 34,1 e 38,2 (44,3 e 49,7).
+  it('a 1,3 contengono "1250 g", "1250" e "125,5" senza tagliarli', () => {
+    const grown = entryColumns(1.3);
+    expect(grown).toEqual({ weight: 76, kcal: 60, protein: 60, gap: 8 });
+    expect(grown.weight).toBeGreaterThanOrEqual(69.5);
+    expect(grown.kcal).toBeGreaterThanOrEqual(44.3);
+    expect(grown.protein).toBeGreaterThanOrEqual(49.7);
+  });
+
+  it('oltre il 130% non crescono più, come il testo', () => {
+    expect(entryColumns(2)).toEqual(entryColumns(1.3));
   });
 });

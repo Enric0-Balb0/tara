@@ -103,4 +103,15 @@ describe('waterFigures', () => {
     expect(waterFigures(0, null)).toEqual({ value: '0,0', rest: ' l' });
     expect(waterFigures(500, null)).toEqual({ value: '0,5', rest: ' l' });
   });
+
+  it('il registrato ha sempre almeno un decimale, il target no', () => {
+    expect(waterFigures(1000, 3000)).toEqual({ value: '1,0', rest: ' / 3 l' });
+    expect(waterFigures(2000, null)).toEqual({ value: '2,0', rest: ' l' });
+    expect(waterFigures(1004, 3000)).toEqual({ value: '1,0', rest: ' / 3 l' });
+    expect(waterFigures(1500, 2500)).toEqual({ value: '1,5', rest: ' / 2,5 l' });
+  });
+
+  it('il lettore dello schermo dice i litri senza decimali in più', () => {
+    expect(waterText(1000, 3000)).toBe('1 di 3 l');
+  });
 });

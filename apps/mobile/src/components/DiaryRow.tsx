@@ -7,6 +7,7 @@ import { columns, space, touch } from '@/theme/layout';
 import { PressableScale } from './PressableScale';
 import { StateTag } from './StateTag';
 import { TaraText } from './TaraText';
+import { useEntryColumns } from './useEntryColumns';
 
 interface Props {
   name: string;
@@ -23,6 +24,7 @@ interface Props {
  * nelle colonne fisse, le stesse dell'intestazione del pasto. Un tocco la modifica.
  */
 export function DiaryRow({ name, state, quantity, unit, kcal, protein, onPress }: Props) {
+  const entry = useEntryColumns();
   const amount = formatAmount(quantity, 'grams');
   const weight = `${amount} ${unit}`;
   const kcalText = formatAmount(kcal, 'kcal');
@@ -46,13 +48,21 @@ export function DiaryRow({ name, state, quantity, unit, kcal, protein, onPress }
         </TaraText>
         <StateTag state={state} />
       </View>
-      <TaraText variant="number" numberOfLines={1} style={styles.weight}>
+      <TaraText variant="number" numberOfLines={1} style={[styles.number, { width: entry.weight }]}>
         {weight}
       </TaraText>
-      <TaraText color="textSecondary" numberOfLines={1} style={styles.kcal}>
+      <TaraText
+        color="textSecondary"
+        numberOfLines={1}
+        style={[styles.number, { width: entry.kcal }]}
+      >
         {kcalText}
       </TaraText>
-      <TaraText color="textSecondary" numberOfLines={1} style={styles.protein}>
+      <TaraText
+        color="textSecondary"
+        numberOfLines={1}
+        style={[styles.number, { width: entry.protein }]}
+      >
         {proteinText}
       </TaraText>
     </PressableScale>
@@ -69,7 +79,6 @@ const styles = StyleSheet.create({
   },
   name: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.s, minWidth: 0 },
   nameText: { flexShrink: 1 },
-  weight: { width: columns.weight, textAlign: 'right' },
-  kcal: { width: columns.kcal, textAlign: 'right' },
-  protein: { width: columns.protein, textAlign: 'right' },
+  // Larghezze da useEntryColumns: crescono con il testo, la stessa fonte per righe e legenda.
+  number: { textAlign: 'right' },
 });

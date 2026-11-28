@@ -24,11 +24,13 @@ export function waterText(ml: number, target: number | null): string {
 }
 
 /**
- * Come si scrive in Oggi: "**1,25** / 3 l" con il target, "**1,25** l" senza. Lo zero è
- * "0,0": in cifre larghe "0 l" si leggerebbe "O |".
+ * Come si scrive in Oggi: "**1,25** / 3 l" con il target, "**1,25** l" senza. Il registrato ha
+ * sempre almeno un decimale ("0,0", "1,0", "1,25"): in cifre larghe "0 l" si leggerebbe "O |",
+ * e così zero e un litro si scrivono allo stesso modo. Il target resta "3".
  */
 export function waterFigures(ml: number, target: number | null): { value: string; rest: string } {
-  const value = ml === 0 ? formatNumber(0, 1) : formatLitres(ml);
+  const litres = formatLitres(ml);
+  const value = litres.includes(',') ? litres : formatNumber(ml / 1000, 1);
   return goalFigures(value, target === null ? null : formatLitres(target), 'l', 'omit');
 }
 

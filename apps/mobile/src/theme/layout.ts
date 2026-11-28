@@ -32,9 +32,32 @@ export const MAX_FONT_SCALE = 1.3;
  * al 130%, sulla griglia da 4. Così nome e valore non si tagliano e le barre restano in colonna.
  */
 export function goalColumns(fontScale: number): { label: number; value: number } {
+  return { label: grown(goals.label, fontScale), value: grown(goals.value, fontScale) };
+}
+
+/**
+ * Le colonne di peso, kcal e proteine con il testo ingrandito dal telefono, una sola fonte per
+ * voci, voci previste, totali e legenda del pasto: crescono con il testo fino al 130%, sulla
+ * griglia da 4, così "1250 g", "1250" e "125,5" non si tagliano mai. Lo spazio resta 8.
+ */
+export function entryColumns(fontScale: number): {
+  weight: number;
+  kcal: number;
+  protein: number;
+  gap: number;
+} {
+  return {
+    weight: grown(columns.weight, fontScale),
+    kcal: grown(columns.kcal, fontScale),
+    protein: grown(columns.protein, fontScale),
+    gap: columns.gap,
+  };
+}
+
+/** Una larghezza cresciuta con il testo, tra il 100% e il 130%, arrotondata alla griglia da 4. */
+function grown(width: number, fontScale: number): number {
   const scale = Math.min(Math.max(fontScale, 1), MAX_FONT_SCALE);
-  const grow = (width: number) => Math.ceil((width * scale) / 4) * 4;
-  return { label: grow(goals.label), value: grow(goals.value) };
+  return Math.ceil((width * scale) / 4) * 4;
 }
 
 /**

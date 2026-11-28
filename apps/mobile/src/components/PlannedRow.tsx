@@ -6,6 +6,7 @@ import { useTheme } from '@/theme/useTheme';
 
 import { PressableScale } from './PressableScale';
 import { TaraText } from './TaraText';
+import { useEntryColumns } from './useEntryColumns';
 
 export interface PlannedItem {
   key: string;
@@ -50,7 +51,8 @@ export function PlannedRow({ item }: { item: PlannedItem }) {
         <TaraText color="textSecondary" numberOfLines={1}>
           {item.name}
         </TaraText>
-        <TaraText variant="caption" color="textSecondary" numberOfLines={1}>
+        {/* Con il testo grande va su due righe invece di tagliare i numeri. */}
+        <TaraText variant="caption" color="textSecondary" numberOfLines={2}>
           previsto {amount} {item.unit}, {kcalText} kcal, {proteinText} prot.
         </TaraText>
       </PressableScale>
@@ -71,6 +73,7 @@ export function PlannedRow({ item }: { item: PlannedItem }) {
  * tocco apre il foglio per confermarla da sola, anche con altri grammi.
  */
 export function PlannedLine({ item }: { item: PlannedItem }) {
+  const entry = useEntryColumns();
   const { amount, kcalText, proteinText, spoken } = texts(item);
   return (
     <PressableScale
@@ -82,13 +85,25 @@ export function PlannedLine({ item }: { item: PlannedItem }) {
       <TaraText color="textSecondary" numberOfLines={1} style={styles.name}>
         {item.name}
       </TaraText>
-      <TaraText color="textSecondary" numberOfLines={1} style={styles.weight}>
+      <TaraText
+        color="textSecondary"
+        numberOfLines={1}
+        style={[styles.number, { width: entry.weight }]}
+      >
         {`${amount} ${item.unit}`}
       </TaraText>
-      <TaraText color="textSecondary" numberOfLines={1} style={styles.kcal}>
+      <TaraText
+        color="textSecondary"
+        numberOfLines={1}
+        style={[styles.number, { width: entry.kcal }]}
+      >
         {kcalText}
       </TaraText>
-      <TaraText color="textSecondary" numberOfLines={1} style={styles.protein}>
+      <TaraText
+        color="textSecondary"
+        numberOfLines={1}
+        style={[styles.number, { width: entry.protein }]}
+      >
         {proteinText}
       </TaraText>
     </PressableScale>
@@ -124,7 +139,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.m,
   },
   name: { flex: 1, minWidth: 0 },
-  weight: { width: columns.weight, textAlign: 'right' },
-  kcal: { width: columns.kcal, textAlign: 'right' },
-  protein: { width: columns.protein, textAlign: 'right' },
+  // Larghezze da useEntryColumns: crescono con il testo, la stessa fonte per righe e legenda.
+  number: { textAlign: 'right' },
 });
