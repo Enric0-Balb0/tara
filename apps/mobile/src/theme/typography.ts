@@ -16,6 +16,7 @@ export type TextRole =
   | 'readout'
   | 'title'
   | 'bigNumber'
+  | 'figure'
   | 'section'
   | 'body'
   | 'bodyStrong'
@@ -33,6 +34,7 @@ export const textStyles: Record<TextRole, TextStyleToken> = {
   readout: { fontFamily: 'ArchivoExpanded-ExtraBold', fontSize: 72, lineHeight: 76 },
   title: { fontFamily: 'ArchivoSemiExpanded-ExtraBold', fontSize: 30, lineHeight: 34 },
   bigNumber: { fontFamily: 'ArchivoExpanded-Bold', fontSize: 26, lineHeight: 28 },
+  figure: { fontFamily: 'ArchivoExpanded-Bold', fontSize: 17, lineHeight: 22 },
   section: { fontFamily: 'Archivo-Bold', fontSize: 17, lineHeight: 22 },
   body: { fontFamily: 'Archivo-Regular', fontSize: 15, lineHeight: 20 },
   bodyStrong: { fontFamily: 'Archivo-SemiBold', fontSize: 15, lineHeight: 20 },

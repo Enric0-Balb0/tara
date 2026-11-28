@@ -1,6 +1,6 @@
-import { useFocusEffect, useNavigation, useRouter } from 'expo-router';
+import { Link, useFocusEffect, useRouter } from 'expo-router';
 import { useSQLiteContext } from 'expo-sqlite';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AccessibilityInfo,
   Alert,
@@ -19,8 +19,8 @@ import { DiaryRow } from '@/components/DiaryRow';
 import { GramSheet } from '@/components/GramSheet';
 import { Icon } from '@/components/Icon';
 import { MealSection } from '@/components/MealSection';
-import { PlannedRow } from '@/components/PlannedRow';
 import { PressableScale } from '@/components/PressableScale';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { Segmented } from '@/components/Segmented';
 import { TaraText } from '@/components/TaraText';
 import { TextField } from '@/components/TextField';
@@ -59,8 +59,8 @@ import {
 import { weights } from '@/data/weightStore';
 import {
   addDays,
+  dayHeading,
   dayLabel,
-  dayTitle,
   defaultSavedMealName,
   entryAmount,
   mealPlanStatus,
@@ -72,21 +72,27 @@ import { radius, space, touch } from '@/theme/layout';
 import { useTheme } from '@/theme/useTheme';
 
 /**
- * Oggi (RF-40, RF-45, RF-50, RF-51): tipo di giornata, obiettivi contro il target in vigore
- * quel giorno, e i pasti con le voci registrate. Si scorre tra i giorni con le frecce; un
- * tocco su una voce la modifica o la elimina. Le voci previste dal piano arrivano con RF-130.
+ * Oggi (RF-40, RF-45, RF-50, RF-51, RF-60, RF-130), come in docs/design.md: intestazione
+ * con il giorno, le frecce, il profilo e il tipo di giornata; la scheda degli obiettivi con
+ * l'acqua in fondo; i pasti con le voci registrate e quelle previste dal piano. Un tocco su
+ * una voce la modifica o la elimina.
  */
 export default function TodayScreen() {
   const db: SqlDatabase = useSQLiteContext();
   const { session } = useSession();
   const userId = session?.user.id;
   const router = useRouter();
-  const navigation = useNavigation();
   const { colors } = useTheme();
   const [today, setToday] = useState(() => toLocalDate(new Date()));
   const [date, setDate] = useState(today);
   const [slots, setSlots] = useState<MealSlot[]>([]);
+  // Pasti archiviati con voci quel giorno: si modificano, ma non si aggiunge (RF-40).
+  const [archivedIds, setArchivedIds] = useState<ReadonlySet<string>>(new Set());
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
+  // Il giorno dei dati in vista: cambia insieme a loro, e le barre saltano senza passaggio.
+  const [loadedDate, setLoadedDate] = useState<string | undefined>(undefined);
+  // Il contenuto è scorso sotto l'intestazione: la linea sottile la separa.
+  const [scrolled, setScrolled] = useState(false);
   // Le voci del giorno prima, per "Copia da ieri" (RF-44).
   const [previous, setPrevious] = useState<DiaryEntry[]>([]);
   const [skippedPrevious, setSkippedPrevious] = useState(0);
@@ -168,7 +174,9 @@ export default function TodayScreen() {
       if (request !== latest.current) return;
       // I pasti archiviati compaiono solo nei giorni in cui hanno voci, dopo gli attivi.
       setSlots([...activeSlots, ...archivedSlots]);
+      setArchivedIds(new Set(archivedSlots.map((slot) => slot.id)));
       setEntries(dayEntries);
+      setLoadedDate(date);
       // Si copiano solo le voci dei pasti attivi: le altre si contano per dirlo.
       const activeIds = new Set(activeSlots.map((slot) => slot.id));
       const copiable = previousEntries.filter((entry) => activeIds.has(entry.mealSlotId));
@@ -193,10 +201,6 @@ export default function TodayScreen() {
       void load();
     }, [load, refreshToday]),
   );
-
-  useLayoutEffect(() => {
-    navigation.setOptions({ headerTitle: dayTitle(date, today) });
-  }, [navigation, date, today]);
 
   // Il foglio si chiude solo a scrittura riuscita; se non riesce lo dice e resta aperto.
   async function write(change: (owner: string) => Promise<void>) {
@@ -332,74 +336,91 @@ export default function TodayScreen() {
   const dayTypeName = dayTypes.find((type) => type.id === dayTypeId)?.name;
 
   const editingSlot = editing ? slots.find((slot) => slot.id === editing.mealSlotId) : undefined;
+  const heading = dayHeading(date, today);
+  const hidden = editing !== null || confirming !== null;
 
   return (
     <View style={styles.screen}>
+      <View
+        importantForAccessibility={hidden ? 'no-hide-descendants' : 'auto'}
+        accessibilityElementsHidden={hidden}
+      >
+        <ScreenHeader
+          title={heading.title}
+          subtitle={heading.subtitle}
+          scrolled={scrolled}
+          actions={
+            <>
+              <PressableScale
+                onPress={() => setDate(addDays(date, -1))}
+                accessibilityLabel="Giorno precedente"
+                style={styles.iconButton}
+              >
+                <Icon name="chevronLeft" color="text" />
+              </PressableScale>
+              {date === today ? null : (
+                <PressableScale
+                  onPress={() => setDate(today)}
+                  accessibilityLabel={`${dayLabel(date)}, torna a oggi`}
+                  style={styles.todayButton}
+                >
+                  <TaraText variant="bodyStrong">Oggi</TaraText>
+                </PressableScale>
+              )}
+              <PressableScale
+                onPress={() => setDate(addDays(date, 1))}
+                accessibilityLabel="Giorno successivo"
+                style={styles.iconButton}
+              >
+                <Icon name="chevronRight" color="text" />
+              </PressableScale>
+              <Link href="/profilo" asChild>
+                <PressableScale accessibilityLabel="Profilo" style={styles.iconButton}>
+                  <Icon name="profile" color="text" />
+                </PressableScale>
+              </Link>
+            </>
+          }
+          aside={
+            dayTypes.length > 1 ? (
+              <Segmented
+                compact
+                label="Tipo di giornata"
+                options={dayTypes.map((type) => ({ key: type.id, label: type.name }))}
+                selectedKey={dayTypeId}
+                onSelect={(id) => void chooseDayType(id)}
+              />
+            ) : undefined
+          }
+        />
+      </View>
       <ScrollView
         testID="diario"
         contentContainerStyle={styles.content}
-        importantForAccessibility={editing ? 'no-hide-descendants' : 'auto'}
-        accessibilityElementsHidden={editing !== null}
+        onScroll={(event) => setScrolled(event.nativeEvent.contentOffset.y > 0)}
+        scrollEventThrottle={16}
+        importantForAccessibility={hidden ? 'no-hide-descendants' : 'auto'}
+        accessibilityElementsHidden={hidden}
       >
-        <View style={styles.dayNav}>
-          <PressableScale
-            onPress={() => setDate(addDays(date, -1))}
-            accessibilityLabel="Giorno precedente"
-            style={styles.dayButton}
-          >
-            <Icon name="chevronLeft" color="text" />
-          </PressableScale>
-          {date === today ? (
-            <View style={styles.dayLabel}>
-              <TaraText variant="bodyStrong">{dayLabel(date)}</TaraText>
-            </View>
-          ) : (
-            <PressableScale
-              onPress={() => setDate(today)}
-              accessibilityLabel={`${dayLabel(date)}, torna a oggi`}
-              style={styles.dayLabel}
-            >
-              <TaraText variant="bodyStrong">{dayLabel(date)}</TaraText>
-              <TaraText variant="caption" color="textSecondary">
-                Torna a oggi
-              </TaraText>
-            </PressableScale>
-          )}
-          <PressableScale
-            onPress={() => setDate(addDays(date, 1))}
-            accessibilityLabel="Giorno successivo"
-            style={styles.dayButton}
-          >
-            <Icon name="chevronRight" color="text" />
-          </PressableScale>
-        </View>
-
-        {dayTypes.length > 1 ? (
-          <Segmented
-            label="Tipo di giornata"
-            options={dayTypes.map((type) => ({ key: type.id, label: type.name }))}
-            selectedKey={dayTypeId}
-            onSelect={(id) => void chooseDayType(id)}
-          />
-        ) : null}
-
         <DayGoals
           totals={totals(entries)}
           planned={totals(pending)}
           target={target}
           dayTypeName={dayTypeName}
           averageKg={averageKg}
+          day={loadedDate}
           onSetTargets={() => router.navigate('/piano')}
-        />
-
-        <WaterRow
-          ml={water.ml}
-          target={water.target}
-          increments={water.increments}
-          lastAdded={water.last}
-          onAdd={(ml) => void drink((owner) => addWater(db, owner, date, ml, new Date()))}
-          onUndo={() => void drink((owner) => undoLastWater(db, owner, date, new Date()))}
-        />
+        >
+          <WaterRow
+            ml={water.ml}
+            target={water.target}
+            increments={water.increments}
+            lastAdded={water.last}
+            day={loadedDate}
+            onAdd={(ml) => void drink((owner) => addWater(db, owner, date, ml, new Date()))}
+            onUndo={() => void drink((owner) => undoLastWater(db, owner, date, new Date()))}
+          />
+        </DayGoals>
 
         {/* Con voci previste dal piano la copia registrerebbe il pasto due volte. */}
         {entries.length === 0 && previous.length > 0 && pending.length === 0 ? (
@@ -409,14 +430,6 @@ export default function TodayScreen() {
           >
             <TaraText variant="bodyStrong">Copia la giornata di {previousName}</TaraText>
           </PressableScale>
-        ) : null}
-
-        {entries.length > 0 ? (
-          <View style={styles.legend}>
-            <TaraText variant="minimum" color="textSecondary">
-              peso, kcal, prot.
-            </TaraText>
-          </View>
         ) : null}
 
         {slots.map((slot) => {
@@ -460,17 +473,13 @@ export default function TodayScreen() {
               }
               planned={ownPending.map((item) => ({
                 key: item.id,
-                row: (
-                  <PlannedRow
-                    name={item.foodName}
-                    quantity={item.quantity}
-                    unit={item.unit}
-                    kcal={entryAmount(item.snapshot, 'energy_kcal', item.quantity)}
-                    protein={entryAmount(item.snapshot, 'protein_g', item.quantity)}
-                    onConfirm={() => void confirm([item])}
-                    onEdit={() => setConfirming(item)}
-                  />
-                ),
+                name: item.foodName,
+                quantity: item.quantity,
+                unit: item.unit,
+                kcal: entryAmount(item.snapshot, 'energy_kcal', item.quantity),
+                protein: entryAmount(item.snapshot, 'protein_g', item.quantity),
+                onConfirm: () => void confirm([item]),
+                onEdit: () => setConfirming(item),
               }))}
               onSave={
                 own.length > 0
@@ -481,11 +490,10 @@ export default function TodayScreen() {
                       })
                   : undefined
               }
-              onAdd={() =>
-                router.push({
-                  pathname: '/cerca',
-                  params: { slot: slot.id, date },
-                })
+              onAdd={
+                archivedIds.has(slot.id)
+                  ? undefined
+                  : () => router.push({ pathname: '/cerca', params: { slot: slot.id, date } })
               }
               entries={own.map((entry) => ({
                 key: entry.id,
@@ -622,21 +630,23 @@ export default function TodayScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { padding: space.l, gap: space.l, paddingBottom: space.xxxl },
-  dayNav: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  content: {
+    paddingHorizontal: space.l,
+    paddingTop: space.xs,
+    // Tra un pasto e l'altro poco spazio, come nelle tavole: i pasti vuoti sono una riga.
+    gap: space.m,
+    paddingBottom: space.xxxl,
   },
-  dayButton: {
+  iconButton: {
     width: touch.min,
     height: touch.min,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dayLabel: {
-    flex: 1,
-    minHeight: touch.min,
+  todayButton: {
+    minWidth: touch.min,
+    height: touch.min,
+    paddingHorizontal: space.xs,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -650,9 +660,4 @@ const styles = StyleSheet.create({
   dialog: { flex: 1, justifyContent: 'center', padding: space.l },
   backdrop: { backgroundColor: 'black', opacity: 0.6 },
   dialogCard: { borderRadius: radius.field, borderWidth: 1, padding: space.l, gap: space.m },
-  legend: {
-    alignItems: 'flex-end',
-    paddingHorizontal: space.m,
-    marginBottom: -space.s,
-  },
 });

@@ -1,5 +1,6 @@
-# Smoke test: l'app si avvia su Oggi, le quattro tab aprono la schermata giusta e il
-# profilo si apre dall'intestazione di Oggi. Si entra con subflows/accedi.yaml (EMAIL, OTP).
+# Smoke test: l'app si avvia su Oggi, le quattro tab aprono la schermata giusta, ognuna con
+# la sua intestazione (titolo grande, niente intestazione nativa), e il profilo si apre
+# dall'intestazione di Oggi. Si entra con subflows/accedi.yaml (EMAIL, OTP).
 appId: com.enricobalbo.tara
 name: Navigazione tra le tab
 tags:
@@ -18,12 +19,14 @@ tags:
     id: tab-piano
     retryTapIfNoChange: true
 - assertVisible: Target di Allenamento
+- takeScreenshot: screenshots/piano
 
 # Le tab per id, ritoccando se lo schermo non cambia: a volte il primo tocco si perde.
 - tapOn:
     id: tab-dispensa
     retryTapIfNoChange: true
 - assertVisible: Nuovo alimento
+- takeScreenshot: screenshots/dispensa-vuota
 
 # Le tab per id, ritoccando se lo schermo non cambia: a volte il primo tocco si perde.
 - tapOn:
@@ -31,6 +34,7 @@ tags:
     retryTapIfNoChange: true
 - assertVisible:
     id: peso-pannello
+- takeScreenshot: screenshots/andamento
 
 # Le tab per id, ritoccando se lo schermo non cambia: a volte il primo tocco si perde.
 - tapOn:

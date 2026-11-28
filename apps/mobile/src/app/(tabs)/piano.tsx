@@ -11,6 +11,7 @@ import { GramSheet } from '@/components/GramSheet';
 import { Icon } from '@/components/Icon';
 import { MealSection } from '@/components/MealSection';
 import { PressableScale } from '@/components/PressableScale';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { Segmented } from '@/components/Segmented';
 import { TaraText } from '@/components/TaraText';
 import { ensureMealSlots, type MealSlot } from '@/data/diaryStore';
@@ -64,7 +65,7 @@ export default function PlanScreen() {
   const selected = useRef<string | undefined>(undefined);
   const [editing, setEditing] = useState<PlanItem | null>(null);
   const latest = useRef(0);
-  // La schermata sta sotto l'intestazione delle tab: KeyboardAvoidingView ha bisogno di sapere
+  // La schermata sta sotto l'intestazione: KeyboardAvoidingView ha bisogno di sapere
   // a che altezza della finestra comincia, altrimenti calcola male quanto copre la tastiera.
   const frame = useRef<ComponentRef<typeof View>>(null);
   const [top, setTop] = useState(0);
@@ -193,7 +194,12 @@ export default function PlanScreen() {
     await load();
   }
 
-  if (loaded === null) return <View style={styles.screen} />;
+  if (loaded === null)
+    return (
+      <View style={styles.screen}>
+        <ScreenHeader title="Piano" />
+      </View>
+    );
   const index = Math.max(
     0,
     loaded.types.findIndex((type) => type.id === selectedId),
@@ -205,154 +211,166 @@ export default function PlanScreen() {
     : undefined;
 
   return (
-    <View
-      ref={frame}
-      style={styles.screen}
-      onLayout={() => frame.current?.measureInWindow((_x, y) => setTop(y))}
-    >
-      <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={top} style={styles.screen}>
-        <ScrollView
-          testID="piano"
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-          importantForAccessibility={editing ? 'no-hide-descendants' : 'auto'}
-          accessibilityElementsHidden={editing !== null}
+    <View style={styles.screen}>
+      <ScreenHeader title="Piano" />
+      <View
+        ref={frame}
+        style={styles.screen}
+        onLayout={() => frame.current?.measureInWindow((_x, y) => setTop(y))}
+      >
+        <KeyboardAvoidingView behavior="padding" keyboardVerticalOffset={top} style={styles.screen}>
+          <ScrollView
+            testID="piano"
+            contentContainerStyle={styles.content}
+            keyboardShouldPersistTaps="handled"
+            importantForAccessibility={editing ? 'no-hide-descendants' : 'auto'}
+            accessibilityElementsHidden={editing !== null}
+          >
+            {loaded.types.length > 1 ? (
+              <Segmented
+                label="Tipo di giornata"
+                options={loaded.types.map((candidate) => ({
+                  key: candidate.id,
+                  label: candidate.name,
+                }))}
+                selectedKey={type?.id}
+                onSelect={(id) => void load(id)}
+              />
+            ) : null}
+
+            {type ? (
+              <>
+                <View style={styles.intro}>
+                  <TaraText variant="section" accessibilityRole="header">
+                    Target di {type.name}
+                  </TaraText>
+                  <TaraText variant="caption" color="textSecondary">
+                    Un target cambiato vale da oggi: i giorni passati restano con il loro. Un campo
+                    vuoto è un target non impostato.
+                  </TaraText>
+                </View>
+                <DayTypeCard
+                  // Rimonta la scheda quando arriva un target diverso, così i campi ripartono da lì.
+                  key={`${type.id}:${target?.id ?? 'nessuno'}:${target?.validFrom ?? ''}:${type.name}:${loaded.waters[type.id] ?? ''}`}
+                  testID={`tipo-${index}`}
+                  name={type.name}
+                  target={target}
+                  water={loaded.waters[type.id] ?? null}
+                  canDelete={loaded.types.length > 1}
+                  onSave={(name, values, water) => save(type, name, values, water)}
+                  onDelete={() => remove(type, loaded.types)}
+                />
+
+                <View style={styles.intro}>
+                  <TaraText variant="section" accessibilityRole="header">
+                    Piano di {type.name}
+                  </TaraText>
+                  <TaraText variant="caption" color="textSecondary">
+                    I pasti con alimenti e grammi: in Oggi diventano voci previste da confermare.
+                  </TaraText>
+                </View>
+                {loaded.plan.length > 0 ? (
+                  <View style={styles.intro}>
+                    <TaraText variant="bodyStrong">Totale del piano</TaraText>
+                    <DayGoals
+                      label="Totale del piano"
+                      totals={totals(loaded.plan)}
+                      target={target}
+                    />
+                  </View>
+                ) : null}
+                {loaded.slots.map((slot) => {
+                  const own = loaded.plan.filter((item) => item.mealSlotId === slot.id);
+                  const sum = totals(own);
+                  return (
+                    <MealSection
+                      key={slot.id}
+                      name={slot.name}
+                      kcal={sum.energy_kcal}
+                      protein={sum.protein_g}
+                      addLabel={`Aggiungi al piano: ${slot.name}`}
+                      onAdd={() =>
+                        router.push({
+                          pathname: '/cerca',
+                          params: { slot: slot.id, plan: type.id },
+                        })
+                      }
+                      entries={own.map((item) => ({
+                        key: item.id,
+                        row: (
+                          <DiaryRow
+                            name={item.foodName}
+                            state={item.foodState}
+                            quantity={item.quantity}
+                            unit={item.unit}
+                            kcal={entryAmount(item.snapshot, 'energy_kcal', item.quantity)}
+                            protein={entryAmount(item.snapshot, 'protein_g', item.quantity)}
+                            onPress={() => setEditing(item)}
+                          />
+                        ),
+                      }))}
+                    />
+                  );
+                })}
+              </>
+            ) : null}
+
+            <WaterIncrements
+              // Rimonta quando cambiano i valori salvati, così i campi ripartono da lì.
+              key={loaded.increments.join(',')}
+              testID="incrementi"
+              increments={loaded.increments}
+              onSave={saveIncrements}
+            />
+
+            <PressableScale
+              onPress={() => void add()}
+              style={[styles.add, { borderColor: colors.borderStrong }]}
+            >
+              <Icon name="plus" color="textSecondary" />
+              <TaraText variant="bodyStrong" color="textSecondary">
+                Aggiungi un tipo di giornata
+              </TaraText>
+            </PressableScale>
+          </ScrollView>
+        </KeyboardAvoidingView>
+
+        {/* Nel Modal il foglio copre anche ricerca e tab, che stanno fuori dalla schermata. */}
+        <Modal
+          visible={editing !== null}
+          transparent
+          animationType="none"
+          statusBarTranslucent
+          navigationBarTranslucent
+          onRequestClose={() => setEditing(null)}
         >
-          {loaded.types.length > 1 ? (
-            <Segmented
-              label="Tipo di giornata"
-              options={loaded.types.map((candidate) => ({
-                key: candidate.id,
-                label: candidate.name,
-              }))}
-              selectedKey={type?.id}
-              onSelect={(id) => void load(id)}
+          {editing ? (
+            <GramSheet
+              visible
+              food={{
+                name: editing.foodName,
+                state: editing.foodState,
+                per100: Object.fromEntries(
+                  Object.entries(editing.snapshot).map(([code, value]) => [code, value.amount]),
+                ),
+              }}
+              mealName={editingSlot?.name}
+              startGrams={editing.quantity}
+              unit={editing.unit}
+              confirmVerb="Salva"
+              onConfirm={(quantity) =>
+                void write((owner) =>
+                  updatePlanQuantity(db, owner, editing.id, quantity, new Date()),
+                )
+              }
+              onDelete={() =>
+                void write((owner) => deletePlanItem(db, owner, editing.id, new Date()))
+              }
+              onClose={() => setEditing(null)}
             />
           ) : null}
-
-          {type ? (
-            <>
-              <View style={styles.intro}>
-                <TaraText variant="section" accessibilityRole="header">
-                  Target di {type.name}
-                </TaraText>
-                <TaraText variant="caption" color="textSecondary">
-                  Un target cambiato vale da oggi: i giorni passati restano con il loro. Un campo
-                  vuoto è un target non impostato.
-                </TaraText>
-              </View>
-              <DayTypeCard
-                // Rimonta la scheda quando arriva un target diverso, così i campi ripartono da lì.
-                key={`${type.id}:${target?.id ?? 'nessuno'}:${target?.validFrom ?? ''}:${type.name}:${loaded.waters[type.id] ?? ''}`}
-                testID={`tipo-${index}`}
-                name={type.name}
-                target={target}
-                water={loaded.waters[type.id] ?? null}
-                canDelete={loaded.types.length > 1}
-                onSave={(name, values, water) => save(type, name, values, water)}
-                onDelete={() => remove(type, loaded.types)}
-              />
-
-              <View style={styles.intro}>
-                <TaraText variant="section" accessibilityRole="header">
-                  Piano di {type.name}
-                </TaraText>
-                <TaraText variant="caption" color="textSecondary">
-                  I pasti con alimenti e grammi: in Oggi diventano voci previste da confermare.
-                </TaraText>
-              </View>
-              {loaded.plan.length > 0 ? (
-                <View style={styles.intro}>
-                  <TaraText variant="bodyStrong">Totale del piano</TaraText>
-                  <DayGoals label="Totale del piano" totals={totals(loaded.plan)} target={target} />
-                </View>
-              ) : null}
-              {loaded.slots.map((slot) => {
-                const own = loaded.plan.filter((item) => item.mealSlotId === slot.id);
-                const sum = totals(own);
-                return (
-                  <MealSection
-                    key={slot.id}
-                    name={slot.name}
-                    kcal={sum.energy_kcal}
-                    protein={sum.protein_g}
-                    addLabel={`Aggiungi al piano: ${slot.name}`}
-                    onAdd={() =>
-                      router.push({ pathname: '/cerca', params: { slot: slot.id, plan: type.id } })
-                    }
-                    entries={own.map((item) => ({
-                      key: item.id,
-                      row: (
-                        <DiaryRow
-                          name={item.foodName}
-                          state={item.foodState}
-                          quantity={item.quantity}
-                          unit={item.unit}
-                          kcal={entryAmount(item.snapshot, 'energy_kcal', item.quantity)}
-                          protein={entryAmount(item.snapshot, 'protein_g', item.quantity)}
-                          onPress={() => setEditing(item)}
-                        />
-                      ),
-                    }))}
-                  />
-                );
-              })}
-            </>
-          ) : null}
-
-          <WaterIncrements
-            // Rimonta quando cambiano i valori salvati, così i campi ripartono da lì.
-            key={loaded.increments.join(',')}
-            testID="incrementi"
-            increments={loaded.increments}
-            onSave={saveIncrements}
-          />
-
-          <PressableScale
-            onPress={() => void add()}
-            style={[styles.add, { borderColor: colors.borderStrong }]}
-          >
-            <Icon name="plus" color="textSecondary" />
-            <TaraText variant="bodyStrong" color="textSecondary">
-              Aggiungi un tipo di giornata
-            </TaraText>
-          </PressableScale>
-        </ScrollView>
-      </KeyboardAvoidingView>
-
-      {/* Nel Modal il foglio copre anche ricerca e tab, che stanno fuori dalla schermata. */}
-      <Modal
-        visible={editing !== null}
-        transparent
-        animationType="none"
-        statusBarTranslucent
-        navigationBarTranslucent
-        onRequestClose={() => setEditing(null)}
-      >
-        {editing ? (
-          <GramSheet
-            visible
-            food={{
-              name: editing.foodName,
-              state: editing.foodState,
-              per100: Object.fromEntries(
-                Object.entries(editing.snapshot).map(([code, value]) => [code, value.amount]),
-              ),
-            }}
-            mealName={editingSlot?.name}
-            startGrams={editing.quantity}
-            unit={editing.unit}
-            confirmVerb="Salva"
-            onConfirm={(quantity) =>
-              void write((owner) => updatePlanQuantity(db, owner, editing.id, quantity, new Date()))
-            }
-            onDelete={() =>
-              void write((owner) => deletePlanItem(db, owner, editing.id, new Date()))
-            }
-            onClose={() => setEditing(null)}
-          />
-        ) : null}
-      </Modal>
+        </Modal>
+      </View>
     </View>
   );
 }

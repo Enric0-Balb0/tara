@@ -4,7 +4,7 @@
  */
 
 import { formatNumber } from './format';
-import { parseTargetInput } from './targets';
+import { goalFigures, parseTargetInput } from './targets';
 
 export const DEFAULT_INCREMENTS: readonly number[] = [250, 500];
 export const MIN_INCREMENT = 50;
@@ -21,6 +21,17 @@ export function waterText(ml: number, target: number | null): string {
   return target === null
     ? `${formatLitres(ml)} l`
     : `${formatLitres(ml)} di ${formatLitres(target)} l`;
+}
+
+/**
+ * Come si scrive in Oggi: "**1,25** / 3 l" con il target, "**1,25** l" senza. Il registrato ha
+ * sempre almeno un decimale ("0,0", "1,0", "1,25"): in cifre larghe "0 l" si leggerebbe "O |",
+ * e così zero e un litro si scrivono allo stesso modo. Il target resta "3".
+ */
+export function waterFigures(ml: number, target: number | null): { value: string; rest: string } {
+  const litres = formatLitres(ml);
+  const value = litres.includes(',') ? litres : formatNumber(ml / 1000, 1);
+  return goalFigures(value, target === null ? null : formatLitres(target), 'l', 'omit');
 }
 
 /** La frazione del target bevuta, tra 0 e 1; 0 senza target. */

@@ -5,6 +5,7 @@ import { Alert, AppState, Modal, ScrollView, StyleSheet, View } from 'react-nati
 
 import { Button } from '@/components/Button';
 import { PressableScale } from '@/components/PressableScale';
+import { ScreenHeader } from '@/components/ScreenHeader';
 import { TaraText } from '@/components/TaraText';
 import { WeightChart } from '@/components/WeightChart';
 import { WeightSheet } from '@/components/WeightSheet';
@@ -103,6 +104,12 @@ export default function TrendScreen() {
 
   return (
     <View style={styles.screen}>
+      <View
+        importantForAccessibility={editing ? 'no-hide-descendants' : 'auto'}
+        accessibilityElementsHidden={editing !== null}
+      >
+        <ScreenHeader title="Andamento" />
+      </View>
       <ScrollView
         contentContainerStyle={styles.content}
         importantForAccessibility={editing ? 'no-hide-descendants' : 'auto'}

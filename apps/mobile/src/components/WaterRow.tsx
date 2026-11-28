@@ -1,13 +1,20 @@
 import { StyleSheet, View } from 'react-native';
 
 import { formatNumber } from '@/domain/format';
-import { waterFraction, waterText } from '@/domain/water';
-import { radius, space, touch } from '@/theme/layout';
+import { waterFigures, waterText } from '@/domain/water';
+import { goals, space, touch, verticalSlop } from '@/theme/layout';
+import { textStyles } from '@/theme/typography';
 import { useTheme } from '@/theme/useTheme';
 
+import { GoalValue, useGoalColumns, WATER_KEY } from './DayGoals';
+import { GoalBar } from './GoalBar';
 import { PressableScale } from './PressableScale';
-import { ProgressTrack } from './ProgressTrack';
 import { TaraText } from './TaraText';
+
+// Pillole basse a vista, ma il tocco resta di 44: il resto lo dà hitSlop, solo in verticale
+// perché tra una pillola e l'altra ci sono 4 dp.
+const PILL_HEIGHT = touch.min - space.s;
+const PILL_SLOP = verticalSlop(PILL_HEIGHT);
 
 interface Props {
   /** Gli ml bevuti nel giorno mostrato. */
@@ -19,86 +26,97 @@ interface Props {
   lastAdded: number | null;
   onAdd: (ml: number) => void;
   onUndo: () => void;
+  /** Il giorno mostrato: cambiandolo la barra salta al valore nuovo, senza passaggio. */
+  day?: string;
 }
 
 /**
- * Acqua del giorno (RF-60) in una riga sola: a sinistra "Acqua", i litri contro il target e un
- * sottile avanzamento (solo con un target); a destra un pulsante a pillola per ogni incremento e
- * "Annulla +500", che dice cosa toglie. I pulsanti vanno a capo solo se la riga non basta.
+ * Acqua del giorno (RF-60), l'ultima riga della scheda degli obiettivi, come quelle dei macro:
+ * "Acqua" nella colonna dei nomi, la barra sottile (solo con un target) e "1,25 / 3 l" nella
+ * colonna dei valori, così la barra finisce dove finiscono le altre. Sotto, allineati a
+ * destra, "Annulla +500", che dice cosa toglie, e una pillola per incremento.
  */
-export function WaterRow({ ml, target, increments, lastAdded, onAdd, onUndo }: Props) {
+export function WaterRow({ ml, target, increments, lastAdded, onAdd, onUndo, day }: Props) {
   const { colors } = useTheme();
-  const text = waterText(ml, target);
+  const columns = useGoalColumns();
+  const figures = waterFigures(ml, target);
   return (
-    <View
-      testID="acqua"
-      style={[styles.panel, { backgroundColor: colors.surface, borderColor: colors.border }]}
-    >
-      <View style={styles.summary}>
-        <View style={styles.head}>
-          <TaraText variant="bodyStrong">Acqua</TaraText>
-          <TaraText testID="acqua-totale" variant="caption" color="textSecondary">
-            {text}
-          </TaraText>
+    <View testID="acqua" style={styles.stack}>
+      <View style={styles.row}>
+        <TaraText variant="bodyStrong" numberOfLines={1} style={{ width: columns.label }}>
+          Acqua
+        </TaraText>
+        <View style={styles.bar}>
+          {target === null ? null : <GoalBar color="text" logged={ml} target={target} day={day} />}
         </View>
-        {target === null ? null : (
-          <ProgressTrack
-            fraction={waterFraction(ml, target)}
-            accessibilityLabel={`Acqua ${text}`}
-          />
-        )}
+        <GoalValue
+          testID="acqua-totale"
+          accessibilityLabel={waterText(ml, target)}
+          width={columns.value}
+          onMeasure={columns.measure(WATER_KEY)}
+          value={figures.value}
+          rest={figures.rest}
+        />
       </View>
       <View style={styles.actions}>
+        {lastAdded === null ? null : (
+          <PressableScale
+            testID="acqua-annulla"
+            onPress={onUndo}
+            accessibilityLabel={`Annulla l'ultima aggiunta di ${formatNumber(lastAdded, 0)} millilitri`}
+            hitSlop={PILL_SLOP}
+            style={[styles.pill, styles.undo, { borderColor: colors.borderStrong }]}
+          >
+            <TaraText variant="caption" style={styles.pillText}>
+              Annulla +{formatNumber(lastAdded, 0)}
+            </TaraText>
+          </PressableScale>
+        )}
         {increments.map((step) => (
           <PressableScale
             key={step}
             testID={`acqua-${step}`}
             onPress={() => onAdd(step)}
             accessibilityLabel={`Aggiungi ${formatNumber(step, 0)} millilitri d'acqua`}
-            style={[styles.pill, { backgroundColor: colors.action }]}
+            hitSlop={PILL_SLOP}
+            style={[styles.pill, { backgroundColor: colors.raised }]}
           >
-            <TaraText variant="bodyStrong" color="background">
+            <TaraText variant="caption" style={styles.pillText}>
               +{formatNumber(step, 0)}
             </TaraText>
           </PressableScale>
         ))}
-        {lastAdded === null ? null : (
-          <PressableScale
-            testID="acqua-annulla"
-            onPress={onUndo}
-            accessibilityLabel={`Annulla l'ultima aggiunta di ${formatNumber(lastAdded, 0)} millilitri`}
-            style={[styles.pill, { borderColor: colors.borderStrong, borderWidth: 1 }]}
-          >
-            <TaraText variant="bodyStrong">Annulla +{formatNumber(lastAdded, 0)}</TaraText>
-          </PressableScale>
-        )}
       </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  panel: {
+  stack: { gap: space.s },
+  // Le stesse colonne dei macro (DayGoals): se il valore non ci sta va sotto, a destra.
+  row: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    borderRadius: radius.panel,
-    borderWidth: 1,
-    paddingHorizontal: space.l,
-    paddingVertical: space.s,
-    columnGap: space.m,
+    columnGap: goals.gap,
     rowGap: space.xs,
   },
-  summary: { flexGrow: 1, flexShrink: 1, minWidth: 112, gap: space.xs },
-  head: { gap: 0 },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: space.s },
+  bar: { flex: 1, minWidth: space.xxxl },
+  actions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    gap: space.xs,
+  },
   pill: {
-    minHeight: touch.min,
+    height: PILL_HEIGHT,
     minWidth: touch.min,
-    paddingHorizontal: space.m,
-    borderRadius: radius.button,
+    paddingHorizontal: space.s,
+    borderRadius: PILL_HEIGHT / 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  pillText: { fontFamily: textStyles.bodyStrong.fontFamily },
+  // "Annulla" un po' staccato dagli incrementi: toglie, non aggiunge.
+  undo: { borderWidth: 1, marginRight: space.xs },
 });

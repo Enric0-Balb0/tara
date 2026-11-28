@@ -111,13 +111,27 @@ export function defaultSavedMealName(slotName: string, date: string): string {
 
 const capitalize = (text: string) => text.charAt(0).toUpperCase() + text.slice(1);
 
-/** Titolo della giornata: Oggi, Ieri, Domani, altrimenti la data (con l'anno se è un altro). */
-export function dayTitle(date: string, today: string): string {
-  if (date === today) return 'Oggi';
-  if (date === addDays(today, -1)) return 'Ieri';
-  if (date === addDays(today, 1)) return 'Domani';
-  const label = capitalize(dayLabel(date));
-  return date.slice(0, 4) === today.slice(0, 4) ? label : `${label} ${date.slice(0, 4)}`;
+/**
+ * Intestazione di Oggi: un titolo corto e la data sotto. "Oggi", "Ieri", "Domani" con la data
+ * per esteso; gli altri giorni il giorno della settimana come titolo e la data sotto, così il
+ * titolo resta corto. L'anno solo se non è quello di oggi.
+ */
+export function dayHeading(date: string, today: string): { title: string; subtitle: string } {
+  const year = date.slice(0, 4) === today.slice(0, 4) ? '' : ` ${date.slice(0, 4)}`;
+  const relative =
+    date === today
+      ? 'Oggi'
+      : date === addDays(today, -1)
+        ? 'Ieri'
+        : date === addDays(today, 1)
+          ? 'Domani'
+          : null;
+  if (relative !== null) return { title: relative, subtitle: `${dayLabel(date)}${year}` };
+  const parsed = parseDate(date);
+  return {
+    title: capitalize(WEEKDAYS[parsed.getUTCDay()] ?? ''),
+    subtitle: `${parsed.getUTCDate()} ${MONTHS[parsed.getUTCMonth()] ?? ''}${year}`,
+  };
 }
 
 export interface SnapshotValue {

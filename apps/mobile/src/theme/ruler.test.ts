@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { contrastRatio } from '@/domain/contrast';
 
 import { colors, MACRO_TOKENS, type Scheme } from './colors';
-import { ruler } from './ruler';
+import { goalBar, ruler } from './ruler';
 
 const SCHEMES: Scheme[] = ['dark', 'light'];
 
@@ -23,4 +23,20 @@ describe('ruler', () => {
       expect(contrastRatio(palette[macro], palette.surface)).toBeGreaterThanOrEqual(3);
     },
   );
+});
+
+describe('goalBar', () => {
+  it.each(SCHEMES)('nel tema %s il segno del traguardo si vede sulla superficie', (scheme) => {
+    const palette = colors[scheme];
+    expect(contrastRatio(palette[goalBar.markColor], palette.surface)).toBeGreaterThanOrEqual(3);
+  });
+
+  it('sta sulla griglia: 8 dp di altezza, il segno sporge di 2 per parte', () => {
+    expect(goalBar.height % 4).toBe(0);
+    expect(goalBar.height + 2 * goalBar.markOverhang).toBe(12);
+  });
+
+  it('pochi grammi si vedono: la parte piena è larga almeno 4 dp', () => {
+    expect(goalBar.minFill).toBe(4);
+  });
 });

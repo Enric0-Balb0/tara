@@ -4,7 +4,7 @@ import {
   addDays,
   DEFAULT_MEAL_SLOTS,
   dayLabel,
-  dayTitle,
+  dayHeading,
   defaultSavedMealName,
   foodCountLabel,
   entryAmount,
@@ -71,12 +71,29 @@ describe('date', () => {
     expect(addDays('2026-10-24', 2)).toBe('2026-10-26');
   });
 
-  it('dayTitle dice Oggi, Ieri e Domani, altrimenti la data', () => {
-    expect(dayTitle('2026-11-19', '2026-11-19')).toBe('Oggi');
-    expect(dayTitle('2026-11-18', '2026-11-19')).toBe('Ieri');
-    expect(dayTitle('2026-11-20', '2026-11-19')).toBe('Domani');
-    expect(dayTitle('2026-11-16', '2026-11-19')).toBe('Lunedì 16 novembre');
-    expect(dayTitle('2025-11-16', '2026-11-19')).toBe('Domenica 16 novembre 2025');
+  it('dayHeading dice Oggi, Ieri e Domani con la data sotto', () => {
+    expect(dayHeading('2026-11-19', '2026-11-19')).toEqual({
+      title: 'Oggi',
+      subtitle: 'giovedì 19 novembre',
+    });
+    expect(dayHeading('2026-11-18', '2026-11-19').title).toBe('Ieri');
+    expect(dayHeading('2026-11-20', '2026-11-19').title).toBe('Domani');
+  });
+
+  it('dayHeading negli altri giorni ha il giorno della settimana come titolo', () => {
+    expect(dayHeading('2026-11-16', '2026-11-19')).toEqual({
+      title: 'Lunedì',
+      subtitle: '16 novembre',
+    });
+    expect(dayHeading('2025-11-16', '2026-11-19')).toEqual({
+      title: 'Domenica',
+      subtitle: '16 novembre 2025',
+    });
+    // A cavallo dell'anno "Ieri" resta, con l'anno nella data.
+    expect(dayHeading('2025-12-31', '2026-01-01')).toEqual({
+      title: 'Ieri',
+      subtitle: 'mercoledì 31 dicembre 2025',
+    });
   });
 
   it('dayLabel è la data per esteso, in minuscolo come nel testo', () => {

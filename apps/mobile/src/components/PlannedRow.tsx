@@ -1,13 +1,15 @@
 import { StyleSheet, View } from 'react-native';
 
 import { formatAmount } from '@/domain/format';
-import { radius, space, touch } from '@/theme/layout';
+import { columns, radius, space, touch } from '@/theme/layout';
 import { useTheme } from '@/theme/useTheme';
 
 import { PressableScale } from './PressableScale';
 import { TaraText } from './TaraText';
+import { useEntryColumns } from './useEntryColumns';
 
-interface Props {
+export interface PlannedItem {
+  key: string;
   name: string;
   quantity: number;
   unit: 'g' | 'ml';
@@ -19,36 +21,92 @@ interface Props {
   onEdit: () => void;
 }
 
+function texts({ name, quantity, unit, kcal, protein }: PlannedItem) {
+  const amount = formatAmount(quantity, 'grams');
+  const kcalText = formatAmount(kcal, 'kcal');
+  const proteinText = formatAmount(protein, 'macro');
+  return {
+    amount,
+    kcalText,
+    proteinText,
+    spoken: `${name}, previsto ${amount} ${unit === 'g' ? 'grammi' : 'millilitri'}, ${kcalText} kcal, ${proteinText} grammi di proteine`,
+  };
+}
+
 /**
  * Voce prevista dal piano (docs/design.md, "Voce di diario"): bordo tratteggiato, testo
  * attenuato e "Conferma". Un tocco sulla riga permette di cambiare i grammi prima.
  */
-export function PlannedRow({ name, quantity, unit, kcal, protein, onConfirm, onEdit }: Props) {
+export function PlannedRow({ item }: { item: PlannedItem }) {
   const { colors } = useTheme();
-  const amount = formatAmount(quantity, 'grams');
-  const kcalText = formatAmount(kcal, 'kcal');
-  const proteinText = formatAmount(protein, 'macro');
+  const { amount, kcalText, proteinText, spoken } = texts(item);
   return (
     <View style={[styles.row, { borderColor: colors.borderStrong }]}>
       <PressableScale
-        onPress={onEdit}
-        accessibilityLabel={`${name}, previsto ${amount} ${unit === 'g' ? 'grammi' : 'millilitri'}, ${kcalText} kcal, ${proteinText} grammi di proteine`}
+        onPress={item.onEdit}
+        accessibilityLabel={spoken}
         accessibilityHint="Cambia i grammi prima di confermare"
         style={styles.text}
       >
-        <TaraText numberOfLines={1}>{name}</TaraText>
-        <TaraText variant="caption" color="textSecondary" numberOfLines={1}>
-          previsto {amount} {unit}, {kcalText} kcal, {proteinText} prot.
+        <TaraText color="textSecondary" numberOfLines={1}>
+          {item.name}
+        </TaraText>
+        {/* Con il testo grande va su due righe invece di tagliare i numeri. */}
+        <TaraText variant="caption" color="textSecondary" numberOfLines={2}>
+          previsto {amount} {item.unit}, {kcalText} kcal, {proteinText} prot.
         </TaraText>
       </PressableScale>
       <PressableScale
-        onPress={onConfirm}
-        accessibilityLabel={`Conferma ${name}`}
+        onPress={item.onConfirm}
+        accessibilityLabel={`Conferma ${item.name}`}
         style={[styles.confirm, { borderColor: colors.text }]}
       >
         <TaraText variant="bodyStrong">Conferma</TaraText>
       </PressableScale>
     </View>
+  );
+}
+
+/**
+ * Voce prevista dentro un pasto tutto da piano: la stessa griglia delle voci registrate (nome,
+ * peso, kcal, proteine), attenuata, senza "Conferma" (c'è "Registra come da piano" sotto). Un
+ * tocco apre il foglio per confermarla da sola, anche con altri grammi.
+ */
+export function PlannedLine({ item }: { item: PlannedItem }) {
+  const entry = useEntryColumns();
+  const { amount, kcalText, proteinText, spoken } = texts(item);
+  return (
+    <PressableScale
+      onPress={item.onEdit}
+      accessibilityLabel={spoken}
+      accessibilityHint="Conferma la voce, anche con altri grammi"
+      style={styles.line}
+    >
+      <TaraText color="textSecondary" numberOfLines={1} style={styles.name}>
+        {item.name}
+      </TaraText>
+      <TaraText
+        color="textSecondary"
+        numberOfLines={1}
+        style={[styles.number, { width: entry.weight }]}
+      >
+        {`${amount} ${item.unit}`}
+      </TaraText>
+      <TaraText
+        color="textSecondary"
+        numberOfLines={1}
+        style={[styles.number, { width: entry.kcal }]}
+      >
+        {kcalText}
+      </TaraText>
+      <TaraText
+        color="textSecondary"
+        numberOfLines={1}
+        style={[styles.number, { width: entry.protein }]}
+      >
+        {proteinText}
+      </TaraText>
+    </PressableScale>
   );
 }
 
@@ -60,7 +118,7 @@ const styles = StyleSheet.create({
     gap: space.s,
     paddingLeft: space.m,
     paddingRight: space.xs,
-    borderRadius: radius.field,
+    borderRadius: radius.key,
     borderWidth: 1,
     borderStyle: 'dashed',
   },
@@ -73,4 +131,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  line: {
+    minHeight: touch.min,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: columns.gap,
+    paddingHorizontal: space.m,
+  },
+  name: { flex: 1, minWidth: 0 },
+  // Larghezze da useEntryColumns: crescono con il testo, la stessa fonte per righe e legenda.
+  number: { textAlign: 'right' },
 });

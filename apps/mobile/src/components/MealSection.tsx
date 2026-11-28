@@ -8,8 +8,13 @@ import { curves, durations } from '@/theme/motion';
 import { useTheme } from '@/theme/useTheme';
 
 import { Icon } from './Icon';
+import { type PlannedItem, PlannedLine, PlannedRow } from './PlannedRow';
 import { PressableScale } from './PressableScale';
 import { TaraText } from './TaraText';
+import { useEntryColumns } from './useEntryColumns';
+
+// Azioni secondarie del pasto: icona piccola accanto al testo normale, tocco sempre da 44.
+const ACTION_ICON = 18;
 
 interface Props {
   name: string;
@@ -18,7 +23,7 @@ interface Props {
   /** Le voci registrate del pasto con la loro chiave (l'id della voce). */
   entries: readonly { key: string; row: ReactNode }[];
   /** Le voci previste dal piano non ancora confermate (RF-130). */
-  planned?: readonly { key: string; row: ReactNode }[];
+  planned?: readonly PlannedItem[];
   /** "2 di 3": le voci del piano confermate; null senza piano per il pasto. */
   progress?: string | null;
   /** Conferma tutte le voci previste del pasto con i grammi del piano. */
@@ -26,7 +31,8 @@ interface Props {
   /** Pasto completo come da piano: si mostra in una riga, che si riapre con un tocco. */
   collapsed?: boolean;
   onToggle?: () => void;
-  onAdd: () => void;
+  /** Senza, niente "Aggiungi": un pasto archiviato si modifica ma non si riempie (RF-40). */
+  onAdd?: () => void;
   /** Etichetta per il lettore dello schermo; di base "Aggiungi a Pranzo". */
   addLabel?: string;
   /** Copia il pasto da un altro giorno (RF-44), es. "Copia da ieri"; senza, niente pulsante. */
@@ -36,9 +42,12 @@ interface Props {
 }
 
 /**
- * Un pasto (docs/design.md, "Intestazione del pasto"): nome, avanzamento sul piano e totali
- * nelle stesse colonne delle voci; le voci registrate, quelle previste dal piano e
- * "Aggiungi". Un pasto completo come da piano si chiude in una riga.
+ * Un pasto (docs/design.md, "Intestazione del pasto"): nome e avanzamento sul piano con la
+ * legenda delle colonne a destra, le voci in griglia con separatori sottili, le voci previste
+ * tratteggiate, con due o più voci la riga "Totale" nelle colonne di kcal e proteine, e in
+ * fondo le azioni con "Aggiungi" sempre a destra. Un pasto vuoto sta in una riga (con il testo
+ * grande le azioni vanno sotto, il nome resta intero); uno tutto da piano in un contenitore
+ * tratteggiato con "Registra come da piano"; uno completo come da piano si chiude in una riga.
  */
 export function MealSection({
   name,
@@ -56,6 +65,7 @@ export function MealSection({
   onSave,
 }: Props) {
   const { colors, reduceMotion } = useTheme();
+  const entry = useEntryColumns();
   // "voce": la riga nuova compare e le altre si spostano; con il movimento ridotto solo
   // la dissolvenza.
   const layout = reduceMotion
@@ -74,7 +84,7 @@ export function MealSection({
             { backgroundColor: colors.surface, borderColor: colors.border },
           ]}
         >
-          <Icon name="check" color="text" />
+          <Icon name="check" color="text" size={20} />
           <TaraText variant="section" numberOfLines={1} style={styles.name}>
             {name}{' '}
             <TaraText variant="caption" color="textSecondary">
@@ -89,43 +99,98 @@ export function MealSection({
     );
   }
 
-  const empty = entries.length === 0;
-  const header = (
-    <>
-      <TaraText variant="section" numberOfLines={1} style={styles.name}>
-        {name}
-        {progress ? (
-          <TaraText variant="caption" color="textSecondary">
-            {' '}
-            {progress}
-          </TaraText>
-        ) : null}
-      </TaraText>
-      {empty ? null : (
-        <>
-          <View style={styles.weight} />
-          <TaraText
-            variant="number"
-            numberOfLines={1}
-            accessibilityLabel={`${formatTotal(kcal, 'kcal')} kcal`}
-            style={styles.kcal}
-          >
-            {formatTotal(kcal, 'kcal')}
-          </TaraText>
-          <TaraText
-            variant="number"
-            numberOfLines={1}
-            accessibilityLabel={`${formatTotal(protein, 'macro')} grammi di proteine`}
-            style={styles.protein}
-          >
-            {formatTotal(protein, 'macro')}
-          </TaraText>
-        </>
-      )}
-    </>
+  const renderTitle = (style: typeof styles.name | typeof styles.emptyName) => (
+    <TaraText variant="section" accessibilityRole="header" numberOfLines={1} style={style}>
+      {name}
+      {progress ? (
+        <TaraText variant="caption" color="textSecondary">
+          {' '}
+          {progress}
+        </TaraText>
+      ) : null}
+    </TaraText>
   );
+  const title = renderTitle(styles.name);
+  const addButton = onAdd ? (
+    <PressableScale
+      onPress={onAdd}
+      accessibilityLabel={addLabel ?? `Aggiungi a ${name}`}
+      style={styles.action}
+    >
+      <Icon name="plus" color="textSecondary" size={ACTION_ICON} />
+      <TaraText color="textSecondary">Aggiungi</TaraText>
+    </PressableScale>
+  ) : null;
+  const copyButton = copy ? (
+    <PressableScale
+      onPress={copy.onPress}
+      accessibilityLabel={`${copy.label}: ${name}`}
+      style={styles.action}
+    >
+      <TaraText color="textSecondary">{copy.label}</TaraText>
+    </PressableScale>
+  ) : null;
+
+  // Un pasto senza voci né previste: nome e azioni nella stessa riga; se il nome non ci sta,
+  // le azioni vanno a capo a destra invece di tagliarlo.
+  if (entries.length === 0 && planned.length === 0) {
+    return (
+      <Animated.View layout={layout} style={styles.emptyRow}>
+        {renderTitle(styles.emptyName)}
+        <View style={styles.emptyActions}>
+          {copyButton}
+          {addButton}
+        </View>
+      </Animated.View>
+    );
+  }
+
+  const allPlanned = entries.length === 0 && planned.length > 1 && onConfirmAll !== undefined;
+  const legend =
+    entries.length > 0 || allPlanned ? (
+      <View
+        style={styles.legend}
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+      >
+        <TaraText
+          variant="minimum"
+          color="textSecondary"
+          style={[styles.number, { width: entry.weight }]}
+        >
+          peso
+        </TaraText>
+        <TaraText
+          variant="minimum"
+          color="textSecondary"
+          style={[styles.number, { width: entry.kcal }]}
+        >
+          kcal
+        </TaraText>
+        <TaraText
+          variant="minimum"
+          color="textSecondary"
+          style={[styles.number, { width: entry.protein }]}
+        >
+          prot.
+        </TaraText>
+      </View>
+    ) : null;
+  const confirmAll =
+    planned.length > 1 && onConfirmAll ? (
+      <PressableScale
+        onPress={onConfirmAll}
+        accessibilityLabel={`Registra ${name} come da piano`}
+        style={[styles.confirmAll, { backgroundColor: colors.raised }]}
+      >
+        <TaraText variant="bodyStrong">Registra come da piano</TaraText>
+      </PressableScale>
+    ) : null;
+  const kcalText = formatTotal(kcal, 'kcal');
+  const proteinText = formatTotal(protein, 'macro');
+
   return (
-    <Animated.View layout={layout} style={styles.section}>
+    <Animated.View layout={layout}>
       {/* Si tocca solo un pasto completo, per richiuderlo; altrimenti è un'intestazione. */}
       {onToggle ? (
         <PressableScale
@@ -133,123 +198,171 @@ export function MealSection({
           accessibilityHint="Chiude il pasto in una riga"
           style={styles.header}
         >
-          {header}
+          {title}
+          {legend}
         </PressableScale>
       ) : (
-        <View style={styles.header} accessibilityRole="header">
-          {header}
+        <View style={styles.header}>
+          {title}
+          {legend}
         </View>
       )}
-      {empty ? null : (
-        <View style={[styles.rows, { borderColor: colors.border }]}>
-          {entries.map(({ key, row }, index) => (
-            <Animated.View
-              key={key}
-              entering={FadeIn.duration(durations.entry)}
-              exiting={FadeOut.duration(durations.quick)}
-              layout={layout}
-              style={index > 0 ? [styles.divider, { borderColor: colors.border }] : undefined}
-            >
-              {row}
-            </Animated.View>
-          ))}
-        </View>
-      )}
-      {planned.map(({ key, row }) => (
+
+      {entries.map(({ key, row }) => (
         <Animated.View
           key={key}
           entering={FadeIn.duration(durations.entry)}
           exiting={FadeOut.duration(durations.quick)}
           layout={layout}
+          style={[styles.divider, { borderColor: colors.border }]}
         >
           {row}
         </Animated.View>
       ))}
-      {planned.length > 1 && onConfirmAll ? (
-        <PressableScale
-          onPress={onConfirmAll}
-          accessibilityLabel={`Registra ${name} come da piano`}
-          style={[styles.confirmAll, { backgroundColor: colors.raised }]}
+
+      {/* Con una voce sola il totale ripeterebbe la riga: compare da due voci in su,
+          subito sotto le voci che somma (le previste non contano). */}
+      {entries.length > 1 ? (
+        <View
+          accessible
+          accessibilityLabel={`Totale ${name}: ${kcalText} kcal, ${proteinText} grammi di proteine`}
+          style={styles.totals}
         >
-          <TaraText variant="bodyStrong">Registra come da piano</TaraText>
-        </PressableScale>
-      ) : null}
-      <View style={styles.actions}>
-        <PressableScale
-          onPress={onAdd}
-          accessibilityLabel={addLabel ?? `Aggiungi a ${name}`}
-          style={styles.add}
-        >
-          <Icon name="plus" color="textSecondary" />
-          <TaraText variant="bodyStrong" color="textSecondary">
-            Aggiungi
+          <TaraText color="textSecondary" numberOfLines={1} style={styles.name}>
+            Totale
           </TaraText>
-        </PressableScale>
-        {copy ? (
-          <PressableScale
-            onPress={copy.onPress}
-            accessibilityLabel={`${copy.label}: ${name}`}
-            style={styles.add}
-          >
-            <TaraText variant="bodyStrong" color="textSecondary">
-              {copy.label}
-            </TaraText>
-          </PressableScale>
-        ) : null}
+          <TaraText numberOfLines={1} style={[styles.number, { width: entry.kcal }]}>
+            {kcalText}
+          </TaraText>
+          <TaraText numberOfLines={1} style={[styles.number, { width: entry.protein }]}>
+            {proteinText}
+          </TaraText>
+        </View>
+      ) : null}
+
+      {allPlanned ? (
+        <View style={[styles.plannedBox, { borderColor: colors.borderStrong }]}>
+          {planned.map((item) => (
+            <Animated.View
+              key={item.key}
+              entering={FadeIn.duration(durations.entry)}
+              exiting={FadeOut.duration(durations.quick)}
+              layout={layout}
+              style={styles.plannedLine}
+            >
+              <PlannedLine item={item} />
+            </Animated.View>
+          ))}
+          {confirmAll}
+        </View>
+      ) : (
+        <>
+          {planned.map((item) => (
+            <Animated.View
+              key={item.key}
+              entering={FadeIn.duration(durations.entry)}
+              exiting={FadeOut.duration(durations.quick)}
+              layout={layout}
+              style={styles.planned}
+            >
+              <PlannedRow item={item} />
+            </Animated.View>
+          ))}
+          {confirmAll}
+        </>
+      )}
+
+      {/* "Aggiungi" sempre a destra, come nei pasti vuoti; le altre azioni a sinistra. */}
+      <View style={styles.footer}>
+        {copyButton}
         {onSave ? (
           <PressableScale
             onPress={onSave}
             accessibilityLabel={`Salva come pasto: ${name}`}
             testID={`salva-pasto-${name.toLowerCase()}`}
-            style={styles.add}
+            style={styles.action}
           >
-            <TaraText variant="bodyStrong" color="textSecondary">
-              Salva come pasto
-            </TaraText>
+            <TaraText color="textSecondary">Salva come pasto</TaraText>
           </PressableScale>
         ) : null}
+        <View style={styles.footerEnd}>{addButton}</View>
       </View>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  section: { gap: space.xs },
   header: {
     flexDirection: 'row',
     alignItems: 'baseline',
     gap: columns.gap,
     paddingHorizontal: space.m,
-    minHeight: space.xxxl,
+    paddingBottom: space.xs,
   },
-  name: { flex: 1 },
-  weight: { width: columns.weight },
-  kcal: { width: columns.kcal, textAlign: 'right' },
-  protein: { width: columns.protein, textAlign: 'right' },
-  rows: { borderRadius: radius.field, borderWidth: 1 },
-  divider: { borderTopWidth: StyleSheet.hairlineWidth },
+  name: { flex: 1, minWidth: 0 },
+  legend: { flexDirection: 'row', gap: columns.gap },
+  // Larghezze da useEntryColumns: crescono con il testo, la stessa fonte per righe e legenda.
+  number: { textAlign: 'right' },
+  divider: { borderBottomWidth: StyleSheet.hairlineWidth },
+  planned: { marginTop: space.s },
+  // Il bordo tratteggiato è largo 1: le righe dentro rientrano di 1 per restare in colonna.
+  plannedBox: {
+    marginTop: space.s,
+    borderRadius: radius.key,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    paddingBottom: space.s,
+  },
+  plannedLine: { marginHorizontal: -1 },
+  confirmAll: {
+    minHeight: touch.min,
+    marginTop: space.s,
+    marginHorizontal: space.s,
+    borderRadius: radius.field,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Le stesse colonne delle voci: "Totale" al posto del nome, kcal e proteine sotto le loro.
+  totals: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: columns.gap,
+    paddingHorizontal: space.m,
+    paddingVertical: space.s,
+  },
+  footer: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginTop: space.xs },
+  footerEnd: { marginLeft: 'auto' },
+  action: {
+    minHeight: touch.min,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.xs,
+    paddingHorizontal: space.m,
+  },
+  // Un pasto vuoto è una riga sola; se nome e azioni non ci stanno, le azioni vanno a capo.
+  emptyRow: {
+    minHeight: touch.min,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    columnGap: space.xs,
+    paddingLeft: space.m,
+  },
+  // Larga quanto il nome, che non si taglia per far posto alle azioni.
+  emptyName: { flexGrow: 1, flexShrink: 1, minWidth: 0 },
+  emptyActions: {
+    marginLeft: 'auto',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
   collapsed: {
     minHeight: touch.min + space.xs,
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.s,
     paddingHorizontal: space.m,
-    borderRadius: radius.field,
+    borderRadius: radius.key,
     borderWidth: 1,
-  },
-  confirmAll: {
-    minHeight: touch.min,
-    borderRadius: radius.field,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: space.s },
-  add: {
-    minHeight: touch.min,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.xs,
-    paddingHorizontal: space.m,
-    alignSelf: 'flex-start',
   },
 });

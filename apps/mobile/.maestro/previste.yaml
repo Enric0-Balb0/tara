@@ -1,6 +1,8 @@
 # Voci previste dal piano (RF-130; serve il backend per il primo download): metto 300 g di
 # albume nel Pranzo del piano di Allenamento; in Oggi compare come voce prevista, la confermo
 # a 200 g, il pasto completo si chiude in una riga, lo riapro, elimino la voce e torna prevista.
+# Poi due voci a Cena: un pasto tutto da piano sta in un contenitore tratteggiato e
+# "Registra come da piano" le conferma insieme.
 appId: com.enricobalbo.tara
 name: Voci previste dal piano
 tags:
@@ -107,3 +109,83 @@ tags:
     file: subflows/vedi.yaml
     env:
       ELEMENTO: 'Albume d''uovo, previsto 300 grammi, 144 kcal, 32,7 grammi di proteine'
+
+# Un pasto tutto da piano: due voci di albume a Cena, 100 e 150 g.
+- tapOn:
+    id: tab-piano
+    retryTapIfNoChange: true
+- extendedWaitUntil:
+    visible:
+      id: piano
+    timeout: 10000
+- scrollUntilVisible:
+    element: 'Aggiungi al piano: Cena'
+- tapOn: 'Aggiungi al piano: Cena'
+- runFlow:
+    file: subflows/scrivi.yaml
+    env:
+      CAMPO: campo-ricerca
+      TESTO: albume
+- extendedWaitUntil:
+    visible: "Albume d'uovo in polvere"
+    timeout: 90000
+- tapOn:
+    text: "Albume d'uovo"
+    index: 0
+- tapOn: 'Aggiungi al piano: Cena'
+- tapOn:
+    id: tasto-1
+- tapOn:
+    id: tasto-0
+- tapOn:
+    id: tasto-0
+- tapOn: Aggiungi 100 grammi
+- extendedWaitUntil:
+    visible:
+      id: piano
+    timeout: 10000
+- scrollUntilVisible:
+    element: 'Aggiungi al piano: Cena'
+- tapOn: 'Aggiungi al piano: Cena'
+- runFlow:
+    file: subflows/scrivi.yaml
+    env:
+      CAMPO: campo-ricerca
+      TESTO: albume
+- extendedWaitUntil:
+    visible: "Albume d'uovo in polvere"
+    timeout: 90000
+- tapOn:
+    text: "Albume d'uovo"
+    index: 0
+- tapOn: 'Aggiungi al piano: Cena'
+- tapOn:
+    id: tasto-1
+- tapOn:
+    id: tasto-5
+- tapOn:
+    id: tasto-0
+- tapOn: Aggiungi 150 grammi
+- extendedWaitUntil:
+    visible:
+      id: piano
+    timeout: 10000
+
+# In Oggi Cena è tutta da piano: un tocco registra le due voci e chiude il pasto.
+- tapOn:
+    id: tab-oggi
+    retryTapIfNoChange: true
+- runFlow:
+    file: subflows/vedi.yaml
+    env:
+      ELEMENTO: 'Registra Cena come da piano'
+- takeScreenshot: screenshots/oggi-pasto-da-piano
+- runFlow:
+    file: subflows/tocca.yaml
+    env:
+      ELEMENTO: 'Registra Cena come da piano'
+- runFlow:
+    file: subflows/vedi.yaml
+    env:
+      ELEMENTO: '.*2 di 2, come da piano.*'
+- takeScreenshot: screenshots/oggi-cena-registrata

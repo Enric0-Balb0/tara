@@ -1,11 +1,9 @@
-import { Link, Tabs, useRouter } from 'expo-router';
+import { Tabs, useRouter } from 'expo-router';
 import { BottomTabBar } from 'expo-router/tabs';
-import { StyleSheet, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Icon, type IconName } from '@/components/Icon';
-import { PressableScale } from '@/components/PressableScale';
 import { SearchDock } from '@/components/SearchDock';
-import { touch } from '@/theme/layout';
 import { textStyles } from '@/theme/typography';
 import { useTheme } from '@/theme/useTheme';
 
@@ -16,18 +14,9 @@ function tabIcon(name: IconName) {
   return TabIcon;
 }
 
-function ProfileButton() {
-  return (
-    <Link href="/profilo" asChild>
-      <PressableScale accessibilityLabel="Profilo" style={styles.headerButton}>
-        <Icon name="profile" color="text" />
-      </PressableScale>
-    </Link>
-  );
-}
-
 /**
- * Le quattro tab di docs/design.md; il profilo si apre dall'intestazione di Oggi. La ricerca
+ * Le quattro tab di docs/design.md. Ognuna disegna la sua intestazione (ScreenHeader, titolo
+ * grande) al posto di quella nativa; il profilo si apre dall'intestazione di Oggi. La ricerca
  * sta sopra le tab, a un tocco da ogni schermata; lo scanner arriva in F1 (RF-10).
  */
 export default function TabsLayout() {
@@ -42,10 +31,7 @@ export default function TabsLayout() {
         </View>
       )}
       screenOptions={{
-        headerStyle: { backgroundColor: colors.background },
-        headerTintColor: colors.text,
-        headerTitleStyle: { fontFamily: textStyles.section.fontFamily },
-        headerShadowVisible: false,
+        headerShown: false,
         sceneStyle: { backgroundColor: colors.background },
         tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border },
         tabBarActiveTintColor: colors.text,
@@ -59,7 +45,6 @@ export default function TabsLayout() {
           title: 'Oggi',
           tabBarIcon: tabIcon('today'),
           tabBarButtonTestID: 'tab-oggi',
-          headerRight: ProfileButton,
         }}
       />
       <Tabs.Screen
@@ -85,12 +70,3 @@ export default function TabsLayout() {
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  headerButton: {
-    width: touch.min,
-    height: touch.min,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

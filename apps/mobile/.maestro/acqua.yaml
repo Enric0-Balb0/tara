@@ -1,6 +1,7 @@
 # Acqua (RF-60, RF-61; serve il backend per l'accesso): imposto 3000 ml di acqua per
 # Allenamento nel Piano, in Oggi leggo "0 di 3 l", aggiungo 500 ml due volte ("1 di 3 l") e
-# annullo l'ultima aggiunta ("0,5 di 3 l").
+# annullo l'ultima aggiunta ("0,5 di 3 l"). I testi sono quelli del lettore dello schermo: a
+# vista la riga dell'acqua dice "0,0 / 3 l", come gli obiettivi.
 appId: com.enricobalbo.tara
 name: Acqua
 tags:
