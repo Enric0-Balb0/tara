@@ -25,3 +25,21 @@ export function rulerGeometry(
     target: target === null ? null : target / scale,
   };
 }
+
+/**
+ * Larghezza della parte piena: la frazione del binario, ma almeno `minimum` se c'è qualcosa
+ * di registrato, così pochi grammi non diventano una scheggia illeggibile. Mai oltre il binario.
+ */
+export function visibleFill(fraction: number, width: number, minimum: number): number {
+  if (fraction <= 0 || width <= 0) return 0;
+  return Math.min(Math.max(fraction * width, minimum), width);
+}
+
+/** Le tacche ogni 10% che cadono dentro la parte piena (registrato più previsto), in frazioni. */
+export function filledTicks(filled: number): number[] {
+  const ticks: number[] = [];
+  for (let tick = 1; tick <= 9; tick += 1) {
+    if (tick / 10 < filled) ticks.push(tick / 10);
+  }
+  return ticks;
+}

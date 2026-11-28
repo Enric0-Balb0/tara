@@ -18,8 +18,10 @@ export const ruler = {
 
 /**
  * Barra sottile degli obiettivi di Oggi (docs/design.md, "Barra graduata"): 8 dp, il binario
- * è decorativo, le tacche ogni 10% sono tagli del colore della superficie e il segno del
- * traguardo sporge sopra e sotto. Il tratteggio del previsto è quello della barra graduata.
+ * è decorativo, le tacche ogni 10% sono tagli del colore della superficie solo sulla parte
+ * piena e il segno del traguardo sporge sopra e sotto. La parte piena è larga almeno
+ * `minFill` se c'è qualcosa di registrato, con i suoi angoli arrotondati. Il tratteggio del
+ * previsto è quello della barra graduata.
  */
 export const goalBar = {
   height: 8,
@@ -30,4 +32,5 @@ export const goalBar = {
   markColor: 'text' as ColorToken,
   markWidth: 2,
   markOverhang: 2,
+  minFill: 4,
 } as const;

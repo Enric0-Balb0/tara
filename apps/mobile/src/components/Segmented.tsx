@@ -1,15 +1,16 @@
 import { StyleSheet, View } from 'react-native';
 
-import { radius, space, touch } from '@/theme/layout';
+import { radius, space, touch, verticalSlop } from '@/theme/layout';
 import { textStyles } from '@/theme/typography';
 import { useTheme } from '@/theme/useTheme';
 
 import { PressableScale } from './PressableScale';
 import { TaraText } from './TaraText';
 
-// Variante compatta: opzioni basse a vista, ma il tocco resta di 44 grazie a hitSlop.
+// Variante compatta: opzioni basse a vista, ma il tocco resta di 44 grazie a hitSlop, solo in
+// verticale: tra un'opzione e l'altra ci sono 4 dp e i tocchi si sovrapporrebbero.
 const COMPACT_HEIGHT = touch.min - space.s;
-const COMPACT_SLOP = (touch.min - COMPACT_HEIGHT) / 2;
+const COMPACT_SLOP = verticalSlop(COMPACT_HEIGHT);
 
 interface Props {
   /** Nome del gruppo per il lettore dello schermo, es. "Pasto". */

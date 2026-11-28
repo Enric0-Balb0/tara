@@ -1,6 +1,7 @@
 import { type StyleProp, Text, type TextProps, type TextStyle } from 'react-native';
 
 import { type ColorToken, type LabelColorToken, labelColors } from '@/theme/colors';
+import { MAX_FONT_SCALE } from '@/theme/layout';
 import { type TextRole, textStyles } from '@/theme/typography';
 import { useTheme } from '@/theme/useTheme';
 
@@ -20,7 +21,7 @@ export function TaraText({ variant = 'body', color = 'text', style, ...rest }: P
       : theme.colors[color as ColorToken];
   return (
     <Text
-      maxFontSizeMultiplier={1.3}
+      maxFontSizeMultiplier={MAX_FONT_SCALE}
       {...rest}
       style={[textStyles[variant], { color: resolved, fontVariant: ['tabular-nums'] }, style]}
     />

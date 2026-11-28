@@ -35,4 +35,8 @@ describe('goalBar', () => {
     expect(goalBar.height % 4).toBe(0);
     expect(goalBar.height + 2 * goalBar.markOverhang).toBe(12);
   });
+
+  it('pochi grammi si vedono: la parte piena è larga almeno 4 dp', () => {
+    expect(goalBar.minFill).toBe(4);
+  });
 });

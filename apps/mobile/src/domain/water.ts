@@ -23,9 +23,13 @@ export function waterText(ml: number, target: number | null): string {
     : `${formatLitres(ml)} di ${formatLitres(target)} l`;
 }
 
-/** Come si scrive in Oggi: "**1,25** / 3 l" con il target, "**1,25** l" senza. */
+/**
+ * Come si scrive in Oggi: "**1,25** / 3 l" con il target, "**1,25** l" senza. Lo zero è
+ * "0,0": in cifre larghe "0 l" si leggerebbe "O |".
+ */
 export function waterFigures(ml: number, target: number | null): { value: string; rest: string } {
-  return goalFigures(formatLitres(ml), target === null ? null : formatLitres(target), 'l', 'omit');
+  const value = ml === 0 ? formatNumber(0, 1) : formatLitres(ml);
+  return goalFigures(value, target === null ? null : formatLitres(target), 'l', 'omit');
 }
 
 /** La frazione del target bevuta, tra 0 e 1; 0 senza target. */
