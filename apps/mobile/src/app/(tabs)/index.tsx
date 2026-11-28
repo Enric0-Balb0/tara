@@ -89,6 +89,10 @@ export default function TodayScreen() {
   // Pasti archiviati con voci quel giorno: si modificano, ma non si aggiunge (RF-40).
   const [archivedIds, setArchivedIds] = useState<ReadonlySet<string>>(new Set());
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
+  // Il giorno dei dati in vista: cambia insieme a loro, e le barre saltano senza passaggio.
+  const [loadedDate, setLoadedDate] = useState<string | undefined>(undefined);
+  // Il contenuto è scorso sotto l'intestazione: la linea sottile la separa.
+  const [scrolled, setScrolled] = useState(false);
   // Le voci del giorno prima, per "Copia da ieri" (RF-44).
   const [previous, setPrevious] = useState<DiaryEntry[]>([]);
   const [skippedPrevious, setSkippedPrevious] = useState(0);
@@ -172,6 +176,7 @@ export default function TodayScreen() {
       setSlots([...activeSlots, ...archivedSlots]);
       setArchivedIds(new Set(archivedSlots.map((slot) => slot.id)));
       setEntries(dayEntries);
+      setLoadedDate(date);
       // Si copiano solo le voci dei pasti attivi: le altre si contano per dirlo.
       const activeIds = new Set(activeSlots.map((slot) => slot.id));
       const copiable = previousEntries.filter((entry) => activeIds.has(entry.mealSlotId));
@@ -343,6 +348,7 @@ export default function TodayScreen() {
         <ScreenHeader
           title={heading.title}
           subtitle={heading.subtitle}
+          scrolled={scrolled}
           actions={
             <>
               <PressableScale
@@ -391,8 +397,10 @@ export default function TodayScreen() {
       <ScrollView
         testID="diario"
         contentContainerStyle={styles.content}
-        importantForAccessibility={editing ? 'no-hide-descendants' : 'auto'}
-        accessibilityElementsHidden={editing !== null}
+        onScroll={(event) => setScrolled(event.nativeEvent.contentOffset.y > 0)}
+        scrollEventThrottle={16}
+        importantForAccessibility={hidden ? 'no-hide-descendants' : 'auto'}
+        accessibilityElementsHidden={hidden}
       >
         <DayGoals
           totals={totals(entries)}
@@ -400,6 +408,7 @@ export default function TodayScreen() {
           target={target}
           dayTypeName={dayTypeName}
           averageKg={averageKg}
+          day={loadedDate}
           onSetTargets={() => router.navigate('/piano')}
         >
           <WaterRow
@@ -407,6 +416,7 @@ export default function TodayScreen() {
             target={water.target}
             increments={water.increments}
             lastAdded={water.last}
+            day={loadedDate}
             onAdd={(ml) => void drink((owner) => addWater(db, owner, date, ml, new Date()))}
             onUndo={() => void drink((owner) => undoLastWater(db, owner, date, new Date()))}
           />

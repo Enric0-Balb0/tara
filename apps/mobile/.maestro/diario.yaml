@@ -51,7 +51,8 @@ tags:
     file: subflows/vedi.yaml
     env:
       ELEMENTO: 'Albume d''uovo, 200 grammi, 96 kcal, 21,8 grammi di proteine'
-- assertVisible: 96 kcal
+# Con una voce sola il pasto non ha la riga del totale: si verifica l'etichetta della voce.
+- assertVisible: 'Albume d''uovo, 200 grammi, 96 kcal, 21,8 grammi di proteine'
 - takeScreenshot: screenshots/diario-voce
 
 # Un tocco sulla voce: si cambia il peso.

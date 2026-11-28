@@ -16,21 +16,29 @@ interface Props {
   actions?: ReactNode;
   /** A destra del sottotitolo: il selettore del tipo di giornata in Oggi. */
   aside?: ReactNode;
+  /** Il contenuto sotto è scorso: una linea sottile separa l'intestazione da ciò che passa sotto. */
+  scrolled?: boolean;
 }
 
 /**
  * Intestazione delle quattro tab (docs/design.md, "Schermate"), al posto di quella nativa:
  * titolo grande a sinistra, azioni a destra, e sotto il sottotitolo con un eventuale
- * selettore. Resta ferma sopra il contenuto che scorre e tiene conto della barra di stato.
+ * selettore, allineati in basso. Resta ferma sopra il contenuto che scorre, con una linea
+ * sottile sotto quando il contenuto è scorso, e tiene conto della barra di stato.
  */
-export function ScreenHeader({ title, subtitle, actions, aside }: Props) {
+export function ScreenHeader({ title, subtitle, actions, aside, scrolled = false }: Props) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   return (
     <View
       style={[
         styles.header,
-        { paddingTop: insets.top + space.s, backgroundColor: colors.background },
+        {
+          paddingTop: insets.top + space.s,
+          backgroundColor: colors.background,
+          // La linea c'è sempre, trasparente finché non serve: niente salto di 1 px.
+          borderColor: scrolled ? colors.border : 'transparent',
+        },
       ]}
     >
       <View style={styles.titleRow}>
@@ -61,7 +69,11 @@ export function ScreenHeader({ title, subtitle, actions, aside }: Props) {
 }
 
 const styles = StyleSheet.create({
-  header: { paddingHorizontal: space.l, paddingBottom: space.s },
+  header: {
+    paddingHorizontal: space.l,
+    paddingBottom: space.s,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
   titleRow: { minHeight: touch.min, flexDirection: 'row', alignItems: 'center', gap: space.s },
   title: { flex: 1 },
   // Le icone hanno margini propri dentro i 44: l'ultima si allinea al bordo del contenuto.
@@ -69,7 +81,8 @@ const styles = StyleSheet.create({
   subtitleRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    alignItems: 'flex-start',
+    // La data sta in basso, sulla stessa linea delle pillole, come nella tavola.
+    alignItems: 'flex-end',
     justifyContent: 'space-between',
     columnGap: space.m,
     rowGap: space.xs,

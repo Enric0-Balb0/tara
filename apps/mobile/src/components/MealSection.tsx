@@ -43,9 +43,10 @@ interface Props {
 /**
  * Un pasto (docs/design.md, "Intestazione del pasto"): nome e avanzamento sul piano con la
  * legenda delle colonne a destra, le voci in griglia con separatori sottili, le voci previste
- * tratteggiate e in fondo "Aggiungi" con i totali del pasto nelle colonne di kcal e proteine.
- * Un pasto vuoto sta in una riga; uno tutto da piano in un contenitore tratteggiato con
- * "Registra come da piano"; uno completo come da piano si chiude in una riga.
+ * tratteggiate, con due o più voci la riga "Totale" nelle colonne di kcal e proteine, e in
+ * fondo le azioni con "Aggiungi" sempre a destra. Un pasto vuoto sta in una riga (con il testo
+ * grande le azioni vanno sotto, il nome resta intero); uno tutto da piano in un contenitore
+ * tratteggiato con "Registra come da piano"; uno completo come da piano si chiude in una riga.
  */
 export function MealSection({
   name,
@@ -96,8 +97,8 @@ export function MealSection({
     );
   }
 
-  const title = (
-    <TaraText variant="section" accessibilityRole="header" numberOfLines={1} style={styles.name}>
+  const renderTitle = (style: typeof styles.name | typeof styles.emptyName) => (
+    <TaraText variant="section" accessibilityRole="header" numberOfLines={1} style={style}>
       {name}
       {progress ? (
         <TaraText variant="caption" color="textSecondary">
@@ -107,6 +108,7 @@ export function MealSection({
       ) : null}
     </TaraText>
   );
+  const title = renderTitle(styles.name);
   const addButton = onAdd ? (
     <PressableScale
       onPress={onAdd}
@@ -127,11 +129,12 @@ export function MealSection({
     </PressableScale>
   ) : null;
 
-  // Un pasto senza voci né previste: nome e azioni nella stessa riga.
+  // Un pasto senza voci né previste: nome e azioni nella stessa riga; se il nome non ci sta,
+  // le azioni vanno a capo a destra invece di tagliarlo.
   if (entries.length === 0 && planned.length === 0) {
     return (
       <Animated.View layout={layout} style={styles.emptyRow}>
-        {title}
+        {renderTitle(styles.emptyName)}
         <View style={styles.emptyActions}>
           {copyButton}
           {addButton}
@@ -203,6 +206,26 @@ export function MealSection({
         </Animated.View>
       ))}
 
+      {/* Con una voce sola il totale ripeterebbe la riga: compare da due voci in su,
+          subito sotto le voci che somma (le previste non contano). */}
+      {entries.length > 1 ? (
+        <View
+          accessible
+          accessibilityLabel={`Totale ${name}: ${kcalText} kcal, ${proteinText} grammi di proteine`}
+          style={styles.totals}
+        >
+          <TaraText color="textSecondary" numberOfLines={1} style={styles.name}>
+            Totale
+          </TaraText>
+          <TaraText numberOfLines={1} style={styles.kcal}>
+            {kcalText}
+          </TaraText>
+          <TaraText numberOfLines={1} style={styles.protein}>
+            {proteinText}
+          </TaraText>
+        </View>
+      ) : null}
+
       {allPlanned ? (
         <View style={[styles.plannedBox, { borderColor: colors.borderStrong }]}>
           {planned.map((item) => (
@@ -235,35 +258,20 @@ export function MealSection({
         </>
       )}
 
+      {/* "Aggiungi" sempre a destra, come nei pasti vuoti; le altre azioni a sinistra. */}
       <View style={styles.footer}>
-        <View style={styles.footerActions}>
-          {addButton}
-          {copyButton}
-          {onSave ? (
-            <PressableScale
-              onPress={onSave}
-              accessibilityLabel={`Salva come pasto: ${name}`}
-              testID={`salva-pasto-${name.toLowerCase()}`}
-              style={styles.action}
-            >
-              <TaraText color="textSecondary">Salva come pasto</TaraText>
-            </PressableScale>
-          ) : null}
-        </View>
-        {entries.length > 0 ? (
-          <View
-            accessible
-            accessibilityLabel={`Totale ${name}: ${kcalText} kcal, ${proteinText} grammi di proteine`}
-            style={styles.totals}
+        {copyButton}
+        {onSave ? (
+          <PressableScale
+            onPress={onSave}
+            accessibilityLabel={`Salva come pasto: ${name}`}
+            testID={`salva-pasto-${name.toLowerCase()}`}
+            style={styles.action}
           >
-            <TaraText numberOfLines={1} style={styles.kcal}>
-              {kcalText}
-            </TaraText>
-            <TaraText numberOfLines={1} style={styles.protein}>
-              {proteinText}
-            </TaraText>
-          </View>
+            <TaraText color="textSecondary">Salva come pasto</TaraText>
+          </PressableScale>
         ) : null}
+        <View style={styles.footerEnd}>{addButton}</View>
       </View>
     </Animated.View>
   );
@@ -301,16 +309,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // Con le azioni su due righe i totali restano sulla prima, accanto ad "Aggiungi".
-  footer: {
+  // Le stesse colonne delle voci: "Totale" al posto del nome, kcal e proteine sotto le loro.
+  totals: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: columns.gap,
-    paddingRight: space.m,
-    marginTop: space.xs,
+    paddingHorizontal: space.m,
+    paddingVertical: space.s,
   },
-  footerActions: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
-  totals: { minHeight: touch.min, flexDirection: 'row', alignItems: 'center', gap: columns.gap },
+  footer: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginTop: space.xs },
+  footerEnd: { marginLeft: 'auto' },
   action: {
     minHeight: touch.min,
     flexDirection: 'row',
@@ -318,15 +326,23 @@ const styles = StyleSheet.create({
     gap: space.xs,
     paddingHorizontal: space.m,
   },
-  // Un pasto vuoto è una riga sola: il nome si accorcia, le azioni restano intere.
+  // Un pasto vuoto è una riga sola; se nome e azioni non ci stanno, le azioni vanno a capo.
   emptyRow: {
     minHeight: touch.min,
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
-    gap: space.xs,
+    columnGap: space.xs,
     paddingLeft: space.m,
   },
-  emptyActions: { flexShrink: 0, flexDirection: 'row', alignItems: 'center' },
+  // Larga quanto il nome, che non si taglia per far posto alle azioni.
+  emptyName: { flexGrow: 1, flexShrink: 1, minWidth: 0 },
+  emptyActions: {
+    marginLeft: 'auto',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
   collapsed: {
     minHeight: touch.min + space.xs,
     flexDirection: 'row',
